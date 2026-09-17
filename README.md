@@ -84,9 +84,17 @@ pnpm infra:down
 
 MinIO se compila desde una versión fija del código oficial; su primer arranque necesita descargar las imágenes base y compilar Go. Consulta la justificación en [las decisiones de la fase 1](docs/phase-1.md).
 
+## Trabajo con GitHub
+
+El repositorio del monorepo es [aexgarcia/creovexa](https://github.com/aexgarcia/creovexa). La base inicial está publicada en `main`; los cambios siguientes se preparan en una rama por tarea y se integran mediante pull requests.
+
+Consulta [CONTRIBUTING.md](CONTRIBUTING.md) para crear ramas, verificar cambios, abrir PR y configurar las protecciones de `main`. La [plantilla de PR](.github/pull_request_template.md) recoge el problema, los cambios y sus verificaciones.
+
+El workflow [CI](.github/workflows/ci.yml) ejecuta formato, lint, TypeScript, pruebas unitarias y HTTP de la API, y compilación de API y web en los PR hacia `main` y en los pushes a `main`. Usa Node de `.node-version` y pnpm de `package.json`, instala con el lockfile congelado y no necesita secretos ni servicios externos para las pruebas actuales. El resultado aparece como `Quality checks`; la protección de ramas debe configurarse por separado en GitHub.
+
 ## Repositorios anteriores
 
-El código activo está en `apps/web` y `apps/api`. La raíz tiene un nuevo repositorio Git local, sin commits ni remoto configurado. Los historiales originales se conservaron en `.local/legacy-git/web.git` y `.local/legacy-git/api.git`, y los lockfiles originales en `.local/legacy-lockfiles/`. `.local` está excluido de Git.
+El código activo está en `apps/web` y `apps/api`, versionado desde el repositorio de la raíz y conectado a GitHub mediante `origin`. Los historiales originales se conservaron localmente en `.local/legacy-git/web.git` y `.local/legacy-git/api.git`, y los lockfiles originales en `.local/legacy-lockfiles/`. Esos respaldos no se incluyen al clonar el monorepo porque `.local` está excluido de Git.
 
 ```sh
 git --git-dir=.local/legacy-git/web.git log --oneline
