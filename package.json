@@ -1,0 +1,35 @@
+{
+  "name": "creovexa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=24 <26",
+    "pnpm": ">=12 <13"
+  },
+  "scripts": {
+    "setup:env": "node scripts/setup-env.mjs",
+    "dev": "pnpm --parallel --filter @creovexa/web --filter @creovexa/api run dev",
+    "dev:web": "pnpm --filter @creovexa/web dev",
+    "dev:api": "pnpm --filter @creovexa/api dev",
+    "build": "pnpm --filter @creovexa/api build && pnpm --filter @creovexa/web build",
+    "typecheck": "pnpm --filter @creovexa/api typecheck && pnpm --filter @creovexa/web typecheck",
+    "lint": "pnpm --filter @creovexa/api lint && pnpm --filter @creovexa/web lint && eslint scripts packages/config",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm --filter @creovexa/api test",
+    "test:e2e": "pnpm --filter @creovexa/api test:e2e",
+    "infra:up": "docker compose --env-file .env -f infrastructure/docker/compose.yaml up -d --wait",
+    "infra:down": "docker compose --env-file .env -f infrastructure/docker/compose.yaml down",
+    "infra:status": "docker compose --env-file .env -f infrastructure/docker/compose.yaml ps",
+    "infra:logs": "docker compose --env-file .env -f infrastructure/docker/compose.yaml logs --tail=100",
+    "infra:check": "docker compose --env-file .env -f infrastructure/docker/compose.yaml config --quiet",
+    "healthcheck": "node scripts/healthcheck.mjs"
+  },
+  "devDependencies": {
+    "@creovexa/config": "workspace:*",
+    "eslint": "9.39.4",
+    "prettier": "3.8.3"
+  }
+}

@@ -1,0 +1,16 @@
+node_modules
+.next
+dist
+coverage
+pnpm-lock.yaml
+.local
+creovexa-back
+creovexa-front
+.env
+.env.*
+architecture.md
+fases1-4.5.md
+fases5-10.md
+**/AGENTS.md
+**/CLAUDE.md
+**/next-env.d.ts
