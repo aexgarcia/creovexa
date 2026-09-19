@@ -1,6 +1,6 @@
 # Fase 2: incremento 1 — organizaciones y catálogo
 
-Implementado el 17 de septiembre de 2026 según el [modelo de dominio](domain.md). La fase 2 continúa pendiente de sus incrementos de plantillas, campañas y resultados por destino.
+Implementado el 17 de septiembre de 2026 según el [modelo de dominio](domain.md). El incremento 2 de [plantillas](phase-2-templates.md) se completó el 18 de septiembre de 2026. La fase 2 continúa pendiente de campañas y resultados por destino.
 
 ## Comportamiento disponible
 
@@ -76,4 +76,4 @@ La persistencia, concurrencia real, constraints de base de datos, endpoints come
 
 ## Siguiente paso
 
-Revisar e integrar este incremento con su PR. Después implementar el incremento 2: plantillas, identidad de revisiones y dimensiones. El resto de la fase 2 no debe considerarse implementado por este cambio.
+Revisar e integrar el incremento 2 de [plantillas](phase-2-templates.md), y continuar con campañas. Este documento conserva el registro de la base comercial; la fase 2 todavía no está completa.

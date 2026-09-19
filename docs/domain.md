@@ -1,6 +1,6 @@
 # Modelo de dominio: fase 2
 
-Estado: incremento 1 (base comercial) implementado; los incrementos 2–4 continúan como diseño pendiente de implementación. Fecha: 17 de septiembre de 2026. Detalle de cambios y verificaciones en [fase 2: base comercial](phase-2.md).
+Estado: incrementos 1 (base comercial) y 2 (plantillas) implementados; los incrementos 3–4 continúan como diseño pendiente de implementación. Actualizado el 18 de septiembre de 2026. Detalle de cambios y verificaciones en [base comercial](phase-2.md) y [plantillas](phase-2-templates.md).
 
 Referencias: [arquitectura](../architecture.md), [fase 2 y fases siguientes](../fases1-4.5.md), [integraciones y seguridad](../fases5-10.md) y [validación de la fase 1](phase-1.md). Este documento concreta el modelo de negocio; las reglas generales de arquitectura siguen en su referencia original.
 
@@ -74,6 +74,8 @@ La promoción pertenece a la campaña. Si dos campañas ofrecen el mismo product
 `Template` mantiene identidad, organización, nombre y referencia de la revisión vigente. `TemplateRevision` conserva un número de revisión, dimensiones y la definición de composición cuando esta se implemente. Cambiar una plantilla crea una revisión nueva; las campañas existentes siguen apuntando a la anterior.
 
 En fase 2 se valida la identidad y el formato inicial de 1080 × 1080. El modelo de dimensiones podrá representar otros tamaños, pero el soporte del renderer se amplía en la fase 6. No se admite HTML arbitrario ni se crea un motor de plantillas en esta fase.
+
+El incremento 2 implementa `CreateTemplate`, que consulta la existencia de la organización mediante un port propio y solicita al repositorio insertar la plantilla junto con su revisión inicial de forma atómica. `Template.createRevision` produce una nueva versión del agregado con otra revisión, conservando intactas las referencias anteriores. El agregado mantiene solo la revisión vigente; la conservación del historial y la unicidad de IDs/números en almacenamiento se implementarán con persistencia. No hay todavía caso de uso de edición ni renderer.
 
 ### Campaign y GeneratedContent
 
@@ -179,7 +181,7 @@ Errores explícitos: `OrganizationNotFoundError`, `ProductNotFoundError`, `Templ
 
 ## Alcance recomendado de implementación de fase 2
 
-El trabajo se divide en incrementos revisables. El incremento 1 está implementado; los siguientes conservan su carácter de plan.
+El trabajo se divide en incrementos revisables. Los incrementos 1 y 2 están implementados; los siguientes conservan su carácter de plan.
 
 | Incremento                | Dominio y aplicación                                                                                                                                                                                                        | Verificación principal                                                                                 |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
@@ -229,4 +231,4 @@ Antes de implementar, revisar los supuestos de una oferta por campaña, catálog
 
 Los tests deberán demostrar: inicio en borrador; rechazo de aprobación prematura; generación vigente y contenido completo; invalidación de aprobación tras regenerar; precio/moneda y vencimiento válidos; rechazo de referencias de otra organización; independencia de destinos; y que una campaña/publicación exitosa no se envía nuevamente por repetir una operación. Los tests de concurrencia real y constraints corresponden a persistencia, no se simulan como una garantía del dominio puro.
 
-El incremento 1 tiene entidades, casos de uso, contratos y pruebas unitarias, sin adapters de persistencia ni endpoints de negocio. El siguiente paso es revisar e integrar este incremento mediante PR y continuar con plantillas. En cada incremento de código se ejecutarán tipos, lint, formato y las pruebas pertinentes.
+Los incrementos 1 y 2 tienen entidades, casos de uso, contratos y pruebas unitarias, sin adapters de persistencia ni endpoints de negocio. El siguiente paso es revisar e integrar plantillas mediante PR y continuar con campañas. En cada incremento de código se ejecutarán tipos, lint, formato y las pruebas pertinentes.
