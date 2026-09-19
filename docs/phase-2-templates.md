@@ -70,4 +70,4 @@ Pruebas y compilación necesitaron ejecutarse fuera del sandbox por las restricc
 
 ## Siguiente paso
 
-Revisar e integrar el incremento mediante PR. Después continuar con el incremento 3: campañas, oferta, generación, aprobación y regeneración en dominio y aplicación. Publicaciones seguirá siendo el incremento 4; la fase 2 todavía no está completa.
+Plantillas ya se integró mediante PR. El incremento 3 de [campañas](phase-2-campaigns.md) está implementado y listo para revisión. Después corresponde el incremento 4, resultados por destino. Este documento conserva el registro de plantillas; la fase 2 todavía no está completa.
