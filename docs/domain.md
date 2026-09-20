@@ -1,6 +1,6 @@
 # Modelo de dominio: fase 2
 
-Estado: incrementos 1 (base comercial) y 2 (plantillas) implementados; los incrementos 3–4 continúan como diseño pendiente de implementación. Actualizado el 18 de septiembre de 2026. Detalle de cambios y verificaciones en [base comercial](phase-2.md) y [plantillas](phase-2-templates.md).
+Estado: incrementos 1 (base comercial), 2 (plantillas) y 3 (campañas) implementados; el incremento 4 (resultados por destino) continúa como diseño pendiente de implementación. Actualizado el 18 de septiembre de 2026. Detalle de cambios y verificaciones en [base comercial](phase-2.md), [plantillas](phase-2-templates.md) y [campañas](phase-2-campaigns.md).
 
 Referencias: [arquitectura](../architecture.md), [fase 2 y fases siguientes](../fases1-4.5.md), [integraciones y seguridad](../fases5-10.md) y [validación de la fase 1](phase-1.md). Este documento concreta el modelo de negocio; las reglas generales de arquitectura siguen en su referencia original.
 
@@ -87,13 +87,15 @@ El incremento 2 implementa `CreateTemplate`, que consulta la existencia de la or
 - Destinos seleccionados por `socialAccountId` cuando se habilite la publicación real.
 - Fechas y versión para controlar modificaciones concurrentes en persistencia.
 
-Comportamiento propuesto: `requestGeneration`, `recordGeneratedContent`, `approve`, `requestRegeneration`, `startPublication` y `recordPublicationSummary`. Cada operación expresa una transición concreta; no habrá un `setStatus` público.
+Comportamiento implementado: `requestGeneration`, `recordGeneratedContent`, `recordGenerationFailure`, `approve` y `requestRegeneration`. `startPublication` y `recordPublicationSummary` quedan para el incremento 4. Cada operación expresa una transición concreta; no hay un `setStatus` público.
 
 `GeneratedContent` es una revisión identificada e inmutable de la campaña. Conserva la entrada comercial utilizada —snapshot de producto, oferta, marca y versión de plantilla— y el resultado: titular, caption, CTA, hashtags y referencias de assets según avance la generación. Un resultado incompleto no puede ser el candidato aprobable. El prompt creativo se incorpora cuando exista generación de imágenes.
 
 El historial puede persistirse y consultarse por separado. Para aprobar no es necesario cargar todas las revisiones: se carga la candidata, se verifica que pertenece a esa campaña y organización, y se conserva su identificador como `approvedContentId`. La escritura de la revisión aceptada y la actualización de la campaña deben ser atómicas al añadir persistencia.
 
 La aprobación se aplica al contenido final mostrado al usuario, incluidos los datos comerciales exactos y los destinos elegidos. Editar el catálogo no cambia retroactivamente una revisión. Si el usuario quiere incorporar esos cambios, solicita una nueva generación o revisión y vuelve a aprobarla.
+
+En el incremento 3, la aprobación exige el ID exacto del contenido candidato; los destinos todavía no están implementados. Solicitar generación o regeneración captura producto, oferta, marca, brief y revisión de plantilla mediante `GenerationSnapshot`. Los callbacks utilizan esa copia almacenada, sin aceptar otra entrada comercial. Un resultado completo requiere titular, caption, CTA coincidente con el brief y al menos una referencia de asset; los hashtags pueden estar vacíos. La existencia y contenido real de los archivos se comprobarán al integrar almacenamiento y renderizado. Las nuevas generaciones invalidan la aprobación anterior y deben conservar el historial mediante el contrato de repositorio.
 
 ### SocialAccount y Publication
 
@@ -118,7 +120,7 @@ Los UUID se representan inicialmente con tipos nominales de TypeScript y validac
 
 ## Ciclo de vida de campañas
 
-Propuesta de estados de negocio:
+El incremento 3 implementa `DRAFT`, `GENERATING`, `PENDING_APPROVAL`, `APPROVED` y `FAILED`. Actualmente `FAILED` solo representa generación y conserva un código controlado (`GENERATION_FAILED`, `TIMEOUT` o `INVALID_OUTPUT`), sin mensajes libres del proveedor. Antes de incorporar fallos de publicación en el incremento 4, se distinguirá su origen para mantener separados los reintentos. El diagrama completo incluye las transiciones de publicación todavía pendientes:
 
 ```mermaid
 stateDiagram-v2
@@ -149,7 +151,7 @@ Reglas que acompañan al diagrama:
 7. Mientras quede un destino pendiente o en curso, la campaña permanece en `PUBLISHING`. `PARTIALLY_PUBLISHED` representa un resultado mixto ya terminado, no una operación todavía en progreso.
 8. `PUBLISHED` es terminal para la campaña. Repetir la promoción requiere crear otra campaña explícitamente.
 
-Se propone `GENERATING` como estado de negocio en lugar de exponer `GENERATING_COPY` y `GENERATING_IMAGE` del ejemplo arquitectónico. El paso técnico será progreso de la operación de generación cuando se implemente: evita acoplar aprobación/publicación al orden de n8n. Es una propuesta de simplificación, no un cambio aplicado a las reglas existentes.
+Se implementa `GENERATING` como estado de negocio en lugar de exponer `GENERATING_COPY` y `GENERATING_IMAGE` del ejemplo arquitectónico. El paso técnico será progreso de la operación de generación cuando se implemente: evita acoplar aprobación/publicación al orden de n8n.
 
 También se propone `PARTIALLY_PUBLISHED`: un único `FAILED` ocultaría que algunas redes ya publicaron. El detalle por destino siempre pertenece a `Publication` y prevalece sobre el resumen de campaña.
 
@@ -181,14 +183,14 @@ Errores explícitos: `OrganizationNotFoundError`, `ProductNotFoundError`, `Templ
 
 ## Alcance recomendado de implementación de fase 2
 
-El trabajo se divide en incrementos revisables. Los incrementos 1 y 2 están implementados; los siguientes conservan su carácter de plan.
+El trabajo se divide en incrementos revisables. Los incrementos 1–3 están implementados; el incremento 4 conserva su carácter de plan.
 
-| Incremento                | Dominio y aplicación                                                                                                                                                                                                        | Verificación principal                                                                                 |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| 1. Base comercial         | `Organization`, `Product`, `Money`, sus contratos de repositorio; `CreateOrganization`, `UpdateOrganizationProfile`, `CreateProduct` y `UpdateProduct`                                                                      | Reglas de importes, nombres, pertenencia y conservación de identidad                                   |
-| 2. Plantillas             | `Template`, identidad de revisión, dimensiones y repositorio; `CreateTemplate`                                                                                                                                              | Formato inicial y referencias de revisión estables                                                     |
-| 3. Campañas               | `Campaign`, `Promotion`, revisión candidata y snapshot; repositorio y ports mínimos de consulta; `CreateCampaign`, `RequestCampaignGeneration`, `RecordGeneratedCampaign`, `ApproveCampaign`, `RequestCampaignRegeneration` | Transiciones válidas e inválidas, revisión aprobada, callbacks antiguos y aislamiento por organización |
-| 4. Resultados por destino | Entidad `Publication` y reglas puras de inicio, resultado y resumen de campaña                                                                                                                                              | Éxito parcial, reintentos que preservan éxitos y bloqueo de republicación                              |
+| Incremento                | Dominio y aplicación                                                                                                                                                                                                                                           | Verificación principal                                                                                 |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 1. Base comercial         | `Organization`, `Product`, `Money`, sus contratos de repositorio; `CreateOrganization`, `UpdateOrganizationProfile`, `CreateProduct` y `UpdateProduct`                                                                                                         | Reglas de importes, nombres, pertenencia y conservación de identidad                                   |
+| 2. Plantillas             | `Template`, identidad de revisión, dimensiones y repositorio; `CreateTemplate`                                                                                                                                                                                 | Formato inicial y referencias de revisión estables                                                     |
+| 3. Campañas               | `Campaign`, `Promotion`, revisión candidata y snapshot; repositorio y ports mínimos de consulta; `CreateCampaign`, `RequestCampaignGeneration`, `RecordGeneratedCampaign`, `RecordCampaignGenerationFailure`, `ApproveCampaign`, `RequestCampaignRegeneration` | Transiciones válidas e inválidas, revisión aprobada, callbacks antiguos y aislamiento por organización |
+| 4. Resultados por destino | Entidad `Publication` y reglas puras de inicio, resultado y resumen de campaña                                                                                                                                                                                 | Éxito parcial, reintentos que preservan éxitos y bloqueo de republicación                              |
 
 En esta fase, solicitar generación registra la intención y su identificador; no llama a n8n ni produce contenido simulado para usuarios. Registrar el resultado recibe datos estructurados suministrados por la prueba. Las operaciones no se expondrán por HTTP antes de tener una implementación real o un contrato de disponibilidad explícito en su fase correspondiente.
 
@@ -231,4 +233,4 @@ Antes de implementar, revisar los supuestos de una oferta por campaña, catálog
 
 Los tests deberán demostrar: inicio en borrador; rechazo de aprobación prematura; generación vigente y contenido completo; invalidación de aprobación tras regenerar; precio/moneda y vencimiento válidos; rechazo de referencias de otra organización; independencia de destinos; y que una campaña/publicación exitosa no se envía nuevamente por repetir una operación. Los tests de concurrencia real y constraints corresponden a persistencia, no se simulan como una garantía del dominio puro.
 
-Los incrementos 1 y 2 tienen entidades, casos de uso, contratos y pruebas unitarias, sin adapters de persistencia ni endpoints de negocio. El siguiente paso es revisar e integrar plantillas mediante PR y continuar con campañas. En cada incremento de código se ejecutarán tipos, lint, formato y las pruebas pertinentes.
+Los incrementos 1–3 tienen entidades, casos de uso, contratos y pruebas unitarias, sin adapters de persistencia ni endpoints de negocio. El siguiente paso es revisar e integrar campañas mediante PR y continuar con resultados por destino. En cada incremento de código se ejecutarán tipos, lint, formato y las pruebas pertinentes.
