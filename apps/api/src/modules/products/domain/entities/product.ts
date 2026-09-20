@@ -61,15 +61,26 @@ export class Product {
     input: ProductDetails,
     at: Date,
   ): Product {
+    return Product.restore(id, organizationId, kind, input, at, at);
+  }
+
+  static restore(
+    id: string,
+    organizationId: string,
+    kind: ProductKind,
+    input: ProductDetails,
+    created: Date,
+    updated: Date,
+  ): Product {
     if (!Object.values(ProductKind).includes(kind)) throw new InvalidProductError('kind');
-    const createdAt = timestamp(at);
+    const createdAt = timestamp(created);
     return new Product({
       id: entityId(id),
       organizationId: entityId(organizationId, 'organizationId'),
       kind,
       ...details(input),
       createdAt,
-      updatedAt: createdAt,
+      updatedAt: timestamp(updated, createdAt),
     });
   }
 

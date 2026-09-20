@@ -45,12 +45,21 @@ export class Organization {
   }
 
   static create(id: string, input: OrganizationProfile, at: Date): Organization {
-    const createdAt = timestamp(at);
+    return Organization.restore(id, input, at, at);
+  }
+
+  static restore(
+    id: string,
+    input: OrganizationProfile,
+    created: Date,
+    updated: Date,
+  ): Organization {
+    const createdAt = timestamp(created);
     return new Organization({
       id: entityId(id),
       ...profile(input),
       createdAt,
-      updatedAt: createdAt,
+      updatedAt: timestamp(updated, createdAt),
     });
   }
 

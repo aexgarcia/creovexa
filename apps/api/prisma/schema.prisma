@@ -1,0 +1,86 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/infrastructure/persistence/prisma/generated"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProductKind {
+  PRODUCT
+  SERVICE
+}
+
+enum Currency {
+  PEN
+  USD
+  EUR
+}
+
+model Organization {
+  id          String     @id @db.Uuid
+  name        String
+  description String
+  brandTone   String?    @map("brand_tone")
+  logoAssetId String?    @map("logo_asset_id") @db.Uuid
+  createdAt   DateTime   @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime   @map("updated_at") @db.Timestamptz(3)
+  products    Product[]
+  templates   Template[]
+
+  @@index([createdAt])
+  @@map("organizations")
+}
+
+model Product {
+  id             String       @id @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  kind           ProductKind
+  name           String
+  description    String
+  amountMinor    BigInt       @map("amount_minor")
+  currency       Currency
+  imageAssetIds  String[]     @default([]) @map("image_asset_ids") @db.Uuid
+  createdAt      DateTime     @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @map("updated_at") @db.Timestamptz(3)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, createdAt])
+  @@map("products")
+}
+
+model Template {
+  id                String             @id @db.Uuid
+  organizationId    String             @map("organization_id") @db.Uuid
+  name              String
+  currentRevisionId String             @map("current_revision_id") @db.Uuid
+  createdAt         DateTime           @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime           @map("updated_at") @db.Timestamptz(3)
+  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  revisions         TemplateRevision[] @relation("TemplateRevisions")
+  currentRevision   TemplateRevision   @relation("CurrentRevision", fields: [organizationId, id, currentRevisionId], references: [organizationId, templateId, id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([organizationId, id])
+  @@index([organizationId, createdAt])
+  @@map("templates")
+}
+
+model TemplateRevision {
+  id             String     @id @db.Uuid
+  organizationId String     @map("organization_id") @db.Uuid
+  templateId     String     @map("template_id") @db.Uuid
+  number         BigInt
+  width          Int
+  height         Int
+  createdAt      DateTime   @map("created_at") @db.Timestamptz(3)
+  template       Template   @relation("TemplateRevisions", fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  currentFor     Template[] @relation("CurrentRevision")
+
+  @@unique([organizationId, templateId, id])
+  @@unique([organizationId, templateId, number])
+  @@map("template_revisions")
+}
