@@ -15,10 +15,12 @@
 <!-- Marca solo los comandos que ejecutaste correctamente. Explica fallos o verificaciones pendientes. -->
 
 - [ ] `pnpm format:check`
+- [ ] `pnpm db:validate`
 - [ ] `pnpm lint`
 - [ ] `pnpm typecheck`
 - [ ] `pnpm test`
 - [ ] `pnpm test:e2e`
+- [ ] `pnpm test:integration`
 - [ ] `pnpm build`
 
 <!-- Añade pruebas manuales o capturas cuando ayuden a revisar el cambio. -->

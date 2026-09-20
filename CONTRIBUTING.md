@@ -38,10 +38,12 @@ Desde la raíz, ejecuta las mismas comprobaciones que CI:
 
 ```sh
 pnpm format:check
+pnpm db:validate
 pnpm lint
 pnpm typecheck
 pnpm test
 pnpm test:e2e
+pnpm test:integration
 pnpm build
 ```
 
@@ -79,9 +81,9 @@ Crea la siguiente rama desde ese `main` actualizado.
 
 [CI](.github/workflows/ci.yml) se ejecuta en los PR hacia `main`, en los pushes a `main` y mediante ejecución manual cuando el workflow esté en la rama predeterminada. Comprueba todo el monorepo, incluso cuando solo cambia documentación.
 
-Un solo job instala las dependencias con `--frozen-lockfile` y ejecuta formato, lint, tipos, pruebas unitarias, pruebas HTTP de la API y compilación de ambas aplicaciones. Así evitamos duplicar instalaciones para el tamaño actual del proyecto. La caché de pnpm usa el lockfile; las versiones de Node y pnpm provienen de los archivos existentes.
+Un solo job instala las dependencias con `--frozen-lockfile` y ejecuta formato, validación del schema, lint, tipos, pruebas unitarias, HTTP e integración de la API y compilación de ambas aplicaciones. Así evitamos duplicar instalaciones para el tamaño actual del proyecto. La caché de pnpm usa el lockfile; las versiones de Node y pnpm provienen de los archivos existentes.
 
-Las verificaciones actuales funcionan sin secretos de GitHub ni servicios externos. La prueba e2e cubre el arranque HTTP y `/health` de la API; no valida Docker, PostgreSQL, MinIO, n8n ni navegación del CMS. Cuando una fase incorpore integraciones, deberá ampliar la CI para probarlas.
+Las verificaciones no requieren secretos de GitHub. El job inicia un PostgreSQL desechable para `test:integration`; localmente este comando utiliza un esquema temporal en la conexión configurada. La prueba e2e sigue cubriendo el arranque HTTP y `/health` de la API de forma independiente de PostgreSQL. MinIO, n8n y navegación del CMS permanecen fuera de estas pruebas.
 
 El workflow solo necesita permiso de lectura sobre el repositorio y no despliega aplicaciones.
 

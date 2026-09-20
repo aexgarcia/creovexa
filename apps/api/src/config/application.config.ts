@@ -1,6 +1,4 @@
-import { existsSync } from 'node:fs';
-import { env, loadEnvFile } from 'node:process';
-import { resolve } from 'node:path';
+import { applicationEnvironment } from './environment.js';
 
 export interface ApplicationConfig {
   port: number;
@@ -45,8 +43,6 @@ export function readApplicationConfig(environment: NodeJS.ProcessEnv): Applicati
 export const applicationConfigProvider = {
   provide: APPLICATION_CONFIG,
   useFactory: (): ApplicationConfig => {
-    const envPath = resolve(process.cwd(), '.env');
-    if (existsSync(envPath)) loadEnvFile(envPath);
-    return readApplicationConfig(env);
+    return readApplicationConfig(applicationEnvironment());
   },
 };

@@ -1,6 +1,6 @@
 # Creovexa
 
-Monorepo para la plataforma de automatización de marketing. Esta fase prepara las aplicaciones y la infraestructura de desarrollo; los módulos de negocio se implementan en las fases siguientes.
+Monorepo para la plataforma de automatización de marketing. El dominio de la fase 2 está implementado y la fase 3 incorpora Prisma y persistencia, comenzando por organizaciones, catálogo y creación de plantillas.
 
 ## Estructura
 
@@ -42,10 +42,13 @@ Desde la raíz:
 pnpm install --frozen-lockfile
 pnpm setup:env
 pnpm infra:up
+pnpm db:migrate
 pnpm dev
 ```
 
-`setup:env` crea `.env`, `apps/api/.env` y `apps/web/.env.local` a partir de sus ejemplos. Genera contraseñas y clave de cifrado aleatorias, conserva los archivos existentes y no imprime secretos. Estos archivos se ignoran en Git. No uses `pnpm setup`: ese es un comando propio del gestor de paquetes.
+`setup:env` crea `.env`, `apps/api/.env` y `apps/web/.env.local` a partir de sus ejemplos. Genera contraseñas y clave de cifrado aleatorias y conserva las variables existentes. Si falta `DATABASE_URL` en la API, la añade usando las credenciales de PostgreSQL del entorno raíz, sin imprimirlas. Estos archivos se ignoran en Git. No uses `pnpm setup`: ese es un comando propio del gestor de paquetes.
+
+`db:migrate` aplica las migraciones versionadas mediante `prisma migrate deploy`; no resetea la base ni modifica la base independiente de n8n. El cliente Prisma se genera automáticamente al comprobar tipos, ejecutar pruebas o compilar. Consulta [persistencia comercial](docs/phase-3-commercial.md) para los límites del incremento y las pruebas de PostgreSQL.
 
 Las aplicaciones se ejecutan en el host con recarga automática; los tres servicios de infraestructura se ejecutan en Docker. También puedes usar `pnpm dev:web` y `pnpm dev:api` por separado.
 
@@ -62,7 +65,7 @@ En la primera visita a n8n se crea el usuario propietario desde su interfaz. Par
 
 Los puertos de infraestructura se pueden cambiar en `.env`. El puerto de API se configura con `API_PORT` en `apps/api/.env`; actualiza `NEXT_PUBLIC_API_URL` en `apps/web/.env.local` si lo cambias. El CMS usa el puerto 3000, y `CORS_ORIGIN` limita el origen aceptado por la API. Las URLs públicas del frontend no deben contener secretos.
 
-El healthcheck de las aplicaciones comprueba que responden por HTTP; no comprueba servicios que aún no consumen. PostgreSQL y MinIO tienen comprobaciones propias; la de n8n espera también la conexión a su base y sus migraciones.
+El healthcheck de las aplicaciones comprueba que responden por HTTP; es una comprobación de vida, no de disponibilidad de PostgreSQL. El cliente abre conexiones al ejecutar consultas y las libera al cerrar NestJS. PostgreSQL y MinIO tienen comprobaciones propias; la de n8n espera también la conexión a su base y sus migraciones.
 
 ## Comandos
 
@@ -72,6 +75,8 @@ pnpm lint
 pnpm format:check
 pnpm test
 pnpm test:e2e
+pnpm test:integration
+pnpm db:validate
 pnpm build
 pnpm healthcheck
 pnpm healthcheck --apps-only
@@ -82,6 +87,8 @@ pnpm infra:down
 
 `infra:check` valida Compose sin imprimir secretos ni requerir el motor en ejecución. `infra:down` conserva los volúmenes. Las credenciales de PostgreSQL y n8n deben conservarse junto con esos volúmenes: cambiar el `.env` no actualiza automáticamente usuarios existentes ni recifra credenciales guardadas.
 
+`test:integration` requiere PostgreSQL disponible. Crea un esquema aleatorio `creovexa_test_…`, aplica las migraciones y elimina únicamente ese esquema al terminar, incluso si falla una prueba. Usa `TEST_DATABASE_URL` si está definida y, en caso contrario, `DATABASE_URL` de la API. Las pruebas unitarias y HTTP no necesitan una conexión a PostgreSQL.
+
 MinIO se compila desde una versión fija del código oficial; su primer arranque necesita descargar las imágenes base y compilar Go. Consulta la justificación en [las decisiones de la fase 1](docs/phase-1.md).
 
 ## Trabajo con GitHub
@@ -90,7 +97,7 @@ El repositorio del monorepo es [aexgarcia/creovexa](https://github.com/aexgarcia
 
 Consulta [CONTRIBUTING.md](CONTRIBUTING.md) para crear ramas, verificar cambios, abrir PR y configurar las protecciones de `main`. La [plantilla de PR](.github/pull_request_template.md) recoge el problema, los cambios y sus verificaciones.
 
-El workflow [CI](.github/workflows/ci.yml) ejecuta formato, lint, TypeScript, pruebas unitarias y HTTP de la API, y compilación de API y web en los PR hacia `main` y en los pushes a `main`. Usa Node de `.node-version` y pnpm de `package.json`, instala con el lockfile congelado y no necesita secretos ni servicios externos para las pruebas actuales. El resultado aparece como `Quality checks`; la protección de ramas debe configurarse por separado en GitHub.
+El workflow [CI](.github/workflows/ci.yml) ejecuta formato, lint, TypeScript, validación del schema, pruebas unitarias, HTTP e integración con PostgreSQL, y compilación de API y web en los PR hacia `main` y en los pushes a `main`. Usa Node de `.node-version` y pnpm de `package.json`, instala con el lockfile congelado y crea un PostgreSQL desechable dentro del job. No necesita secretos de GitHub ni la base local del desarrollador. El resultado aparece como `Quality checks`; la protección de ramas debe configurarse por separado en GitHub.
 
 ## Repositorios anteriores
 
@@ -107,4 +114,4 @@ Los directorios antiguos pueden conservar metadatos Git o cachés protegidos por
 
 Antes de implementar funcionalidades, revisa [architecture.md](architecture.md), [fases1-4.5.md](fases1-4.5.md), [fases5-10.md](fases5-10.md) y las instrucciones `AGENTS.md` aplicables.
 
-El estado de las verificaciones y las limitaciones del equipo se registran en [docs/phase-1.md](docs/phase-1.md).
+El historial de verificación de infraestructura está en [fase 1](docs/phase-1.md), el modelo en [dominio](docs/domain.md) y el incremento actual en [fase 3: persistencia comercial](docs/phase-3-commercial.md).
