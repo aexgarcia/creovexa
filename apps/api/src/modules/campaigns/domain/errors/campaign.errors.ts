@@ -67,3 +67,17 @@ export class ConcurrentCampaignModificationError extends Error {
     this.name = 'ConcurrentCampaignModificationError';
   }
 }
+
+export class InvalidPublicationSummaryError extends Error {
+  constructor() {
+    super('El resumen no coincide con los destinos aprobados o con su progreso de publicación.');
+    this.name = 'InvalidPublicationSummaryError';
+  }
+}
+
+export class StalePublicationSummaryError extends Error {
+  constructor() {
+    super('El resumen contiene una versión anterior de una publicación.');
+    this.name = 'StalePublicationSummaryError';
+  }
+}

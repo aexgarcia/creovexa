@@ -76,4 +76,4 @@ La persistencia, concurrencia real, constraints de base de datos, endpoints come
 
 ## Siguiente paso
 
-Los incrementos 2 de [plantillas](phase-2-templates.md) y 3 de [campañas](phase-2-campaigns.md) ya están implementados. Revisar e integrar campañas mediante PR y continuar con el incremento 4, resultados por destino. Este documento conserva el registro de la base comercial; la fase 2 todavía no está completa.
+Los cuatro incrementos de la fase 2 están implementados; el cierre está en [publicaciones](phase-2-publications.md). Revisar e integrar los incrementos pendientes mediante PR y comenzar la fase 3 de persistencia. Este documento conserva el registro histórico de la base comercial.

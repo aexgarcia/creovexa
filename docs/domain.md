@@ -1,6 +1,6 @@
 # Modelo de dominio: fase 2
 
-Estado: incrementos 1 (base comercial), 2 (plantillas) y 3 (campañas) implementados; el incremento 4 (resultados por destino) continúa como diseño pendiente de implementación. Actualizado el 18 de septiembre de 2026. Detalle de cambios y verificaciones en [base comercial](phase-2.md), [plantillas](phase-2-templates.md) y [campañas](phase-2-campaigns.md).
+Estado: los cuatro incrementos de la fase 2 están implementados en código: base comercial, plantillas, campañas y resultados por destino. Actualizado el 19 de septiembre de 2026. Detalle de cambios y verificaciones en [base comercial](phase-2.md), [plantillas](phase-2-templates.md), [campañas](phase-2-campaigns.md) y [publicaciones](phase-2-publications.md). La integración de los últimos incrementos mediante PR permanece pendiente; la persistencia corresponde a la fase 3.
 
 Referencias: [arquitectura](../architecture.md), [fase 2 y fases siguientes](../fases1-4.5.md), [integraciones y seguridad](../fases5-10.md) y [validación de la fase 1](phase-1.md). Este documento concreta el modelo de negocio; las reglas generales de arquitectura siguen en su referencia original.
 
@@ -84,10 +84,10 @@ El incremento 2 implementa `CreateTemplate`, que consulta la existencia de la or
 - Identidad, organización, título, producto y revisión de plantilla.
 - Brief: instrucciones, llamada a la acción y oferta opcional.
 - Estado, identificador de la generación vigente y referencias a contenido candidato y aprobado.
-- Destinos seleccionados por `socialAccountId` cuando se habilite la publicación real.
+- Destinos aprobados por `socialAccountId` y resumen de publicaciones por identidad y versión.
 - Fechas y versión para controlar modificaciones concurrentes en persistencia.
 
-Comportamiento implementado: `requestGeneration`, `recordGeneratedContent`, `recordGenerationFailure`, `approve` y `requestRegeneration`. `startPublication` y `recordPublicationSummary` quedan para el incremento 4. Cada operación expresa una transición concreta; no hay un `setStatus` público.
+Comportamiento implementado: `requestGeneration`, `recordGeneratedContent`, `recordGenerationFailure`, `approve`, `requestRegeneration`, `startPublication`, `recordPublicationSummary` y `retryPublication`. Cada operación expresa una transición concreta; no hay un `setStatus` público.
 
 `GeneratedContent` es una revisión identificada e inmutable de la campaña. Conserva la entrada comercial utilizada —snapshot de producto, oferta, marca y versión de plantilla— y el resultado: titular, caption, CTA, hashtags y referencias de assets según avance la generación. Un resultado incompleto no puede ser el candidato aprobable. El prompt creativo se incorpora cuando exista generación de imágenes.
 
@@ -95,15 +95,19 @@ El historial puede persistirse y consultarse por separado. Para aprobar no es ne
 
 La aprobación se aplica al contenido final mostrado al usuario, incluidos los datos comerciales exactos y los destinos elegidos. Editar el catálogo no cambia retroactivamente una revisión. Si el usuario quiere incorporar esos cambios, solicita una nueva generación o revisión y vuelve a aprobarla.
 
-En el incremento 3, la aprobación exige el ID exacto del contenido candidato; los destinos todavía no están implementados. Solicitar generación o regeneración captura producto, oferta, marca, brief y revisión de plantilla mediante `GenerationSnapshot`. Los callbacks utilizan esa copia almacenada, sin aceptar otra entrada comercial. Un resultado completo requiere titular, caption, CTA coincidente con el brief y al menos una referencia de asset; los hashtags pueden estar vacíos. La existencia y contenido real de los archivos se comprobarán al integrar almacenamiento y renderizado. Las nuevas generaciones invalidan la aprobación anterior y deben conservar el historial mediante el contrato de repositorio.
+La aprobación exige el ID exacto del contenido candidato. Desde el incremento 4, `Campaign.approve` también puede fijar un conjunto de cuentas destino, sin duplicados; una aprobación sin destinos permite revisar contenido, pero no iniciar publicación. El caso de uso existente `ApproveCampaign` conserva su alcance de aprobación de contenido: incorporar selección de cuentas a aplicación requerirá comprobar existencia, pertenencia y conexión mediante un port al integrar cuentas sociales.
+
+Solicitar generación o regeneración captura producto, oferta, marca, brief y revisión de plantilla mediante `GenerationSnapshot`. Los callbacks utilizan esa copia almacenada, sin aceptar otra entrada comercial. Un resultado completo requiere titular, caption, CTA coincidente con el brief y al menos una referencia de asset; los hashtags pueden estar vacíos. La existencia y contenido real de los archivos se comprobarán al integrar almacenamiento y renderizado. Las nuevas generaciones invalidan la aprobación y sus destinos y deben conservar el historial mediante el contrato de repositorio.
 
 ### SocialAccount y Publication
 
 `SocialAccount` conserva UUID, organización, plataforma, identificador externo, nombre visible y estado de conexión. Una misma organización puede tener varias cuentas de una plataforma. El destino es la cuenta concreta, no solo el nombre de la red. Los detalles de OAuth y la referencia segura de credenciales se concretan en la fase 8.
 
-`Publication` conserva UUID, organización, campaña, revisión aprobada, cuenta destino, plataforma y estado. Al integrar proveedores añadirá intentos, fecha del último intento, identificador y URL externos, fecha de publicación y motivo de fallo saneado.
+`Publication` conserva UUID, organización, campaña, revisión aprobada, cuenta destino, plataforma, estado y versión. El incremento 4 incorpora el intento vigente con ID, número y fecha; identificador externo del resultado; fecha de publicación y código de fallo confirmado. El historial de intentos y su persistencia, las URLs externas y los adapters se concretarán en sus fases.
 
 La raíz permite iniciar un intento, registrar éxito o registrar fallo sin afectar a las publicaciones de otras cuentas. Una publicación exitosa es terminal. Repetir la misma confirmación de éxito es inocuo; una confirmación contradictoria se rechaza. Un resultado tardío de un intento anterior no puede sobrescribir uno vigente.
+
+`PublicationProgress`, objeto de valor de campañas, recibe datos planos mediante el contrato consumidor `CampaignPublication`. Exige un resumen completo de las publicaciones fijadas al iniciar, verifica organización/campaña/revisión/cuenta, rechaza versiones anteriores y estados contradictorios, y conserva las publicaciones exitosas al reintentar. El estado detallado pertenece a `Publication`; el resumen no importa esa entidad ni sustituye su persistencia. Ambos módulos comparten solo el vocabulario pequeño `PublicationStatus` en el dominio común.
 
 ## Objetos de valor que aportan reglas
 
@@ -120,7 +124,7 @@ Los UUID se representan inicialmente con tipos nominales de TypeScript y validac
 
 ## Ciclo de vida de campañas
 
-El incremento 3 implementa `DRAFT`, `GENERATING`, `PENDING_APPROVAL`, `APPROVED` y `FAILED`. Actualmente `FAILED` solo representa generación y conserva un código controlado (`GENERATION_FAILED`, `TIMEOUT` o `INVALID_OUTPUT`), sin mensajes libres del proveedor. Antes de incorporar fallos de publicación en el incremento 4, se distinguirá su origen para mantener separados los reintentos. El diagrama completo incluye las transiciones de publicación todavía pendientes:
+Se implementan `DRAFT`, `GENERATING`, `PENDING_APPROVAL`, `APPROVED`, `PUBLISHING`, `PUBLISHED`, `PARTIALLY_PUBLISHED` y `FAILED`. `CampaignFailureOrigin` distingue `GENERATION` y `PUBLICATION`; los fallos parciales terminados también indican origen de publicación. Cada raíz conserva códigos controlados, sin mensajes libres del proveedor. Las siguientes transiciones son reglas puras del dominio; no ejecutan envíos:
 
 ```mermaid
 stateDiagram-v2
@@ -153,11 +157,13 @@ Reglas que acompañan al diagrama:
 
 Se implementa `GENERATING` como estado de negocio en lugar de exponer `GENERATING_COPY` y `GENERATING_IMAGE` del ejemplo arquitectónico. El paso técnico será progreso de la operación de generación cuando se implemente: evita acoplar aprobación/publicación al orden de n8n.
 
-También se propone `PARTIALLY_PUBLISHED`: un único `FAILED` ocultaría que algunas redes ya publicaron. El detalle por destino siempre pertenece a `Publication` y prevalece sobre el resumen de campaña.
+Se implementa `PARTIALLY_PUBLISHED`: un único `FAILED` ocultaría que algunas redes ya publicaron. El detalle por destino siempre pertenece a `Publication` y prevalece sobre el resumen de campaña.
 
 ## Publicación, concurrencia e idempotencia
 
 Cada publicación tiene su ciclo `PENDING → PUBLISHING → PUBLISHED | FAILED`. Reintentar un fallo recuperable vuelve a `PUBLISHING` manteniendo la identidad de la publicación; no crea otra publicación lógica.
+
+La campaña inicia con una publicación nueva en `PENDING` por cada cuenta aprobada. Mientras quede un destino pendiente o en curso, permanece en `PUBLISHING`. Cuando todos terminan, resume éxito total, parcial o fallo total. `retryPublication` exige una versión más reciente en `PUBLISHING` para cada destino fallido, preservando exactamente los destinos exitosos y la revisión autorizada. Una implementación coordinadora deberá reservar esos intentos y actualizar el resumen de forma consistente; estas operaciones puras no escriben por sí mismas en almacenamiento.
 
 La clave lógica propuesta es `(organizationId, campaignId, approvedContentId, socialAccountId)`. En la fase 3 se respaldará con una restricción única y escrituras condicionadas por versión/estado. Una comprobación en memoria no evita que dos workers lean simultáneamente `APPROVED`.
 
@@ -183,7 +189,7 @@ Errores explícitos: `OrganizationNotFoundError`, `ProductNotFoundError`, `Templ
 
 ## Alcance recomendado de implementación de fase 2
 
-El trabajo se divide en incrementos revisables. Los incrementos 1–3 están implementados; el incremento 4 conserva su carácter de plan.
+El trabajo se divide en incrementos revisables. Los cuatro incrementos están implementados; se conserva esta tabla como delimitación del alcance de la fase.
 
 | Incremento                | Dominio y aplicación                                                                                                                                                                                                                                           | Verificación principal                                                                                 |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
@@ -229,8 +235,8 @@ Las pruebas se colocan junto al comportamiento que verifican. Repositorios y por
 
 ## Criterios de aceptación y próximos pasos
 
-Antes de implementar, revisar los supuestos de una oferta por campaña, catálogo común de productos/servicios y aprobación de revisiones inmutables. La propuesta no exige agregar dependencias.
+La implementación conserva los supuestos de una oferta por campaña, catálogo común de productos/servicios y aprobación de revisiones inmutables. No se agregaron dependencias.
 
-Los tests deberán demostrar: inicio en borrador; rechazo de aprobación prematura; generación vigente y contenido completo; invalidación de aprobación tras regenerar; precio/moneda y vencimiento válidos; rechazo de referencias de otra organización; independencia de destinos; y que una campaña/publicación exitosa no se envía nuevamente por repetir una operación. Los tests de concurrencia real y constraints corresponden a persistencia, no se simulan como una garantía del dominio puro.
+Los tests demuestran: inicio en borrador; rechazo de aprobación prematura; generación vigente y contenido completo; invalidación de aprobación tras regenerar; precio/moneda y vencimiento válidos; rechazo de referencias de otra organización; independencia de destinos; y bloqueo de un nuevo inicio para una campaña/publicación exitosa. Los tests de concurrencia real y constraints corresponden a persistencia, no se simulan como una garantía del dominio puro.
 
-Los incrementos 1–3 tienen entidades, casos de uso, contratos y pruebas unitarias, sin adapters de persistencia ni endpoints de negocio. El siguiente paso es revisar e integrar campañas mediante PR y continuar con resultados por destino. En cada incremento de código se ejecutarán tipos, lint, formato y las pruebas pertinentes.
+Los incrementos 1–3 tienen entidades, casos de uso, contratos y pruebas unitarias; el incremento 4 completa las reglas de publicaciones y resumen de campaña con sus pruebas. No hay adapters de persistencia ni endpoints de negocio. El siguiente paso es revisar e integrar los incrementos pendientes mediante PR y comenzar la fase 3: schema de Prisma, mappers, repositorios y pruebas de integración. Los casos de uso de envío real, las cuentas sociales y la autorización conservan las fases indicadas arriba.
