@@ -1,6 +1,10 @@
 import { entityId, type EntityId } from '#app/domain/entity-id';
 import { timestamp } from '#app/domain/timestamp';
-import { CampaignStatus, GenerationFailureCode } from '../campaign-status.js';
+import {
+  CampaignStatus,
+  CampaignFailureOrigin,
+  GenerationFailureCode,
+} from '../campaign-status.js';
 import {
   InvalidCampaignError,
   InvalidCampaignTransitionError,
@@ -10,6 +14,10 @@ import {
 } from '../errors/campaign.errors.js';
 import { GenerationSnapshot } from '../value-objects/generation-snapshot.js';
 import { Promotion } from '../value-objects/promotion.js';
+import {
+  PublicationProgress,
+  type CampaignPublication,
+} from '../value-objects/publication-progress.js';
 import { GeneratedContent } from './generated-content.js';
 
 export interface CampaignDetails {
@@ -44,6 +52,9 @@ interface CampaignState {
   generation: GenerationOperation | null;
   candidateContent: GeneratedContent | null;
   approvedContentId: EntityId | null;
+  approvedSocialAccountIds: readonly EntityId[];
+  publicationProgress: PublicationProgress | null;
+  failureOrigin: CampaignFailureOrigin | null;
   generationFailure: GenerationFailureCode | null;
   version: number;
   createdAt: number;
@@ -86,6 +97,9 @@ export class Campaign {
       generation: null,
       candidateContent: null,
       approvedContentId: null,
+      approvedSocialAccountIds: Object.freeze([]),
+      publicationProgress: null,
+      failureOrigin: null,
       generationFailure: null,
       version: 0,
       createdAt,
@@ -94,7 +108,13 @@ export class Campaign {
   }
 
   requestGeneration(id: string, snapshot: GenerationSnapshot, at: Date): Campaign {
-    if (![CampaignStatus.DRAFT, CampaignStatus.FAILED].includes(this.status)) {
+    if (
+      this.status !== CampaignStatus.DRAFT &&
+      !(
+        this.status === CampaignStatus.FAILED &&
+        this.failureOrigin === CampaignFailureOrigin.GENERATION
+      )
+    ) {
       throw new InvalidCampaignTransitionError();
     }
     return this.beginGeneration(id, snapshot, at);
@@ -134,14 +154,70 @@ export class Campaign {
     return this.change({ status: CampaignStatus.PENDING_APPROVAL, candidateContent: content }, at);
   }
 
-  approve(contentId: string, at: Date): Campaign {
+  approve(contentId: string, at: Date, socialAccountIds: readonly string[] = []): Campaign {
     if (this.status !== CampaignStatus.PENDING_APPROVAL) throw new InvalidCampaignTransitionError();
     const approvedContentId = entityId(contentId, 'contentId');
     if (!this.candidateContent || this.candidateContent.id !== approvedContentId) {
       throw new ContentRevisionMismatchError();
     }
     this.promotion?.assertNotExpired(at);
-    return this.change({ status: CampaignStatus.APPROVED, approvedContentId }, at);
+    if (!Array.isArray(socialAccountIds)) throw new InvalidCampaignError('socialAccountIds');
+    const approvedSocialAccountIds = socialAccountIds.map((id: string) =>
+      entityId(id, 'socialAccountId'),
+    );
+    if (new Set(approvedSocialAccountIds).size !== approvedSocialAccountIds.length)
+      throw new InvalidCampaignError('socialAccountIds');
+    return this.change(
+      {
+        status: CampaignStatus.APPROVED,
+        approvedContentId,
+        approvedSocialAccountIds: Object.freeze(approvedSocialAccountIds),
+      },
+      at,
+    );
+  }
+
+  startPublication(publications: readonly CampaignPublication[], at: Date): Campaign {
+    if (this.status !== CampaignStatus.APPROVED || this.approvedContentId === null)
+      throw new InvalidCampaignTransitionError();
+    this.promotion?.assertNotExpired(at);
+    const publicationProgress = PublicationProgress.start(
+      this.organizationId,
+      this.id,
+      this.approvedContentId,
+      this.approvedSocialAccountIds,
+      publications,
+    );
+    return this.change({ status: CampaignStatus.PUBLISHING, publicationProgress }, at);
+  }
+
+  recordPublicationSummary(publications: readonly CampaignPublication[], at: Date): Campaign {
+    if (!this.publicationProgress) throw new InvalidCampaignTransitionError();
+    const publicationProgress = this.publicationProgress.record(publications);
+    if (publicationProgress === this.publicationProgress) return this;
+    if (this.status !== CampaignStatus.PUBLISHING) throw new InvalidCampaignTransitionError();
+    const status = publicationProgress.status;
+    const failureOrigin = [CampaignStatus.FAILED, CampaignStatus.PARTIALLY_PUBLISHED].includes(
+      status,
+    )
+      ? CampaignFailureOrigin.PUBLICATION
+      : null;
+    return this.change({ status, publicationProgress, failureOrigin }, at);
+  }
+
+  retryPublication(publications: readonly CampaignPublication[], at: Date): Campaign {
+    if (
+      ![CampaignStatus.FAILED, CampaignStatus.PARTIALLY_PUBLISHED].includes(this.status) ||
+      this.failureOrigin !== CampaignFailureOrigin.PUBLICATION ||
+      !this.publicationProgress
+    )
+      throw new InvalidCampaignTransitionError();
+    this.promotion?.assertNotExpired(at);
+    const publicationProgress = this.publicationProgress.retry(publications);
+    return this.change(
+      { status: CampaignStatus.PUBLISHING, publicationProgress, failureOrigin: null },
+      at,
+    );
   }
 
   recordGenerationFailure(id: string, code: GenerationFailureCode, at: Date): Campaign {
@@ -149,11 +225,20 @@ export class Campaign {
     if (!Object.values(GenerationFailureCode).includes(code))
       throw new InvalidCampaignError('generationFailure');
     if (this.status === CampaignStatus.FAILED) {
+      if (this.failureOrigin !== CampaignFailureOrigin.GENERATION)
+        throw new InvalidCampaignTransitionError();
       if (this.generationFailure === code) return this;
       throw new ConflictingGenerationResultError();
     }
     if (this.status !== CampaignStatus.GENERATING) throw new InvalidCampaignTransitionError();
-    return this.change({ status: CampaignStatus.FAILED, generationFailure: code }, at);
+    return this.change(
+      {
+        status: CampaignStatus.FAILED,
+        generationFailure: code,
+        failureOrigin: CampaignFailureOrigin.GENERATION,
+      },
+      at,
+    );
   }
 
   private beginGeneration(id: string, snapshot: GenerationSnapshot, at: Date): Campaign {
@@ -182,6 +267,8 @@ export class Campaign {
         generation: Object.freeze({ id: generationId, number, snapshot, requestedAt }),
         candidateContent: null,
         approvedContentId: null,
+        approvedSocialAccountIds: Object.freeze([]),
+        failureOrigin: null,
         generationFailure: null,
       },
       at,
@@ -237,6 +324,15 @@ export class Campaign {
   }
   get approvedContentId(): EntityId | null {
     return this.#state.approvedContentId;
+  }
+  get approvedSocialAccountIds(): readonly EntityId[] {
+    return this.#state.approvedSocialAccountIds;
+  }
+  get publicationProgress(): PublicationProgress | null {
+    return this.#state.publicationProgress;
+  }
+  get failureOrigin(): CampaignFailureOrigin | null {
+    return this.#state.failureOrigin;
   }
   get generationFailure(): GenerationFailureCode | null {
     return this.#state.generationFailure;

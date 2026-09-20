@@ -75,6 +75,6 @@ Pruebas y compilación necesitaron ejecución fuera del sandbox por sus procesos
 
 Solicitar generación registra la intención; todavía no genera imágenes, renderiza piezas ni contacta n8n. Los IDs de assets se validan como referencias, pero su existencia y la exactitud visual requieren almacenamiento y renderizado. No se implementan persistencia, controllers, autorización, edición del brief, consulta del historial ni publicación en este incremento.
 
-Actualmente `FAILED` solo representa generación. Al incorporar resultados de publicación se deberá distinguir el origen del fallo y restringir cada reintento a su operación. Los estados y reglas de publicación permanecen pendientes del incremento 4.
+En este incremento `FAILED` representaba únicamente generación. El incremento 4 de [publicaciones](phase-2-publications.md) ya incorpora el origen del fallo, los estados y las reglas de publicación, restringiendo cada reintento a su operación.
 
-Revisar e integrar este incremento mediante PR. Después iniciar el incremento 4: `Publication`, resultados independientes por destino, resumen de campaña, reintentos que preservan los éxitos y prevención de republicación. La fase 2 todavía no está completa.
+Revisar e integrar los incrementos de campañas y publicaciones mediante PR. Los cuatro incrementos de la fase 2 están implementados; el siguiente desarrollo corresponde a la fase 3 de persistencia. Este documento conserva el registro de campañas y sus verificaciones originales.

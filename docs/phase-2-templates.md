@@ -70,4 +70,4 @@ Pruebas y compilación necesitaron ejecutarse fuera del sandbox por las restricc
 
 ## Siguiente paso
 
-Plantillas ya se integró mediante PR. El incremento 3 de [campañas](phase-2-campaigns.md) está implementado y listo para revisión. Después corresponde el incremento 4, resultados por destino. Este documento conserva el registro de plantillas; la fase 2 todavía no está completa.
+Plantillas ya se integró mediante PR. Campañas y [publicaciones](phase-2-publications.md) también están implementadas; con ellas se completa el código previsto para la fase 2. Revisar e integrar los incrementos pendientes mediante PR antes de comenzar persistencia. Este documento conserva el registro histórico de plantillas.

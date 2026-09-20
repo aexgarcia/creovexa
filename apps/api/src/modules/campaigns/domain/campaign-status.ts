@@ -3,7 +3,15 @@ export enum CampaignStatus {
   GENERATING = 'GENERATING',
   PENDING_APPROVAL = 'PENDING_APPROVAL',
   APPROVED = 'APPROVED',
+  PUBLISHING = 'PUBLISHING',
+  PUBLISHED = 'PUBLISHED',
+  PARTIALLY_PUBLISHED = 'PARTIALLY_PUBLISHED',
   FAILED = 'FAILED',
+}
+
+export enum CampaignFailureOrigin {
+  GENERATION = 'GENERATION',
+  PUBLICATION = 'PUBLICATION',
 }
 
 export enum GenerationFailureCode {
