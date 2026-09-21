@@ -53,6 +53,32 @@ export class PublicationProgress {
     Object.freeze(this);
   }
 
+  static restore(
+    organizationId: EntityId,
+    campaignId: EntityId,
+    approvedContentId: EntityId,
+    socialAccountIds: readonly EntityId[],
+    input: readonly CampaignPublication[],
+  ): PublicationProgress {
+    const entries = normalize(input);
+    if (
+      new Set(socialAccountIds).size !== socialAccountIds.length ||
+      entries.length !== socialAccountIds.length ||
+      entries.some(
+        (entry) =>
+          entry.organizationId !== organizationId ||
+          entry.campaignId !== campaignId ||
+          entry.approvedContentId !== approvedContentId ||
+          !socialAccountIds.includes(entry.socialAccountId) ||
+          (entry.status === PublicationStatus.PENDING
+            ? entry.version !== 0
+            : entry.version < (entry.status === PublicationStatus.PUBLISHING ? 1 : 2)),
+      )
+    )
+      throw new InvalidPublicationSummaryError();
+    return new PublicationProgress(entries);
+  }
+
   static start(
     organizationId: EntityId,
     campaignId: EntityId,

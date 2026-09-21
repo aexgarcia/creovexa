@@ -38,7 +38,7 @@ export interface GenerationOperation {
   readonly requestedAt: number;
 }
 
-interface CampaignState {
+export interface CampaignState {
   id: EntityId;
   title: string;
   organizationId: EntityId;
@@ -104,6 +104,128 @@ export class Campaign {
       version: 0,
       createdAt,
       updatedAt: createdAt,
+    });
+  }
+
+  /** Rehydrate a validated state directly, without replaying business transitions. */
+  static restore(state: CampaignState): Campaign {
+    const base = Campaign.create(state.id, state, new Date(state.createdAt));
+    const updatedAt = timestamp(new Date(state.updatedAt), state.createdAt);
+    if (!Object.values(CampaignStatus).includes(state.status))
+      throw new InvalidCampaignError('status');
+    if (!Number.isSafeInteger(state.version) || state.version < 0)
+      throw new InvalidCampaignError('version');
+    const isDraft = state.status === CampaignStatus.DRAFT;
+    if (
+      isDraft !== (state.generation === null) ||
+      (isDraft ? state.version !== 0 || updatedAt !== state.createdAt : state.version < 1)
+    )
+      throw new InvalidCampaignError('generation');
+
+    let generation: GenerationOperation | null = null;
+    if (state.generation !== null) {
+      const input = state.generation;
+      if (!Number.isSafeInteger(input.number) || input.number < 1 || input.number > state.version)
+        throw new InvalidCampaignError('generationNumber');
+      base.assertSnapshotMatches(input.snapshot);
+      const requestedAt = timestamp(new Date(input.requestedAt), state.createdAt);
+      timestamp(new Date(updatedAt), requestedAt);
+      generation = Object.freeze({
+        id: entityId(input.id, 'generationId'),
+        number: input.number,
+        snapshot: input.snapshot,
+        requestedAt,
+      });
+    }
+    const content = state.candidateContent;
+    if (content !== null) {
+      if (
+        !(content instanceof GeneratedContent) ||
+        !generation ||
+        content.organizationId !== base.organizationId ||
+        content.campaignId !== base.id ||
+        content.generationId !== generation.id ||
+        content.revision !== generation.number ||
+        !content.snapshot.equals(generation.snapshot)
+      )
+        throw new ContentRevisionMismatchError();
+      timestamp(content.createdAt, generation.requestedAt);
+      timestamp(new Date(updatedAt), content.createdAt.getTime());
+    }
+    const publicationFailure = state.failureOrigin === CampaignFailureOrigin.PUBLICATION;
+    const needsContent =
+      [
+        CampaignStatus.PENDING_APPROVAL,
+        CampaignStatus.APPROVED,
+        CampaignStatus.PUBLISHING,
+        CampaignStatus.PUBLISHED,
+        CampaignStatus.PARTIALLY_PUBLISHED,
+      ].includes(state.status) ||
+      (state.status === CampaignStatus.FAILED && publicationFailure);
+    if (needsContent !== (content !== null)) throw new InvalidCampaignError('candidateContent');
+    const needsApproval = needsContent && state.status !== CampaignStatus.PENDING_APPROVAL;
+    const minimumVersion =
+      generation === null
+        ? 0
+        : 2 * generation.number - 1 + (needsContent ? 1 : 0) + (needsApproval ? 1 : 0);
+    if (!Number.isSafeInteger(minimumVersion) || state.version < minimumVersion)
+      throw new InvalidCampaignError('version');
+    if (needsApproval ? state.approvedContentId !== content?.id : state.approvedContentId !== null)
+      throw new ContentRevisionMismatchError();
+    if (!Array.isArray(state.approvedSocialAccountIds))
+      throw new InvalidCampaignError('socialAccountIds');
+    const accounts = state.approvedSocialAccountIds.map((id) => entityId(id, 'socialAccountId'));
+    if (new Set(accounts).size !== accounts.length || (!needsApproval && accounts.length > 0))
+      throw new InvalidCampaignError('socialAccountIds');
+    const needsProgress =
+      [
+        CampaignStatus.PUBLISHING,
+        CampaignStatus.PUBLISHED,
+        CampaignStatus.PARTIALLY_PUBLISHED,
+      ].includes(state.status) ||
+      (state.status === CampaignStatus.FAILED && publicationFailure);
+    let publicationProgress: PublicationProgress | null = null;
+    if (needsProgress) {
+      if (!(state.publicationProgress instanceof PublicationProgress) || !state.approvedContentId)
+        throw new InvalidCampaignError('publicationProgress');
+      publicationProgress = PublicationProgress.restore(
+        base.organizationId,
+        base.id,
+        state.approvedContentId,
+        accounts,
+        state.publicationProgress.entries,
+      );
+      if (publicationProgress.status !== state.status)
+        throw new InvalidCampaignError('publicationProgress');
+    } else if (state.publicationProgress !== null)
+      throw new InvalidCampaignError('publicationProgress');
+    const failed = [CampaignStatus.FAILED, CampaignStatus.PARTIALLY_PUBLISHED].includes(
+      state.status,
+    );
+    const expectedOrigin = !failed
+      ? null
+      : needsProgress
+        ? CampaignFailureOrigin.PUBLICATION
+        : CampaignFailureOrigin.GENERATION;
+    if (state.failureOrigin !== expectedOrigin) throw new InvalidCampaignError('failureOrigin');
+    if (
+      expectedOrigin === CampaignFailureOrigin.GENERATION
+        ? !Object.values(GenerationFailureCode).includes(state.generationFailure!)
+        : state.generationFailure !== null
+    )
+      throw new InvalidCampaignError('generationFailure');
+    return new Campaign({
+      ...base.#state,
+      status: state.status,
+      generation,
+      candidateContent: content,
+      approvedContentId: state.approvedContentId,
+      approvedSocialAccountIds: Object.freeze(accounts),
+      publicationProgress,
+      failureOrigin: state.failureOrigin,
+      generationFailure: state.generationFailure,
+      version: state.version,
+      updatedAt,
     });
   }
 
@@ -246,19 +368,7 @@ export class Campaign {
     if (this.generation?.id === generationId) throw new InvalidCampaignError('generationId');
     const number = (this.generation?.number ?? 0) + 1;
     if (!Number.isSafeInteger(number)) throw new InvalidCampaignError('generationNumber');
-    if (!(snapshot instanceof GenerationSnapshot)) throw new InvalidCampaignError('snapshot');
-    const data = snapshot.data;
-    if (
-      data.organization.id !== this.organizationId ||
-      data.product.id !== this.productId ||
-      data.template.id !== this.templateId ||
-      data.template.revisionId !== this.templateRevisionId ||
-      data.cta !== this.cta ||
-      data.instructions !== this.instructions ||
-      JSON.stringify(data.promotion) !== JSON.stringify(this.promotion?.toSnapshot() ?? null)
-    ) {
-      throw new InvalidCampaignError('snapshot');
-    }
+    this.assertSnapshotMatches(snapshot);
     this.promotion?.assertNotExpired(at);
     const requestedAt = timestamp(at, this.#state.updatedAt);
     return this.change(
@@ -273,6 +383,22 @@ export class Campaign {
       },
       at,
     );
+  }
+
+  private assertSnapshotMatches(snapshot: GenerationSnapshot): void {
+    if (!(snapshot instanceof GenerationSnapshot)) throw new InvalidCampaignError('snapshot');
+    const data = snapshot.data;
+    if (
+      data.organization.id !== this.organizationId ||
+      data.product.id !== this.productId ||
+      data.template.id !== this.templateId ||
+      data.template.revisionId !== this.templateRevisionId ||
+      data.cta !== this.cta ||
+      data.instructions !== this.instructions ||
+      JSON.stringify(data.promotion) !== JSON.stringify(this.promotion?.toSnapshot() ?? null)
+    ) {
+      throw new InvalidCampaignError('snapshot');
+    }
   }
 
   private change(changes: Partial<CampaignState>, at: Date): Campaign {

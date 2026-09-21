@@ -2,7 +2,9 @@
 
 Implementado el 19 de septiembre de 2026 en `feat/prisma-commercial-persistence`, desde `main` con los PR [#4](https://github.com/aexgarcia/creovexa/pull/4) y [#5](https://github.com/aexgarcia/creovexa/pull/5) integrados.
 
-La fase 3 se divide en incrementos revisables:
+Este incremento se integró mediante el [PR #7](https://github.com/aexgarcia/creovexa/pull/7). El estado actual continúa en [persistencia de campañas](phase-3-campaigns.md); lo siguiente documenta el alcance y las verificaciones al cerrar el incremento comercial.
+
+Plan de la fase 3 al cerrar este incremento:
 
 | Incremento        | Alcance                                                                                                                        | Estado       |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------ |

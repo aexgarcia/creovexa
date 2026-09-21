@@ -30,6 +30,7 @@ model Organization {
   updatedAt   DateTime   @map("updated_at") @db.Timestamptz(3)
   products    Product[]
   templates   Template[]
+  campaigns   Campaign[]
 
   @@index([createdAt])
   @@map("organizations")
@@ -47,6 +48,7 @@ model Product {
   createdAt      DateTime     @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime     @map("updated_at") @db.Timestamptz(3)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  campaigns      Campaign[]
 
   @@unique([organizationId, id])
   @@index([organizationId, createdAt])
@@ -79,8 +81,113 @@ model TemplateRevision {
   createdAt      DateTime   @map("created_at") @db.Timestamptz(3)
   template       Template   @relation("TemplateRevisions", fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   currentFor     Template[] @relation("CurrentRevision")
+  campaigns      Campaign[]
 
   @@unique([organizationId, templateId, id])
   @@unique([organizationId, templateId, number])
   @@map("template_revisions")
+}
+
+enum CampaignStatus {
+  DRAFT
+  GENERATING
+  PENDING_APPROVAL
+  APPROVED
+  PUBLISHING
+  PUBLISHED
+  PARTIALLY_PUBLISHED
+  FAILED
+}
+
+enum CampaignFailureOrigin {
+  GENERATION
+  PUBLICATION
+}
+
+enum GenerationFailureCode {
+  GENERATION_FAILED
+  TIMEOUT
+  INVALID_OUTPUT
+}
+
+model Campaign {
+  id                       String                 @id @db.Uuid
+  organizationId           String                 @map("organization_id") @db.Uuid
+  productId                String                 @map("product_id") @db.Uuid
+  templateId               String                 @map("template_id") @db.Uuid
+  templateRevisionId       String                 @map("template_revision_id") @db.Uuid
+  title                    String
+  instructions             String
+  cta                      String
+  promotion                Json?
+  status                   CampaignStatus
+  currentGenerationId      String?                @map("current_generation_id") @db.Uuid
+  candidateContentId       String?                @map("candidate_content_id") @db.Uuid
+  approvedContentId        String?                @map("approved_content_id") @db.Uuid
+  approvedSocialAccountIds String[]               @default([]) @map("approved_social_account_ids") @db.Uuid
+  publicationProgress      Json?                  @map("publication_progress")
+  failureOrigin            CampaignFailureOrigin? @map("failure_origin")
+  generationFailure        GenerationFailureCode? @map("generation_failure")
+  version                  BigInt
+  createdAt                DateTime               @map("created_at") @db.Timestamptz(3)
+  updatedAt                DateTime               @map("updated_at") @db.Timestamptz(3)
+  organization             Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  product                  Product                @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  templateRevision         TemplateRevision       @relation(fields: [organizationId, templateId, templateRevisionId], references: [organizationId, templateId, id], onDelete: Restrict, onUpdate: Restrict)
+  generations              CampaignGeneration[]   @relation("CampaignGenerations")
+  currentGeneration        CampaignGeneration?    @relation("CurrentGeneration", fields: [organizationId, id, currentGenerationId], references: [organizationId, campaignId, id], onDelete: Restrict, onUpdate: NoAction, map: "campaigns_current_generation_fkey")
+  candidateContent         GeneratedContent?      @relation("CandidateContent", fields: [organizationId, id, currentGenerationId, candidateContentId], references: [organizationId, campaignId, generationId, id], onDelete: Restrict, onUpdate: NoAction, map: "campaigns_candidate_content_fkey")
+
+  @@unique([organizationId, id])
+  @@index([organizationId, status, createdAt])
+  @@index([status, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("campaigns")
+}
+
+model CampaignGeneration {
+  id             String                     @id @db.Uuid
+  organizationId String                     @map("organization_id") @db.Uuid
+  campaignId     String                     @map("campaign_id") @db.Uuid
+  number         BigInt
+  snapshot       Json
+  requestedAt    DateTime                   @map("requested_at") @db.Timestamptz(3)
+  campaign       Campaign                   @relation("CampaignGenerations", fields: [organizationId, campaignId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  currentFor     Campaign[]                 @relation("CurrentGeneration")
+  content        GeneratedContent?
+  failure        CampaignGenerationFailure?
+
+  @@unique([organizationId, campaignId, id])
+  @@unique([organizationId, campaignId, number])
+  @@index([organizationId, campaignId, requestedAt])
+  @@map("campaign_generations")
+}
+
+model GeneratedContent {
+  id             String             @id @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  campaignId     String             @map("campaign_id") @db.Uuid
+  generationId   String             @unique @map("generation_id") @db.Uuid
+  headline       String
+  caption        String
+  cta            String
+  hashtags       String[]
+  assetIds       String[]           @map("asset_ids") @db.Uuid
+  createdAt      DateTime           @map("created_at") @db.Timestamptz(3)
+  generation     CampaignGeneration @relation(fields: [organizationId, campaignId, generationId], references: [organizationId, campaignId, id], onDelete: Restrict, onUpdate: Restrict)
+  candidateFor   Campaign[]         @relation("CandidateContent")
+
+  @@unique([organizationId, campaignId, generationId, id], map: "generated_contents_owner_generation_id_key")
+  @@unique([organizationId, campaignId, generationId], map: "generated_contents_owner_generation_key")
+  @@index([organizationId, campaignId, createdAt])
+  @@map("generated_contents")
+}
+
+model CampaignGenerationFailure {
+  generationId String                @id @map("generation_id") @db.Uuid
+  code         GenerationFailureCode
+  recordedAt   DateTime              @map("recorded_at") @db.Timestamptz(3)
+  generation   CampaignGeneration    @relation(fields: [generationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("campaign_generation_failures")
 }
