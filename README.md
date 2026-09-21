@@ -1,6 +1,6 @@
 # Creovexa
 
-Monorepo para la plataforma de automatización de marketing. El dominio de la fase 2 está implementado y la fase 3 incorpora Prisma y persistencia, comenzando por organizaciones, catálogo y creación de plantillas.
+Monorepo para la plataforma de automatización de marketing. El dominio de la fase 2 está implementado. La fase 3 incorpora persistencia de organizaciones, catálogo, plantillas y campañas con snapshots, historial y control de versión; publicaciones e intentos siguen pendientes.
 
 ## Estructura
 
@@ -48,7 +48,7 @@ pnpm dev
 
 `setup:env` crea `.env`, `apps/api/.env` y `apps/web/.env.local` a partir de sus ejemplos. Genera contraseñas y clave de cifrado aleatorias y conserva las variables existentes. Si falta `DATABASE_URL` en la API, la añade usando las credenciales de PostgreSQL del entorno raíz, sin imprimirlas. Estos archivos se ignoran en Git. No uses `pnpm setup`: ese es un comando propio del gestor de paquetes.
 
-`db:migrate` aplica las migraciones versionadas mediante `prisma migrate deploy`; no resetea la base ni modifica la base independiente de n8n. El cliente Prisma se genera automáticamente al comprobar tipos, ejecutar pruebas o compilar. Consulta [persistencia comercial](docs/phase-3-commercial.md) para los límites del incremento y las pruebas de PostgreSQL.
+`db:migrate` aplica las migraciones versionadas mediante `prisma migrate deploy`; no resetea la base ni modifica la base independiente de n8n. El cliente Prisma se genera automáticamente al comprobar tipos, ejecutar pruebas o compilar. Consulta [persistencia comercial](docs/phase-3-commercial.md) y [persistencia de campañas](docs/phase-3-campaigns.md) para sus límites y pruebas de PostgreSQL.
 
 Las aplicaciones se ejecutan en el host con recarga automática; los tres servicios de infraestructura se ejecutan en Docker. También puedes usar `pnpm dev:web` y `pnpm dev:api` por separado.
 
@@ -114,4 +114,4 @@ Los directorios antiguos pueden conservar metadatos Git o cachés protegidos por
 
 Antes de implementar funcionalidades, revisa [architecture.md](architecture.md), [fases1-4.5.md](fases1-4.5.md), [fases5-10.md](fases5-10.md) y las instrucciones `AGENTS.md` aplicables.
 
-El historial de verificación de infraestructura está en [fase 1](docs/phase-1.md), el modelo en [dominio](docs/domain.md) y el incremento actual en [fase 3: persistencia comercial](docs/phase-3-commercial.md).
+El historial de verificación de infraestructura está en [fase 1](docs/phase-1.md), el modelo en [dominio](docs/domain.md) y el incremento actual en [fase 3: persistencia de campañas](docs/phase-3-campaigns.md).

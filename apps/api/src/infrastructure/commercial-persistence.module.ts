@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { Module } from '@nestjs/common';
 import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
@@ -13,15 +12,11 @@ import { PrismaTemplateRepository } from '#app/modules/templates/infrastructure/
 import { DatabaseModule } from './persistence/prisma/database.module.js';
 import { PrismaService } from './persistence/prisma/prisma.service.js';
 import { PrismaOrganizationLookup } from './persistence/prisma/prisma-organization-lookup.js';
-
-export const CLOCK = Symbol('CLOCK');
-export const ID_GENERATOR = Symbol('ID_GENERATOR');
+import { RuntimeModule, CLOCK, ID_GENERATOR } from './runtime.module.js';
 
 @Module({
-  imports: [DatabaseModule],
+  imports: [DatabaseModule, RuntimeModule],
   providers: [
-    { provide: CLOCK, useValue: { now: () => new Date() } satisfies Clock },
-    { provide: ID_GENERATOR, useValue: { next: () => randomUUID() } satisfies IdGenerator },
     {
       provide: PrismaOrganizationRepository,
       inject: [PrismaService],

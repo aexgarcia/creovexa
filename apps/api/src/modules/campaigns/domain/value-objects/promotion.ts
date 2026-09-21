@@ -17,12 +17,18 @@ export class Promotion {
     startsAt: Date | null = null,
     endsAt: Date | null = null,
   ): Promotion {
+    const promotion = Promotion.restore(price, startsAt, endsAt);
+    promotion.assertCompatibleWith(regularPrice);
+    return promotion;
+  }
+
+  /** Restore intrinsic values without consulting today's catalog price or clock. */
+  static restore(price: Money, startsAt: Date | null, endsAt: Date | null): Promotion {
+    if (!(price instanceof Money)) throw new InvalidPromotionError('price');
     const start = startsAt === null ? null : timestamp(startsAt);
     const end = endsAt === null ? null : timestamp(endsAt);
     if (start !== null && end !== null && end <= start) throw new InvalidPromotionError('period');
-    const promotion = new Promotion(price, start, end);
-    promotion.assertCompatibleWith(regularPrice);
-    return promotion;
+    return new Promotion(price, start, end);
   }
 
   assertCompatibleWith(regularPrice: Money): void {

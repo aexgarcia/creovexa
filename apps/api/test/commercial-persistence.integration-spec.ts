@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { AppModule } from '#app/app.module';
 import { DATABASE_CONFIG, readDatabaseConfig } from '#app/config/database.config';
-import { CLOCK } from '#app/infrastructure/commercial-persistence.module';
+import { CLOCK } from '#app/infrastructure/runtime.module';
 import { PrismaService } from '#app/infrastructure/persistence/prisma/prisma.service';
 import {
   PersistenceConflictError,

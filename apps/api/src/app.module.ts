@@ -2,9 +2,10 @@ import { Module } from '@nestjs/common';
 import { applicationConfigProvider } from './config/application.config.js';
 import { HealthController } from './health/health.controller.js';
 import { CommercialPersistenceModule } from './infrastructure/commercial-persistence.module.js';
+import { CampaignPersistenceModule } from './infrastructure/campaign-persistence.module.js';
 
 @Module({
-  imports: [CommercialPersistenceModule],
+  imports: [CommercialPersistenceModule, CampaignPersistenceModule],
   controllers: [HealthController],
   providers: [applicationConfigProvider],
 })
