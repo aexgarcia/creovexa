@@ -2,6 +2,8 @@
 
 Implementado el 20 de septiembre de 2026 en `feat/prisma-campaign-persistence`, desde `main` con el [PR #7](https://github.com/aexgarcia/creovexa/pull/7) integrado. Alcance registrado en la [issue #8](https://github.com/aexgarcia/creovexa/issues/8).
 
+Integrado mediante el [PR #9](https://github.com/aexgarcia/creovexa/pull/9). El estado actual continúa en [persistencia de publicaciones](phase-3-publications.md); este documento conserva las decisiones y verificaciones al cerrar el incremento 2. El incremento 3 exige guardar el resumen y sus destinos en la misma transacción.
+
 ## Resultado y alcance
 
 Los seis casos de uso existentes de campañas quedan compuestos en NestJS con persistencia PostgreSQL: crear, solicitar generación, registrar contenido, registrar fallo, aprobar y solicitar regeneración. Dominio y aplicación permanecen sin imports de Prisma o NestJS. No se agregan dependencias.

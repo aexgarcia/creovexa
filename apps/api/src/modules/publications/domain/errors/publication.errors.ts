@@ -25,3 +25,10 @@ export class ConflictingPublicationResultError extends Error {
     this.name = 'ConflictingPublicationResultError';
   }
 }
+
+export class ConcurrentPublicationModificationError extends Error {
+  constructor() {
+    super('La publicación o su campaña cambió desde que se inició la operación.');
+    this.name = 'ConcurrentPublicationModificationError';
+  }
+}
