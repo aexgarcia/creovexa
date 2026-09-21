@@ -29,7 +29,7 @@ export interface PublicationAttempt {
   readonly startedAt: number;
 }
 
-interface PublicationState {
+export interface PublicationState {
   id: EntityId;
   organizationId: EntityId;
   campaignId: EntityId;
@@ -72,6 +72,68 @@ export class Publication {
       version: 0,
       createdAt,
       updatedAt: createdAt,
+    });
+  }
+
+  static restore(state: PublicationState): Publication {
+    const base = Publication.create(state.id, state, new Date(state.createdAt));
+    const updatedAt = timestamp(new Date(state.updatedAt), state.createdAt);
+    if (!Object.values(PublicationStatus).includes(state.status))
+      throw new InvalidPublicationError('status');
+    if (!Number.isSafeInteger(state.version) || state.version < 0)
+      throw new InvalidPublicationError('version');
+    const pending = state.status === PublicationStatus.PENDING;
+    if (pending !== (state.attempt === null)) throw new InvalidPublicationError('attempt');
+    let attempt: PublicationAttempt | null = null;
+    if (state.attempt !== null) {
+      const input = state.attempt;
+      if (!Number.isSafeInteger(input.number) || input.number < 1)
+        throw new InvalidPublicationError('attemptNumber');
+      const startedAt = timestamp(new Date(input.startedAt), state.createdAt);
+      timestamp(new Date(updatedAt), startedAt);
+      attempt = Object.freeze({
+        id: entityId(input.id, 'attemptId'),
+        number: input.number,
+        startedAt,
+      });
+    }
+    const terminal = [PublicationStatus.PUBLISHED, PublicationStatus.FAILED].includes(state.status);
+    const version = attempt === null ? 0 : 2 * attempt.number - (terminal ? 0 : 1);
+    if (
+      !Number.isSafeInteger(version) ||
+      state.version !== version ||
+      (pending && updatedAt !== state.createdAt)
+    )
+      throw new InvalidPublicationError('version');
+    let externalPostId: string | null = null;
+    let publishedAt: number | null = null;
+    if (state.status === PublicationStatus.PUBLISHED) {
+      if (
+        typeof state.externalPostId !== 'string' ||
+        !state.externalPostId.trim() ||
+        state.publishedAt === null
+      )
+        throw new InvalidPublicationError('externalPostId');
+      externalPostId = state.externalPostId.trim();
+      publishedAt = timestamp(new Date(state.publishedAt), attempt!.startedAt);
+      if (publishedAt !== updatedAt) throw new InvalidPublicationError('publishedAt');
+    } else if (state.externalPostId !== null || state.publishedAt !== null)
+      throw new InvalidPublicationError('result');
+    if (
+      state.status === PublicationStatus.FAILED
+        ? !Object.values(PublicationFailureCode).includes(state.failureCode!)
+        : state.failureCode !== null
+    )
+      throw new InvalidPublicationError('failureCode');
+    return new Publication({
+      ...base.#state,
+      status: state.status,
+      attempt,
+      externalPostId,
+      failureCode: state.failureCode,
+      publishedAt,
+      version,
+      updatedAt,
     });
   }
 

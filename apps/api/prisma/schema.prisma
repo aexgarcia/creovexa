@@ -135,6 +135,7 @@ model Campaign {
   product                  Product                @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   templateRevision         TemplateRevision       @relation(fields: [organizationId, templateId, templateRevisionId], references: [organizationId, templateId, id], onDelete: Restrict, onUpdate: Restrict)
   generations              CampaignGeneration[]   @relation("CampaignGenerations")
+  publications             Publication[]
   currentGeneration        CampaignGeneration?    @relation("CurrentGeneration", fields: [organizationId, id, currentGenerationId], references: [organizationId, campaignId, id], onDelete: Restrict, onUpdate: NoAction, map: "campaigns_current_generation_fkey")
   candidateContent         GeneratedContent?      @relation("CandidateContent", fields: [organizationId, id, currentGenerationId, candidateContentId], references: [organizationId, campaignId, generationId, id], onDelete: Restrict, onUpdate: NoAction, map: "campaigns_candidate_content_fkey")
 
@@ -176,9 +177,11 @@ model GeneratedContent {
   createdAt      DateTime           @map("created_at") @db.Timestamptz(3)
   generation     CampaignGeneration @relation(fields: [organizationId, campaignId, generationId], references: [organizationId, campaignId, id], onDelete: Restrict, onUpdate: Restrict)
   candidateFor   Campaign[]         @relation("CandidateContent")
+  publications   Publication[]
 
   @@unique([organizationId, campaignId, generationId, id], map: "generated_contents_owner_generation_id_key")
   @@unique([organizationId, campaignId, generationId], map: "generated_contents_owner_generation_key")
+  @@unique([organizationId, campaignId, id], map: "generated_contents_owner_id_key")
   @@index([organizationId, campaignId, createdAt])
   @@map("generated_contents")
 }
@@ -190,4 +193,78 @@ model CampaignGenerationFailure {
   generation   CampaignGeneration    @relation(fields: [generationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@map("campaign_generation_failures")
+}
+
+enum PublicationStatus {
+  PENDING
+  PUBLISHING
+  PUBLISHED
+  FAILED
+}
+
+enum SocialPlatform {
+  FACEBOOK
+  INSTAGRAM
+  TIKTOK
+}
+
+enum PublicationFailureCode {
+  REJECTED
+  ACCOUNT_UNAVAILABLE
+  RATE_LIMITED
+}
+
+model Publication {
+  id                String                  @id @db.Uuid
+  organizationId    String                  @map("organization_id") @db.Uuid
+  campaignId        String                  @map("campaign_id") @db.Uuid
+  approvedContentId String                  @map("approved_content_id") @db.Uuid
+  socialAccountId   String                  @map("social_account_id") @db.Uuid
+  platform          SocialPlatform
+  status            PublicationStatus
+  currentAttemptId  String?                 @map("current_attempt_id") @db.Uuid
+  externalPostId    String?                 @map("external_post_id")
+  failureCode       PublicationFailureCode? @map("failure_code")
+  publishedAt       DateTime?               @map("published_at") @db.Timestamptz(3)
+  version           BigInt
+  createdAt         DateTime                @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime                @map("updated_at") @db.Timestamptz(3)
+  campaign          Campaign                @relation(fields: [organizationId, campaignId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  approvedContent   GeneratedContent        @relation(fields: [organizationId, campaignId, approvedContentId], references: [organizationId, campaignId, id], onDelete: Restrict, onUpdate: Restrict)
+  attempts          PublicationAttempt[]    @relation("PublicationAttempts")
+  currentAttempt    PublicationAttempt?     @relation("CurrentAttempt", fields: [organizationId, id, currentAttemptId], references: [organizationId, publicationId, id], onDelete: Restrict, onUpdate: NoAction, map: "publications_current_attempt_fkey")
+
+  @@unique([organizationId, id])
+  @@unique([organizationId, campaignId, approvedContentId, socialAccountId], map: "publications_destination_key")
+  @@index([organizationId, campaignId, createdAt])
+  @@index([organizationId, status, createdAt])
+  @@index([status, createdAt])
+  @@map("publications")
+}
+
+model PublicationAttempt {
+  id             String                    @id @db.Uuid
+  organizationId String                    @map("organization_id") @db.Uuid
+  publicationId  String                    @map("publication_id") @db.Uuid
+  number         BigInt
+  startedAt      DateTime                  @map("started_at") @db.Timestamptz(3)
+  publication    Publication               @relation("PublicationAttempts", fields: [organizationId, publicationId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  currentFor     Publication[]             @relation("CurrentAttempt")
+  result         PublicationAttemptResult?
+
+  @@unique([organizationId, publicationId, id])
+  @@unique([organizationId, publicationId, number], map: "publication_attempts_number_key")
+  @@index([organizationId, publicationId, startedAt])
+  @@map("publication_attempts")
+}
+
+model PublicationAttemptResult {
+  attemptId      String                  @id @map("attempt_id") @db.Uuid
+  status         PublicationStatus
+  externalPostId String?                 @map("external_post_id")
+  failureCode    PublicationFailureCode? @map("failure_code")
+  recordedAt     DateTime                @map("recorded_at") @db.Timestamptz(3)
+  attempt        PublicationAttempt      @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("publication_attempt_results")
 }

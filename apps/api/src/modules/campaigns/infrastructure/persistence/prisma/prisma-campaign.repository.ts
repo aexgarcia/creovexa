@@ -1,6 +1,9 @@
 import { isDeepStrictEqual } from 'node:util';
 import type { EntityId } from '#app/domain/entity-id';
-import type { PrismaService } from '#app/infrastructure/persistence/prisma/prisma.service';
+import {
+  inPrismaTransaction,
+  type PrismaSession,
+} from '#app/infrastructure/persistence/prisma/prisma-session';
 import {
   PersistenceConflictError,
   PersistenceScopeError,
@@ -17,11 +20,12 @@ import { CampaignMapper, campaignRelations } from './campaign.mapper.js';
 import { readPromotion } from './campaign-json.mapper.js';
 
 export class PrismaCampaignRepository implements CampaignRepository {
-  constructor(private readonly database: PrismaService) {}
+  constructor(private readonly database: PrismaSession) {}
 
   async findById(organizationId: EntityId, campaignId: EntityId): Promise<Campaign | null> {
     // Repeatable read keeps the root and relation queries in one consistent snapshot.
-    return this.database.$transaction(
+    return inPrismaTransaction(
+      this.database,
       async (tx) => {
         const row = await tx.campaign.findUnique({
           where: { organizationId_id: { organizationId, id: campaignId } },
@@ -29,7 +33,7 @@ export class PrismaCampaignRepository implements CampaignRepository {
         });
         return row === null ? null : CampaignMapper.toDomain(row);
       },
-      { isolationLevel: 'RepeatableRead' },
+      'RepeatableRead',
     );
   }
 
@@ -38,7 +42,9 @@ export class PrismaCampaignRepository implements CampaignRepository {
     if (campaign.status !== CampaignStatus.DRAFT || campaign.version !== 0)
       throw new InvalidCampaignError('initialState');
     try {
-      await this.database.campaign.create({ data: CampaignMapper.toPersistence(campaign) });
+      await this.database.campaign.create({
+        data: CampaignMapper.toPersistence(campaign),
+      });
     } catch (error) {
       translatePrismaError(error);
     }
@@ -53,7 +59,7 @@ export class PrismaCampaignRepository implements CampaignRepository {
     )
       throw new InvalidCampaignError('version');
     try {
-      await this.database.$transaction(async (tx) => {
+      await inPrismaTransaction(this.database, async (tx) => {
         const where = { organizationId, id: campaign.id };
         const previous = await tx.campaign.findUnique({
           where: { organizationId_id: where },

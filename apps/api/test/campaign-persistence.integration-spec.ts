@@ -103,9 +103,11 @@ describe('Campaign persistence (PostgreSQL)', () => {
       regularPrice: { amountMinor: 2000, currency: 'PEN' },
       imageAssetIds: [uuid()],
     });
-    const template = await module
-      .get(CreateTemplate)
-      .execute({ organizationId, name: 'Plantilla', dimensions: { width: 1080, height: 1080 } });
+    const template = await module.get(CreateTemplate).execute({
+      organizationId,
+      name: 'Plantilla',
+      dimensions: { width: 1080, height: 1080 },
+    });
     const input = {
       organizationId,
       productId: entityId(product.id),
@@ -295,7 +297,9 @@ describe('Campaign persistence (PostgreSQL)', () => {
       }),
     ).toMatchObject({ code: GenerationFailureCode.TIMEOUT, recordedAt: NOW });
     expect(
-      await database.campaignGeneration.count({ where: { campaignId: context.draft.id } }),
+      await database.campaignGeneration.count({
+        where: { campaignId: context.draft.id },
+      }),
     ).toBe(2);
   });
 
@@ -476,7 +480,9 @@ describe('Campaign persistence (PostgreSQL)', () => {
       }),
     ).rejects.toThrow();
     await expect(
-      database.generatedContent.delete({ where: { id: first.result.candidateContent!.id } }),
+      database.generatedContent.delete({
+        where: { id: first.result.candidateContent!.id },
+      }),
     ).rejects.toThrow();
     const failure = await generating();
     await module.get(RecordCampaignGenerationFailure).execute({
@@ -491,7 +497,9 @@ describe('Campaign persistence (PostgreSQL)', () => {
       }),
     ).rejects.toThrow();
     await expect(
-      database.campaignGenerationFailure.delete({ where: { generationId: failure.generationId } }),
+      database.campaignGenerationFailure.delete({
+        where: { generationId: failure.generationId },
+      }),
     ).rejects.toThrow();
   });
 
@@ -532,7 +540,7 @@ describe('Campaign persistence (PostgreSQL)', () => {
     ).rejects.toThrow();
   });
 
-  it('persists publication summaries without adding publication persistence or sending anything', async () => {
+  it('rejects a publication summary whose destinations were not persisted atomically', async () => {
     const context = await pending();
     const account = uuid();
     let previous = context.campaign;
@@ -551,15 +559,9 @@ describe('Campaign persistence (PostgreSQL)', () => {
     ];
     previous = (await campaigns.findById(next.organizationId, next.id))!;
     next = previous.startPublication(entries, NOW);
-    await campaigns.save(next.organizationId, next, previous.version);
-    previous = (await campaigns.findById(next.organizationId, next.id))!;
-    next = previous.recordPublicationSummary(
-      entries.map((entry) => ({ ...entry, status: PublicationStatus.PUBLISHED, version: 2 })),
-      LATER,
-    );
-    await campaigns.save(next.organizationId, next, previous.version);
+    await expect(campaigns.save(next.organizationId, next, previous.version)).rejects.toThrow();
     expect(campaignResult((await campaigns.findById(next.organizationId, next.id))!)).toEqual(
-      campaignResult(next),
+      campaignResult(previous),
     );
   });
 
