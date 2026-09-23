@@ -1,4 +1,5 @@
 import { entityId, type EntityId } from '#app/domain/entity-id';
+import type { Pagination, Page } from '#app/domain/pagination';
 import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
 import { Money, Currency } from '#app/domain/value-objects/money';
@@ -174,6 +175,15 @@ export class CampaignLookupsFake implements CampaignLookups {
 }
 
 export class CampaignRepositoryFake implements CampaignRepository {
+  list(organizationId: EntityId, { page, limit }: Pagination): Promise<Page<Campaign>> {
+    const rows = [...this.records.values()]
+      .filter((item) => item.organizationId === organizationId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id));
+    return Promise.resolve({
+      total: rows.length,
+      items: rows.slice((page - 1) * limit, page * limit),
+    });
+  }
   readonly records = new Map<EntityId, Campaign>();
   readonly contents = new Map<EntityId, GeneratedContent>();
   readonly generations = new Map<

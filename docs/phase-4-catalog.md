@@ -102,4 +102,4 @@ La CI remota se ejecutará al subir el PR. Los bloqueos temporales del entorno y
 
 ## Siguiente paso
 
-Revisar los incrementos 1 y 2 mediante PR. Después implementar el incremento 3: creación, consulta y listado HTTP de campañas. La fase 4 continúa en curso; generación y envíos dependen de las integraciones previstas en fases posteriores.
+Los incrementos 1 y 2 se integraron mediante el PR #13. El incremento 3 añade [creación, consulta y listado HTTP de campañas](phase-4-campaigns.md), con el estado de sus verificaciones en ese documento. La fase 4 continúa en curso; generación y envíos dependen de las integraciones previstas en fases posteriores.

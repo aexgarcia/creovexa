@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import type { EntityId } from '#app/domain/entity-id';
+import { pagination, type Pagination, type Page } from '#app/domain/pagination';
 import {
   inPrismaTransaction,
   type PrismaSession,
@@ -21,6 +22,26 @@ import { readPromotion } from './campaign-json.mapper.js';
 
 export class PrismaCampaignRepository implements CampaignRepository {
   constructor(private readonly database: PrismaSession) {}
+
+  async list(organizationId: EntityId, input: Pagination): Promise<Page<Campaign>> {
+    const { page, limit } = pagination(input);
+    return inPrismaTransaction(
+      this.database,
+      async (tx) => {
+        const where = { organizationId };
+        const rows = await tx.campaign.findMany({
+          where,
+          include: campaignRelations,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          skip: (page - 1) * limit,
+          take: limit,
+        });
+        const total = await tx.campaign.count({ where });
+        return { items: rows.map(CampaignMapper.toDomain), total };
+      },
+      'RepeatableRead',
+    );
+  }
 
   async findById(organizationId: EntityId, campaignId: EntityId): Promise<Campaign | null> {
     // Repeatable read keeps the root and relation queries in one consistent snapshot.
