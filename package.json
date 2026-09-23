@@ -24,6 +24,7 @@
     "db:generate": "pnpm --filter @creovexa/api db:generate",
     "db:validate": "pnpm --filter @creovexa/api db:validate",
     "db:migrate": "pnpm --filter @creovexa/api db:migrate",
+    "db:seed:dev": "pnpm --filter @creovexa/api db:seed:dev",
     "infra:up": "docker compose --env-file .env -f infrastructure/docker/compose.yaml up -d --wait",
     "infra:down": "docker compose --env-file .env -f infrastructure/docker/compose.yaml down",
     "infra:status": "docker compose --env-file .env -f infrastructure/docker/compose.yaml ps",

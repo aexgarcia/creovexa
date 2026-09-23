@@ -6,6 +6,10 @@ import { UpdateOrganizationProfile } from '#app/modules/organizations/applicatio
 import { CreateProduct } from '#app/modules/products/application/use-cases/create-product';
 import { UpdateProduct } from '#app/modules/products/application/use-cases/update-product';
 import { CreateTemplate } from '#app/modules/templates/application/use-cases/create-template';
+import { GetProduct } from '#app/modules/products/application/use-cases/get-product';
+import { ListProducts } from '#app/modules/products/application/use-cases/list-products';
+import { GetTemplate } from '#app/modules/templates/application/use-cases/get-template';
+import { ListTemplates } from '#app/modules/templates/application/use-cases/list-templates';
 import { PrismaOrganizationRepository } from '#app/modules/organizations/infrastructure/persistence/prisma/prisma-organization.repository';
 import { PrismaProductRepository } from '#app/modules/products/infrastructure/persistence/prisma/prisma-product.repository';
 import { PrismaTemplateRepository } from '#app/modules/templates/infrastructure/persistence/prisma/prisma-template.repository';
@@ -17,6 +21,26 @@ import { RuntimeModule, CLOCK, ID_GENERATOR } from './runtime.module.js';
 @Module({
   imports: [DatabaseModule, RuntimeModule],
   providers: [
+    {
+      provide: GetProduct,
+      inject: [PrismaProductRepository],
+      useFactory: (repository: PrismaProductRepository) => new GetProduct(repository),
+    },
+    {
+      provide: ListProducts,
+      inject: [PrismaProductRepository],
+      useFactory: (repository: PrismaProductRepository) => new ListProducts(repository),
+    },
+    {
+      provide: GetTemplate,
+      inject: [PrismaTemplateRepository],
+      useFactory: (repository: PrismaTemplateRepository) => new GetTemplate(repository),
+    },
+    {
+      provide: ListTemplates,
+      inject: [PrismaTemplateRepository],
+      useFactory: (repository: PrismaTemplateRepository) => new ListTemplates(repository),
+    },
     {
       provide: PrismaOrganizationRepository,
       inject: [PrismaService],
@@ -77,6 +101,10 @@ import { RuntimeModule, CLOCK, ID_GENERATOR } from './runtime.module.js';
     },
   ],
   exports: [
+    GetProduct,
+    ListProducts,
+    GetTemplate,
+    ListTemplates,
     CreateOrganization,
     UpdateOrganizationProfile,
     CreateProduct,

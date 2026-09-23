@@ -1,6 +1,8 @@
 # Fase 3 — Incremento 3: persistencia de publicaciones e intentos
 
-Implementado el 21 de septiembre de 2026 en `feat/prisma-publication-persistence`, desde `main` con el [PR #9](https://github.com/aexgarcia/creovexa/pull/9) integrado. Alcance registrado en la [issue #10](https://github.com/aexgarcia/creovexa/issues/10). Pendiente de revisión e integración mediante PR.
+Implementado el 21 de septiembre de 2026 en `feat/prisma-publication-persistence`, desde `main` con el [PR #9](https://github.com/aexgarcia/creovexa/pull/9) integrado. Alcance registrado en la [issue #10](https://github.com/aexgarcia/creovexa/issues/10).
+
+Integrado mediante el [PR #11](https://github.com/aexgarcia/creovexa/pull/11). La fase 3 está cerrada; el desarrollo actual continúa en [API de productos y plantillas](phase-4-catalog.md). Lo siguiente conserva el registro original de este incremento.
 
 ## Resultado y alcance
 

@@ -1,4 +1,5 @@
 import type { EntityId } from '#app/domain/entity-id';
+import { pagination, type Page, type Pagination } from '#app/domain/pagination';
 import type { PrismaClient } from '#app/infrastructure/persistence/prisma/generated/client';
 import { translatePrismaError } from '#app/infrastructure/persistence/prisma/translate-prisma-error';
 import { PersistenceScopeError } from '#app/infrastructure/persistence/persistence.errors';
@@ -24,6 +25,24 @@ export class PrismaProductRepository implements ProductRepository {
     } catch (error) {
       translatePrismaError(error);
     }
+  }
+
+  async list(organizationId: EntityId, input: Pagination): Promise<Page<Product>> {
+    const { page, limit } = pagination(input);
+    return this.client.$transaction(
+      async (tx) => {
+        const where = { organizationId };
+        const rows = await tx.product.findMany({
+          where,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          skip: (page - 1) * limit,
+          take: limit,
+        });
+        const total = await tx.product.count({ where });
+        return { items: rows.map(ProductMapper.toDomain), total };
+      },
+      { isolationLevel: 'RepeatableRead' },
+    );
   }
 
   async save(organizationId: EntityId, product: Product): Promise<void> {

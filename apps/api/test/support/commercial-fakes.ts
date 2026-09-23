@@ -1,4 +1,5 @@
 import type { Clock } from '#app/application/ports/clock';
+import type { Pagination, Page } from '#app/domain/pagination';
 import { entityId, type EntityId } from '#app/domain/entity-id';
 import { Organization } from '#app/modules/organizations/domain/entities/organization';
 import type { OrganizationRepository } from '#app/modules/organizations/domain/repositories/organization.repository';
@@ -48,6 +49,16 @@ export class OrganizationLookupFake implements OrganizationLookup {
 export class ProductRepositoryFake implements ProductRepository {
   readonly records = new Map<EntityId, Product>();
   saveCount = 0;
+
+  list(organizationId: EntityId, { page, limit }: Pagination): Promise<Page<Product>> {
+    const rows = [...this.records.values()]
+      .filter((item) => item.organizationId === organizationId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id));
+    return Promise.resolve({
+      items: rows.slice((page - 1) * limit, page * limit),
+      total: rows.length,
+    });
+  }
 
   findById(organizationId: EntityId, productId: EntityId): Promise<Product | null> {
     const product = this.records.get(productId);
