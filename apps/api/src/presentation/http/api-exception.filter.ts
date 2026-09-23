@@ -31,6 +31,9 @@ import { HTTP_LOGGER } from './http-logging.js';
 import type { HttpRequest } from './request-context.js';
 import {
   CampaignNotFoundError,
+  InvalidCampaignTransitionError,
+  ContentRevisionMismatchError,
+  ConcurrentCampaignModificationError,
   InvalidCampaignError,
   InvalidPromotionError,
   PromotionExpiredError,
@@ -107,10 +110,16 @@ export class ApiExceptionFilter implements ExceptionFilter {
       code = 'INVALID_INPUT';
       message = error.message;
     } else if (
+      error instanceof InvalidCampaignTransitionError ||
+      error instanceof ContentRevisionMismatchError ||
+      error instanceof ConcurrentCampaignModificationError ||
       error instanceof PersistenceConflictError ||
       error instanceof PersistenceReferenceError
     ) {
       status = 409;
+      if (error instanceof InvalidCampaignTransitionError) code = 'INVALID_CAMPAIGN_STATE';
+      if (error instanceof ContentRevisionMismatchError) code = 'CONTENT_REVISION_MISMATCH';
+      if (error instanceof ConcurrentCampaignModificationError) code = 'CAMPAIGN_CONFLICT';
     } else if (error instanceof HttpException) {
       status = error.getStatus();
     } else if (error instanceof Error && 'type' in error) {

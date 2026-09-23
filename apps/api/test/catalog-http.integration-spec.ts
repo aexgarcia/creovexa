@@ -18,6 +18,16 @@ import { ProductKind } from '#app/modules/products/domain/product-kind';
 import { PrismaTemplateRepository } from '#app/modules/templates/infrastructure/persistence/prisma/prisma-template.repository';
 import { TemplateMapper } from '#app/modules/templates/infrastructure/persistence/prisma/template.mapper';
 import { TemplateDimensions } from '#app/modules/templates/domain/value-objects/template-dimensions';
+import { RequestCampaignGeneration } from '#app/modules/campaigns/application/use-cases/request-campaign-generation';
+import { RecordGeneratedCampaign } from '#app/modules/campaigns/application/use-cases/record-generated-campaign';
+import { PrismaCampaignRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign.repository';
+import {
+  PUBLICATION_TRANSACTION,
+  type PublicationTransaction,
+} from '#app/application/ports/publication-transaction';
+import { Publication } from '#app/modules/publications/domain/entities/publication';
+import { SocialPlatform } from '#app/modules/publications/domain/social-platform';
+import { summary } from './support/publication-fixtures.js';
 
 const NOW = new Date('2026-09-21T16:00:00.000Z');
 const LATER = new Date('2026-09-21T17:00:00.000Z');
@@ -82,6 +92,112 @@ describe('Catalog HTTP with PostgreSQL', () => {
       promotion: { amountMinor: 1000, currency: 'PEN', endsAt: '2099-12-31T23:59:59Z' },
     };
   }
+
+  async function candidateCampaign() {
+    const input = await campaignInput();
+    const created = await request(app.getHttpServer()).post('/campaigns').send(input).expect(201);
+    const selection = {
+      organizationId: context.organizationId!,
+      campaignId: entityId(created.body.data.id as string),
+    };
+    const generation = await module.get(RequestCampaignGeneration).execute(selection);
+    return module.get(RecordGeneratedCampaign).execute({
+      ...selection,
+      generationId: generation.generation!.id,
+      content: {
+        headline: 'Oferta',
+        caption: 'Descripción',
+        cta: 'Comprar',
+        hashtags: ['#oferta'],
+        assetIds: [randomUUID()],
+      },
+    });
+  }
+
+  it('persists exactly one concurrent approval and retains the reviewed content', async () => {
+    const candidate = await candidateCampaign();
+    const path = `/campaigns/${candidate.id}/approve`;
+    const results = await Promise.all(
+      [1, 2].map(() =>
+        request(app.getHttpServer()).post(path).send({ contentId: candidate.candidateContent!.id }),
+      ),
+    );
+    expect(results.map((result) => result.status).sort()).toEqual([200, 409]);
+    const persisted = await database.campaign.findUniqueOrThrow({ where: { id: candidate.id } });
+    expect(persisted).toMatchObject({
+      status: 'APPROVED',
+      approvedContentId: candidate.candidateContent!.id,
+      version: BigInt(candidate.version + 1),
+    });
+    const detail = await request(app.getHttpServer())
+      .get('/campaigns/' + candidate.id)
+      .expect(200);
+    expect(detail.body.data.candidateContent).toMatchObject({
+      id: candidate.candidateContent!.id,
+      headline: 'Oferta',
+    });
+    expect(detail.body.data.candidateContent).not.toHaveProperty('snapshot');
+    expect(await database.publication.count({ where: { campaignId: candidate.id } })).toBe(0);
+  });
+
+  it('reads stored destinations with stable pagination and rejects a foreign campaign', async () => {
+    const candidate = await candidateCampaign();
+    const own = context.organizationId!;
+    const campaigns = module.get(PrismaCampaignRepository);
+    const pending = (await campaigns.findById(own, entityId(candidate.id)))!;
+    const accounts = [entityId(randomUUID()), entityId(randomUUID())];
+    const approved = pending.approve(candidate.candidateContent!.id, NOW, accounts);
+    await campaigns.save(own, approved, pending.version);
+    const publications = accounts.map((socialAccountId, index) =>
+      Publication.create(
+        randomUUID(),
+        {
+          organizationId: own,
+          campaignId: approved.id,
+          approvedContentId: approved.approvedContentId!,
+          socialAccountId,
+          platform: index === 0 ? SocialPlatform.FACEBOOK : SocialPlatform.INSTAGRAM,
+        },
+        NOW,
+      ),
+    );
+    const publishing = approved.startPublication(summary(...publications), NOW);
+    await module.get<PublicationTransaction>(PUBLICATION_TRANSACTION).run(async (repositories) => {
+      await repositories.campaigns.save(own, publishing, approved.version);
+      for (const publication of publications) await repositories.publications.add(own, publication);
+    });
+    const path = `/campaigns/${candidate.id}/publications`;
+    const page = await request(app.getHttpServer())
+      .get(path + '?page=2&limit=1')
+      .expect(200);
+    expect(page.body.data.map((item: { id: string }) => item.id)).toEqual(
+      publications
+        .map((item) => item.id)
+        .sort()
+        .slice(1),
+    );
+    expect(page.body).toMatchObject({
+      meta: { page: 2, limit: 1, total: 2, totalPages: 2 },
+      data: [{ status: 'PENDING', attempt: null, failureCode: null, externalPostId: null }],
+    });
+    const empty = await request(app.getHttpServer())
+      .get(path + '?page=3&limit=1')
+      .expect(200);
+    expect(empty.body).toMatchObject({ data: [], meta: { total: 2 } });
+    context.organizationId = entityId(
+      (await module.get(CreateOrganization).execute({ name: 'Ajena' })).id,
+    );
+    await request(app.getHttpServer()).get(path).expect(404);
+    context.organizationId = own;
+    const draft = await request(app.getHttpServer())
+      .post('/campaigns')
+      .send(await campaignInput())
+      .expect(201);
+    const noPublications = await request(app.getHttpServer())
+      .get(`/campaigns/${draft.body.data.id}/publications`)
+      .expect(200);
+    expect(noPublications.body).toMatchObject({ data: [], meta: { total: 0 } });
+  });
 
   it('persists a draft campaign with the selected revision and reads it without generating content', async () => {
     const input = await campaignInput();

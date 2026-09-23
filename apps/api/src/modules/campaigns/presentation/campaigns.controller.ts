@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Inject,
   Param,
   ParseUUIDPipe,
@@ -28,7 +29,8 @@ import { validateRequest } from '#app/presentation/http/request-validation';
 import { CreateCampaign } from '../application/use-cases/create-campaign.js';
 import { GetCampaign } from '../application/use-cases/get-campaign.js';
 import { ListCampaigns } from '../application/use-cases/list-campaigns.js';
-import { CreateCampaignRequest } from './campaign.requests.js';
+import { CreateCampaignRequest, ApproveCampaignRequest } from './campaign.requests.js';
+import { ApproveCampaign } from '../application/use-cases/approve-campaign.js';
 import { CampaignEnvelope, CampaignPageResponse, campaignResponse } from './campaign.responses.js';
 
 @ApiTags('Campañas')
@@ -37,10 +39,33 @@ import { CampaignEnvelope, CampaignPageResponse, campaignResponse } from './camp
 @Controller('campaigns')
 export class CampaignsController {
   constructor(
+    @Inject(ApproveCampaign) private readonly approveCampaign: ApproveCampaign,
     @Inject(CreateCampaign) private readonly createCampaign: CreateCampaign,
     @Inject(GetCampaign) private readonly getCampaign: GetCampaign,
     @Inject(ListCampaigns) private readonly listCampaigns: ListCampaigns,
   ) {}
+
+  @Post(':id/approve')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Aprobar la revisión candidata de una campaña' })
+  @ApiParam({ name: 'id', type: String, format: 'uuid' })
+  @ApiBody({ type: ApproveCampaignRequest })
+  @ApiOkResponse({ type: CampaignEnvelope })
+  async approve(
+    @OrganizationId() organizationId: string,
+    @Param('id', new ParseUUIDPipe()) campaignId: string,
+    @Body(validateRequest(ApproveCampaignRequest)) body: ApproveCampaignRequest,
+  ): Promise<CampaignEnvelope> {
+    return {
+      data: campaignResponse(
+        await this.approveCampaign.execute({
+          organizationId,
+          campaignId,
+          contentId: body.contentId,
+        }),
+      ),
+    };
+  }
 
   @Post()
   @ApiOperation({ summary: 'Crear campaña en estado DRAFT' })

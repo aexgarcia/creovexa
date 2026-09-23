@@ -16,6 +16,12 @@ import {
 } from 'class-validator';
 import { Currency } from '#app/domain/value-objects/money';
 
+export class ApproveCampaignRequest {
+  @ApiProperty({ type: String, format: 'uuid' })
+  @IsUUID()
+  contentId!: string;
+}
+
 export class PromotionRequest {
   @ApiProperty({ type: Number, minimum: 0, maximum: Number.MAX_SAFE_INTEGER })
   @IsInt()
