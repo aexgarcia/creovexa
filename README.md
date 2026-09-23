@@ -117,4 +117,4 @@ Los directorios antiguos pueden conservar metadatos Git o cachés protegidos por
 
 Antes de implementar funcionalidades, revisa [architecture.md](architecture.md), [fases1-4.5.md](fases1-4.5.md), [fases5-10.md](fases5-10.md) y las instrucciones `AGENTS.md` aplicables.
 
-El historial de verificación de infraestructura está en [fase 1](docs/phase-1.md), el modelo en [dominio](docs/domain.md) y los incrementos actuales en [fase 4: API de productos y plantillas](docs/phase-4-catalog.md) y [API de campañas](docs/phase-4-campaigns.md).
+El historial de verificación de infraestructura está en [fase 1](docs/phase-1.md), el modelo en [dominio](docs/domain.md) y los incrementos actuales en [fase 4: API de productos y plantillas](docs/phase-4-catalog.md) y [API de campañas](docs/phase-4-campaigns.md) y [aprobación y publicaciones](docs/phase-4-approval-publications.md).
