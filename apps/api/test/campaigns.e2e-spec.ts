@@ -1,4 +1,11 @@
 import { Test } from '@nestjs/testing';
+import { vi } from 'vitest';
+import { PrismaPublicationRepository } from '#app/modules/publications/infrastructure/persistence/prisma/prisma-publication.repository';
+import { PrismaPublicationCampaignLookup } from '#app/modules/publications/infrastructure/persistence/prisma/prisma-publication-campaign-lookup';
+import { ConcurrentCampaignModificationError } from '#app/modules/campaigns/domain/errors/campaign.errors';
+import { PublicationQueryFake } from './support/publication-query-fakes.js';
+import { pendingPublications } from './support/publication-fixtures.js';
+import { domainFixture, CAMPAIGN, CONTENT } from './support/campaign-fakes.js';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
@@ -34,9 +41,11 @@ const body = {
 describe('Campaign HTTP with real use cases', () => {
   let app: INestApplication<App>;
   let repository: CampaignRepositoryFake;
+  let publications: PublicationQueryFake;
   const context: { organizationId: string | null } = { organizationId: ORG };
   beforeEach(async () => {
     repository = new CampaignRepositoryFake();
+    publications = new PublicationQueryFake();
     context.organizationId = ORG;
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DATABASE_CONFIG)
@@ -49,6 +58,13 @@ describe('Campaign HTTP with real use cases', () => {
       .useValue(repository)
       .overrideProvider(PrismaCampaignLookups)
       .useValue(new CampaignLookupsFake())
+      .overrideProvider(PrismaPublicationRepository)
+      .useValue(publications)
+      .overrideProvider(PrismaPublicationCampaignLookup)
+      .useValue({
+        exists: async (organizationId: typeof ORG, campaignId: typeof CAMPAIGN) =>
+          (await repository.findById(organizationId, campaignId)) !== null,
+      })
       .overrideProvider(HTTP_LOGGER)
       .useValue({ log() {}, error() {} })
       .compile();
@@ -94,6 +110,108 @@ describe('Campaign HTTP with real use cases', () => {
     const input = { ...body, promotion: undefined };
     const result = await request(app.getHttpServer()).post('/campaigns').send(input).expect(201);
     expect(result.body.data.promotion).toBeNull();
+  });
+
+  it('shows candidate content, approves the exact revision and rejects a repeated approval', async () => {
+    repository.records.set(CAMPAIGN, domainFixture().pending);
+    const detail = await request(app.getHttpServer())
+      .get('/campaigns/' + CAMPAIGN)
+      .expect(200);
+    expect(detail.body.data.candidateContent).toMatchObject({
+      id: CONTENT,
+      revision: 1,
+      headline: 'Promoción',
+    });
+    expect(detail.body.data.candidateContent).not.toHaveProperty('snapshot');
+    const approved = await request(app.getHttpServer())
+      .post(`/campaigns/${CAMPAIGN}/approve`)
+      .send({ contentId: CONTENT })
+      .expect(200);
+    expect(approved.body.data).toMatchObject({
+      status: 'APPROVED',
+      approvedContentId: CONTENT,
+      version: detail.body.data.version + 1,
+    });
+    await request(app.getHttpServer())
+      .post(`/campaigns/${CAMPAIGN}/approve`)
+      .send({ contentId: CONTENT })
+      .expect(409);
+    expect(repository.saveCount).toBe(1);
+    expect(publications.records.size).toBe(0);
+  });
+
+  it('rejects wrong state, stale content and concurrent approval without overwriting', async () => {
+    repository.records.set(CAMPAIGN, domainFixture().draft);
+    const path = `/campaigns/${CAMPAIGN}/approve`;
+    expect(
+      (await request(app.getHttpServer()).post(path).send({ contentId: CONTENT }).expect(409)).body
+        .error.code,
+    ).toBe('INVALID_CAMPAIGN_STATE');
+    repository.records.set(CAMPAIGN, domainFixture().pending);
+    expect(
+      (
+        await request(app.getHttpServer())
+          .post(path)
+          .send({ contentId: testId(999) })
+          .expect(409)
+      ).body.error.code,
+    ).toBe('CONTENT_REVISION_MISMATCH');
+    vi.spyOn(repository, 'save').mockRejectedValueOnce(new ConcurrentCampaignModificationError());
+    expect(
+      (await request(app.getHttpServer()).post(path).send({ contentId: CONTENT }).expect(409)).body
+        .error.code,
+    ).toBe('CAMPAIGN_CONFLICT');
+    expect(repository.records.get(CAMPAIGN)!.status).toBe('PENDING_APPROVAL');
+  });
+
+  it.each([
+    {},
+    { contentId: null },
+    { contentId: 'bad' },
+    { contentId: CONTENT, organizationId: OTHER_ORG },
+    { contentId: CONTENT, socialAccountIds: [] },
+  ])('validates approval input %j', async (input) => {
+    repository.records.set(CAMPAIGN, domainFixture().pending);
+    await request(app.getHttpServer())
+      .post(`/campaigns/${CAMPAIGN}/approve`)
+      .send(input)
+      .expect(400);
+    expect(repository.saveCount).toBe(0);
+  });
+
+  it('paginates publications and distinguishes empty campaigns from inaccessible campaigns', async () => {
+    repository.records.set(CAMPAIGN, domainFixture().pending);
+    const path = `/campaigns/${CAMPAIGN}/publications`;
+    expect((await request(app.getHttpServer()).get(path).expect(200)).body).toEqual({
+      data: [],
+      meta: { page: 1, limit: 20, total: 0, totalPages: 0 },
+    });
+    for (const item of pendingPublications()) await publications.add(ORG, item);
+    const page = await request(app.getHttpServer())
+      .get(path + '?page=2&limit=1')
+      .expect(200);
+    expect(page.body).toMatchObject({
+      data: [{ platform: 'INSTAGRAM', status: 'PENDING', attempt: null }],
+      meta: { page: 2, limit: 1, total: 2, totalPages: 2 },
+    });
+    await request(app.getHttpServer())
+      .get(path + '?limit=0')
+      .expect(400);
+    await request(app.getHttpServer())
+      .get(path + '?organizationId=' + ORG)
+      .expect(400);
+    context.organizationId = OTHER_ORG;
+    await request(app.getHttpServer()).get(path).expect(404);
+    await request(app.getHttpServer())
+      .post(`/campaigns/${CAMPAIGN}/approve`)
+      .send({ contentId: CONTENT })
+      .expect(404);
+    context.organizationId = null;
+    await request(app.getHttpServer()).get(path).expect(503);
+    await request(app.getHttpServer())
+      .post(`/campaigns/${CAMPAIGN}/approve`)
+      .send({ contentId: CONTENT })
+      .expect(503);
   });
 
   it.each([

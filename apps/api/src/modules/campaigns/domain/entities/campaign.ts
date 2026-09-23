@@ -273,7 +273,13 @@ export class Campaign {
     }
     if (this.status !== CampaignStatus.GENERATING) throw new InvalidCampaignTransitionError();
     timestamp(at, content.createdAt.getTime());
-    return this.change({ status: CampaignStatus.PENDING_APPROVAL, candidateContent: content }, at);
+    return this.change(
+      {
+        status: CampaignStatus.PENDING_APPROVAL,
+        candidateContent: content,
+      },
+      at,
+    );
   }
 
   approve(contentId: string, at: Date, socialAccountIds: readonly string[] = []): Campaign {
@@ -310,7 +316,13 @@ export class Campaign {
       this.approvedSocialAccountIds,
       publications,
     );
-    return this.change({ status: CampaignStatus.PUBLISHING, publicationProgress }, at);
+    return this.change(
+      {
+        status: CampaignStatus.PUBLISHING,
+        publicationProgress,
+      },
+      at,
+    );
   }
 
   recordPublicationSummary(publications: readonly CampaignPublication[], at: Date): Campaign {
@@ -324,7 +336,14 @@ export class Campaign {
     )
       ? CampaignFailureOrigin.PUBLICATION
       : null;
-    return this.change({ status, publicationProgress, failureOrigin }, at);
+    return this.change(
+      {
+        status,
+        publicationProgress,
+        failureOrigin,
+      },
+      at,
+    );
   }
 
   retryPublication(publications: readonly CampaignPublication[], at: Date): Campaign {
@@ -337,7 +356,11 @@ export class Campaign {
     this.promotion?.assertNotExpired(at);
     const publicationProgress = this.publicationProgress.retry(publications);
     return this.change(
-      { status: CampaignStatus.PUBLISHING, publicationProgress, failureOrigin: null },
+      {
+        status: CampaignStatus.PUBLISHING,
+        publicationProgress,
+        failureOrigin: null,
+      },
       at,
     );
   }
@@ -374,7 +397,12 @@ export class Campaign {
     return this.change(
       {
         status: CampaignStatus.GENERATING,
-        generation: Object.freeze({ id: generationId, number, snapshot, requestedAt }),
+        generation: Object.freeze({
+          id: generationId,
+          number,
+          snapshot,
+          requestedAt,
+        }),
         candidateContent: null,
         approvedContentId: null,
         approvedSocialAccountIds: Object.freeze([]),

@@ -10,7 +10,20 @@ export class PromotionResponse {
   @ApiProperty({ type: String, format: 'date-time', nullable: true }) startsAt!: string | null;
   @ApiProperty({ type: String, format: 'date-time', nullable: true }) endsAt!: string | null;
 }
+export class CandidateContentResponse {
+  @ApiProperty({ type: String, format: 'uuid' }) id!: string;
+  @ApiProperty({ type: Number }) revision!: number;
+  @ApiProperty({ type: String }) headline!: string;
+  @ApiProperty({ type: String }) caption!: string;
+  @ApiProperty({ type: String }) cta!: string;
+  @ApiProperty({ type: [String] }) hashtags!: string[];
+  @ApiProperty({ type: [String] }) assetIds!: string[];
+  @ApiProperty({ type: String, format: 'date-time' }) createdAt!: string;
+}
 export class CampaignResponse {
+  @ApiProperty({ type: CandidateContentResponse, nullable: true })
+  candidateContent!: CandidateContentResponse | null;
+  @ApiProperty({ type: String, format: 'uuid', nullable: true }) approvedContentId!: string | null;
   @ApiProperty({ type: String, format: 'uuid' }) id!: string;
   @ApiProperty({ type: String, format: 'uuid' }) organizationId!: string;
   @ApiProperty({ type: String, format: 'uuid' }) productId!: string;
@@ -34,6 +47,19 @@ export class CampaignPageResponse {
 }
 export function campaignResponse(result: CampaignResult): CampaignResponse {
   return {
+    candidateContent: result.candidateContent
+      ? {
+          id: result.candidateContent.id,
+          revision: result.candidateContent.revision,
+          headline: result.candidateContent.headline,
+          caption: result.candidateContent.caption,
+          cta: result.candidateContent.cta,
+          hashtags: [...result.candidateContent.hashtags],
+          assetIds: [...result.candidateContent.assetIds],
+          createdAt: result.candidateContent.createdAt,
+        }
+      : null,
+    approvedContentId: result.approvedContentId,
     id: result.id,
     organizationId: result.organizationId,
     productId: result.productId,

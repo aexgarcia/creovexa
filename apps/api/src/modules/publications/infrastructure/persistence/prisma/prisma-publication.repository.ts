@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import type { EntityId } from '#app/domain/entity-id';
+import { pagination, type Pagination, type Page } from '#app/domain/pagination';
 import { PublicationStatus } from '#app/domain/publication-status';
 import {
   inPrismaTransaction,
@@ -21,6 +22,30 @@ import { PublicationMapper, publicationRelations } from './publication.mapper.js
 
 export class PrismaPublicationRepository implements PublicationRepository {
   constructor(private readonly database: PrismaSession) {}
+
+  async pageByCampaign(
+    organizationId: EntityId,
+    campaignId: EntityId,
+    input: Pagination,
+  ): Promise<Page<Publication>> {
+    const { page, limit } = pagination(input);
+    return inPrismaTransaction(
+      this.database,
+      async (tx) => {
+        const where = { organizationId, campaignId };
+        const rows = await tx.publication.findMany({
+          where,
+          include: publicationRelations,
+          orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          skip: (page - 1) * limit,
+          take: limit,
+        });
+        const total = await tx.publication.count({ where });
+        return { items: rows.map(PublicationMapper.toDomain), total };
+      },
+      'RepeatableRead',
+    );
+  }
 
   findById(organizationId: EntityId, publicationId: EntityId): Promise<Publication | null> {
     return inPrismaTransaction(

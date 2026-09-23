@@ -9,10 +9,17 @@ import { ApiExceptionFilter } from '#app/presentation/http/api-exception.filter'
 import { CommercialPersistenceModule } from './commercial-persistence.module.js';
 import { CampaignPersistenceModule } from './campaign-persistence.module.js';
 import { CampaignsController } from '#app/modules/campaigns/presentation/campaigns.controller';
+import { PublicationsController } from '#app/modules/publications/presentation/publications.controller';
+import { PublicationPersistenceModule } from './publication-persistence.module.js';
 
 @Module({
-  imports: [CommercialPersistenceModule, CampaignPersistenceModule],
-  controllers: [ProductsController, TemplatesController, CampaignsController],
+  imports: [CommercialPersistenceModule, CampaignPersistenceModule, PublicationPersistenceModule],
+  controllers: [
+    ProductsController,
+    TemplatesController,
+    CampaignsController,
+    PublicationsController,
+  ],
   providers: [
     catalogHttpConfigProvider,
     DevelopmentOrganizationGuard,
