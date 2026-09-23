@@ -7,10 +7,12 @@ import { DevelopmentOrganizationGuard } from '#app/presentation/http/request-con
 import { HTTP_LOGGER } from '#app/presentation/http/http-logging';
 import { ApiExceptionFilter } from '#app/presentation/http/api-exception.filter';
 import { CommercialPersistenceModule } from './commercial-persistence.module.js';
+import { CampaignPersistenceModule } from './campaign-persistence.module.js';
+import { CampaignsController } from '#app/modules/campaigns/presentation/campaigns.controller';
 
 @Module({
-  imports: [CommercialPersistenceModule],
-  controllers: [ProductsController, TemplatesController],
+  imports: [CommercialPersistenceModule, CampaignPersistenceModule],
+  controllers: [ProductsController, TemplatesController, CampaignsController],
   providers: [
     catalogHttpConfigProvider,
     DevelopmentOrganizationGuard,

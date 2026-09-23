@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
 import { CreateCampaign } from '#app/modules/campaigns/application/use-cases/create-campaign';
+import { GetCampaign } from '#app/modules/campaigns/application/use-cases/get-campaign';
+import { ListCampaigns } from '#app/modules/campaigns/application/use-cases/list-campaigns';
 import { RequestCampaignGeneration } from '#app/modules/campaigns/application/use-cases/request-campaign-generation';
 import { RequestCampaignRegeneration } from '#app/modules/campaigns/application/use-cases/request-campaign-regeneration';
 import { RecordGeneratedCampaign } from '#app/modules/campaigns/application/use-cases/record-generated-campaign';
@@ -16,6 +18,11 @@ import { RuntimeModule, CLOCK, ID_GENERATOR } from './runtime.module.js';
 @Module({
   imports: [DatabaseModule, RuntimeModule],
   providers: [
+    ...[GetCampaign, ListCampaigns].map((UseCase) => ({
+      provide: UseCase,
+      inject: [PrismaCampaignRepository],
+      useFactory: (repo: PrismaCampaignRepository) => new UseCase(repo),
+    })),
     {
       provide: PrismaCampaignRepository,
       inject: [PrismaService],
@@ -49,6 +56,8 @@ import { RuntimeModule, CLOCK, ID_GENERATOR } from './runtime.module.js';
     })),
   ],
   exports: [
+    GetCampaign,
+    ListCampaigns,
     CreateCampaign,
     RequestCampaignGeneration,
     RequestCampaignRegeneration,

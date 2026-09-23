@@ -64,6 +64,95 @@ describe('Catalog HTTP with PostgreSQL', () => {
     await app?.close();
   });
 
+  async function campaignInput() {
+    const organizationId = context.organizationId!;
+    const product = await module.get(CreateProduct).execute({
+      organizationId,
+      kind: ProductKind.PRODUCT,
+      name: 'Producto de campaña',
+      regularPrice: productBody.regularPrice,
+    });
+    const template = await module.get(CreateTemplate).execute({ organizationId, ...templateBody });
+    return {
+      productId: product.id,
+      templateId: template.id,
+      templateRevisionId: template.currentRevision.id,
+      title: 'Campaña HTTP',
+      cta: 'Comprar',
+      promotion: { amountMinor: 1000, currency: 'PEN', endsAt: '2099-12-31T23:59:59Z' },
+    };
+  }
+
+  it('persists a draft campaign with the selected revision and reads it without generating content', async () => {
+    const input = await campaignInput();
+    const created = await request(app.getHttpServer()).post('/campaigns').send(input).expect(201);
+    const id: string = created.body.data.id;
+    expect(await database.campaign.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      organizationId: context.organizationId,
+      templateRevisionId: input.templateRevisionId,
+      status: 'DRAFT',
+      version: 0n,
+      currentGenerationId: null,
+    });
+    const read = await request(app.getHttpServer())
+      .get('/campaigns/' + id)
+      .expect(200);
+    expect(read.body).toEqual(created.body);
+    expect(created.body.data.promotion.endsAt).toBe('2099-12-31T23:59:59.000Z');
+  });
+
+  it('paginates campaigns deterministically and keeps counts and detail scoped', async () => {
+    const input = await campaignInput();
+    const own = context.organizationId!;
+    const ids: string[] = [];
+    for (let index = 0; index < 3; index++) {
+      const result = await request(app.getHttpServer()).post('/campaigns').send(input).expect(201);
+      ids.push(result.body.data.id as string);
+    }
+    context.organizationId = entityId(
+      (await module.get(CreateOrganization).execute({ name: 'Otra empresa' })).id,
+    );
+    const otherInput = await campaignInput();
+    const other = await request(app.getHttpServer())
+      .post('/campaigns')
+      .send(otherInput)
+      .expect(201);
+    await request(app.getHttpServer())
+      .get('/campaigns/' + ids[0])
+      .expect(404);
+    await request(app.getHttpServer()).post('/campaigns').send(input).expect(404);
+    context.organizationId = own;
+    await request(app.getHttpServer())
+      .get('/campaigns/' + other.body.data.id)
+      .expect(404);
+    const page = await request(app.getHttpServer()).get('/campaigns?page=2&limit=2').expect(200);
+    expect(page.body.data.map((item: { id: string }) => item.id)).toEqual(
+      ids.sort().reverse().slice(2),
+    );
+    expect(page.body.meta).toEqual({ page: 2, limit: 2, total: 3, totalPages: 2 });
+    const empty = await request(app.getHttpServer()).get('/campaigns?page=3&limit=2').expect(200);
+    expect(empty.body.data).toEqual([]);
+    expect(empty.body.meta.total).toBe(3);
+  });
+
+  it('does not persist a campaign for invalid promotions or a revision belonging to another template', async () => {
+    const input = await campaignInput();
+    const another = await module
+      .get(CreateTemplate)
+      .execute({ organizationId: context.organizationId!, ...templateBody });
+    await request(app.getHttpServer())
+      .post('/campaigns')
+      .send({ ...input, templateRevisionId: another.currentRevision.id })
+      .expect(404);
+    await request(app.getHttpServer())
+      .post('/campaigns')
+      .send({ ...input, promotion: { amountMinor: 999999, currency: 'PEN' } })
+      .expect(400);
+    expect(
+      await database.campaign.count({ where: { organizationId: context.organizationId! } }),
+    ).toBe(0);
+  });
+
   it('persists HTTP product creation, retrieval and partial editing', async () => {
     const created = await request(app.getHttpServer())
       .post('/products')

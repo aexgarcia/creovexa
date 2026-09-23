@@ -29,6 +29,13 @@ import {
 import { RequestValidationError, type ValidationDetail } from './request-validation.js';
 import { HTTP_LOGGER } from './http-logging.js';
 import type { HttpRequest } from './request-context.js';
+import {
+  CampaignNotFoundError,
+  InvalidCampaignError,
+  InvalidPromotionError,
+  PromotionExpiredError,
+} from '#app/modules/campaigns/domain/errors/campaign.errors';
+import { CampaignResourceNotFoundError } from '#app/modules/campaigns/application/errors/campaign-resource-not-found.error';
 
 const httpErrors: Record<number, { code: string; message: string }> = {
   400: { code: 'INVALID_REQUEST', message: 'La solicitud no es válida.' },
@@ -60,6 +67,16 @@ export class ApiExceptionFilter implements ExceptionFilter {
       message = error.message;
       details = error.details;
     } else if (
+      error instanceof CampaignNotFoundError ||
+      error instanceof CampaignResourceNotFoundError
+    ) {
+      status = 404;
+      code =
+        error instanceof CampaignNotFoundError
+          ? 'CAMPAIGN_NOT_FOUND'
+          : 'CAMPAIGN_RESOURCE_NOT_FOUND';
+      message = error.message;
+    } else if (
       error instanceof ProductNotFoundError ||
       error instanceof TemplateNotFoundError ||
       error instanceof ProductOrganizationNotFoundError ||
@@ -75,6 +92,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
       message = error.message;
     } else if (
       error instanceof InvalidEntityIdError ||
+      error instanceof InvalidCampaignError ||
+      error instanceof InvalidPromotionError ||
+      error instanceof PromotionExpiredError ||
       error instanceof InvalidPaginationError ||
       error instanceof InvalidMoneyAmountError ||
       error instanceof UnsupportedCurrencyError ||
