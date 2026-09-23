@@ -1,3 +1,10 @@
+export class TemplateNotFoundError extends Error {
+  constructor() {
+    super('No se encontró la plantilla en la organización.');
+    this.name = 'TemplateNotFoundError';
+  }
+}
+
 export class InvalidTemplateNameError extends Error {
   constructor() {
     super('La plantilla debe tener un nombre no vacío.');

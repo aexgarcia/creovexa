@@ -64,6 +64,19 @@ export class TemplateRevision {
     });
   }
 
+  static restore(
+    id: string,
+    templateId: string,
+    organizationId: string,
+    number: number,
+    dimensions: TemplateDimensions,
+    at: Date,
+  ): TemplateRevision {
+    if (!Number.isSafeInteger(number) || number < 1) throw new InvalidTemplateRevisionError();
+    const initial = TemplateRevision.initial(id, templateId, organizationId, dimensions, at);
+    return new TemplateRevision({ ...initial.#state, number });
+  }
+
   get id(): EntityId {
     return this.#state.id;
   }

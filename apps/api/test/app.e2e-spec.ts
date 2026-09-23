@@ -4,6 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types.js';
 import { AppModule } from './../src/app.module.js';
 import { DATABASE_CONFIG } from '../src/config/database.config.js';
+import { configureHttp } from '../src/presentation/http/configure-http.js';
 
 describe('API health (e2e)', () => {
   let app: INestApplication<App>;
@@ -17,6 +18,7 @@ describe('API health (e2e)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    configureHttp(app);
     await app.init();
   });
 

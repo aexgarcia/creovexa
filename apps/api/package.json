@@ -29,14 +29,18 @@
     "test:integration": "pnpm db:generate && node scripts/test-integration.mjs",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
-    "db:migrate": "prisma migrate deploy"
+    "db:migrate": "prisma migrate deploy",
+    "db:seed:dev": "pnpm build && node scripts/seed-development.mjs"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
     "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/swagger": "12.0.1",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.15.1",
     "pg": "8.23.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"

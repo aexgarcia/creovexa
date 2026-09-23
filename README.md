@@ -1,6 +1,6 @@
 # Creovexa
 
-Monorepo para la plataforma de automatización de marketing. El dominio de la fase 2 está implementado. La fase 3 incorpora persistencia de organizaciones, catálogo, plantillas, campañas y publicaciones, con snapshots, historial de intentos, control de versión y transacciones entre campaña y destinos. Los endpoints de negocio corresponden a la fase 4.
+Monorepo para la plataforma de automatización de marketing. El dominio y su persistencia están implementados. La fase 4 incorpora los endpoints de productos y plantillas, con validación, paginación y Swagger. Campañas y publicaciones conservan su dominio y persistencia; sus endpoints corresponden a los siguientes incrementos.
 
 ## Estructura
 
@@ -43,6 +43,7 @@ pnpm install --frozen-lockfile
 pnpm setup:env
 pnpm infra:up
 pnpm db:migrate
+pnpm db:seed:dev
 pnpm dev
 ```
 
@@ -51,6 +52,8 @@ pnpm dev
 `db:migrate` aplica las migraciones versionadas mediante `prisma migrate deploy`; no resetea la base ni modifica la base independiente de n8n. El cliente Prisma se genera automáticamente al comprobar tipos, ejecutar pruebas o compilar. Consulta [persistencia comercial](docs/phase-3-commercial.md), [campañas](docs/phase-3-campaigns.md) y [publicaciones](docs/phase-3-publications.md) para sus límites y pruebas de PostgreSQL.
 
 Las aplicaciones se ejecutan en el host con recarga automática; los tres servicios de infraestructura se ejecutan en Docker. También puedes usar `pnpm dev:web` y `pnpm dev:api` por separado.
+
+`db:seed:dev` prepara una organización local y configura `DEV_ORGANIZATION_ID` en `apps/api/.env`; repetirlo conserva la organización existente. No añade productos ni plantillas. Reinicia la API después de ejecutarlo. Hasta incorporar autenticación en la fase 9, el catálogo funciona con esa organización fija en desarrollo; sin configuración responde 503 y no se permite habilitarla en producción. Swagger está en <http://localhost:3001/docs> y el contrato en <http://localhost:3001/openapi.json>. Consulta [la API de catálogo](docs/phase-4-catalog.md) para ejemplos y límites.
 
 | Servicio      | Dirección             | Salud                   |
 | ------------- | --------------------- | ----------------------- |
@@ -114,4 +117,4 @@ Los directorios antiguos pueden conservar metadatos Git o cachés protegidos por
 
 Antes de implementar funcionalidades, revisa [architecture.md](architecture.md), [fases1-4.5.md](fases1-4.5.md), [fases5-10.md](fases5-10.md) y las instrucciones `AGENTS.md` aplicables.
 
-El historial de verificación de infraestructura está en [fase 1](docs/phase-1.md), el modelo en [dominio](docs/domain.md) y el incremento actual en [fase 3: persistencia de publicaciones](docs/phase-3-publications.md).
+El historial de verificación de infraestructura está en [fase 1](docs/phase-1.md), el modelo en [dominio](docs/domain.md) y los incrementos actuales en [fase 4: API de productos y plantillas](docs/phase-4-catalog.md).

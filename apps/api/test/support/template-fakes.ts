@@ -1,4 +1,5 @@
 import type { Clock } from '#app/application/ports/clock';
+import type { Pagination, Page } from '#app/domain/pagination';
 import type { IdGenerator } from '#app/application/ports/id-generator';
 import { entityId, type EntityId } from '#app/domain/entity-id';
 import type { OrganizationLookup } from '#app/modules/templates/application/ports/organization-lookup';
@@ -52,6 +53,21 @@ export class TemplateRepositoryFake implements TemplateRepository {
   readonly records = new Map<EntityId, Template>();
   readonly revisions = new Map<EntityId, TemplateRevision>();
   readonly organizationIds: EntityId[] = [];
+
+  findById(organizationId: EntityId, templateId: EntityId): Promise<Template | null> {
+    const template = this.records.get(templateId);
+    return Promise.resolve(template?.organizationId === organizationId ? template : null);
+  }
+
+  list(organizationId: EntityId, { page, limit }: Pagination): Promise<Page<Template>> {
+    const rows = [...this.records.values()]
+      .filter((item) => item.organizationId === organizationId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id));
+    return Promise.resolve({
+      items: rows.slice((page - 1) * limit, page * limit),
+      total: rows.length,
+    });
+  }
 
   add(organizationId: EntityId, template: Template): Promise<void> {
     const revision = template.currentRevision;
