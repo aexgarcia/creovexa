@@ -3,7 +3,7 @@ import { ImageIcon, Sparkles } from 'lucide-react';
 import type { MarketingTemplate } from '../types/template.types';
 
 interface TemplatePreviewProps {
-  template: MarketingTemplate;
+  template: MarketingTemplate | Pick<MarketingTemplate, 'width' | 'height' | 'settings'>;
 }
 
 export function TemplatePreview({ template }: TemplatePreviewProps) {

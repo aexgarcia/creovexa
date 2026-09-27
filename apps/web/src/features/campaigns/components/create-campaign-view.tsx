@@ -1,4 +1,5 @@
 'use client';
+import { Megaphone, Package, LayoutGrid } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { PageHeader } from '@/components/layout/page-header';
@@ -56,11 +57,17 @@ export function CreateCampaignView() {
         title="Nueva campaña"
         description="Selecciona producto, revisión de plantilla y mensaje promocional."
       />
-      <form onSubmit={submit}>
+      <form onSubmit={submit} className="grid items-start gap-6 xl:grid-cols-[1fr_360px]">
         <fieldset
           disabled={create.isPending}
-          className="max-w-3xl space-y-5 rounded-xl border bg-card p-6"
+          className="min-w-0 space-y-6 rounded-xl border bg-card p-6"
         >
+          <div>
+            <h2 className="text-lg font-semibold">Información de la campaña</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Prepara tu mensaje y selecciona los elementos de tu promoción.
+            </p>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="campaign-title">Título</Label>
             <Input
@@ -228,6 +235,43 @@ export function CreateCampaignView() {
             </Button>
           </div>
         </fieldset>
+        <aside className="space-y-6 rounded-xl border bg-card p-6">
+          <h2 className="font-semibold">Resumen de campaña</h2>
+          <div className="flex min-h-40 flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 p-5 text-center">
+            <Megaphone className="size-10 text-primary" />
+            <p className="mt-4 break-words font-semibold">{draft.title || 'Tu próxima campaña'}</p>
+            <p className="mt-2 break-words text-sm text-muted-foreground">
+              {draft.cta || 'Agrega una llamada a la acción'}
+            </p>
+          </div>
+          <div className="flex items-start gap-3">
+            <Package className="size-5 shrink-0 text-primary" />
+            <div>
+              <p className="text-xs text-muted-foreground">Producto o servicio</p>
+              <p className="mt-1 break-words font-medium">{product?.name || 'Sin seleccionar'}</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <LayoutGrid className="size-5 shrink-0 text-primary" />
+            <div>
+              <p className="text-xs text-muted-foreground">Plantilla</p>
+              <p className="mt-1 break-words font-medium">{template?.name || 'Sin seleccionar'}</p>
+              {template && (
+                <p className="text-xs text-muted-foreground">
+                  Revisión {template.currentRevision.number}
+                </p>
+              )}
+            </div>
+          </div>
+          {draft.promotionPrice && (
+            <div className="border-t pt-5">
+              <p className="text-xs text-muted-foreground">Precio promocional</p>
+              <p className="mt-2 text-2xl font-semibold">
+                {product?.regularPrice.currency} {draft.promotionPrice}
+              </p>
+            </div>
+          )}
+        </aside>
       </form>
     </div>
   );

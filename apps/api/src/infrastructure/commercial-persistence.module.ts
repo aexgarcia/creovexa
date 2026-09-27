@@ -1,3 +1,4 @@
+import { UpdateTemplate } from '#app/modules/templates/application/use-cases/update-template';
 import { GetOrganization } from '#app/modules/organizations/application/use-cases/get-organization';
 import { Module } from '@nestjs/common';
 import type { Clock } from '#app/application/ports/clock';
@@ -22,6 +23,12 @@ import { RuntimeModule, CLOCK, ID_GENERATOR } from './runtime.module.js';
 @Module({
   imports: [DatabaseModule, RuntimeModule],
   providers: [
+    {
+      provide: UpdateTemplate,
+      inject: [PrismaTemplateRepository, ID_GENERATOR, CLOCK],
+      useFactory: (repo: PrismaTemplateRepository, ids: IdGenerator, clock: Clock) =>
+        new UpdateTemplate(repo, ids, clock),
+    },
     {
       provide: GetOrganization,
       inject: [PrismaOrganizationRepository],
@@ -107,6 +114,7 @@ import { RuntimeModule, CLOCK, ID_GENERATOR } from './runtime.module.js';
     },
   ],
   exports: [
+    UpdateTemplate,
     GetOrganization,
     GetProduct,
     ListProducts,

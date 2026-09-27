@@ -1,3 +1,4 @@
+import { TemplateRevisionConflictError } from '#app/modules/templates/domain/errors/template.errors';
 import type { Clock } from '#app/application/ports/clock';
 import type { Pagination, Page } from '#app/domain/pagination';
 import type { IdGenerator } from '#app/application/ports/id-generator';
@@ -69,6 +70,17 @@ export class TemplateRepositoryFake implements TemplateRepository {
     });
   }
 
+  async save(
+    organizationId: EntityId,
+    template: Template,
+    expectedRevisionId: EntityId,
+  ): Promise<void> {
+    const current = await this.findById(organizationId, template.id);
+    if (!current || current.currentRevision.id !== expectedRevisionId)
+      throw new TemplateRevisionConflictError();
+    this.records.set(template.id, template);
+    this.revisions.set(template.currentRevision.id, template.currentRevision);
+  }
   add(organizationId: EntityId, template: Template): Promise<void> {
     const revision = template.currentRevision;
     if (

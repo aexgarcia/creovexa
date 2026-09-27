@@ -9,5 +9,6 @@ export interface TemplateRepository {
    * Atomically insert a new template and its initial revision, scoped to organizationId.
    * Reject existing identities; never overwrite a template or revision.
    */
+  save(organizationId: EntityId, template: Template, expectedRevisionId: EntityId): Promise<void>;
   add(organizationId: EntityId, template: Template): Promise<void>;
 }

@@ -15,7 +15,7 @@ export function DashboardStats({ metrics }: DashboardStatsProps) {
         title="Campañas"
         value={metrics.campaigns.value}
         variation={metrics.campaigns.variation}
-        description="respecto al mes anterior"
+        description="campañas registradas"
         icon={Megaphone}
       />
 

@@ -14,12 +14,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 
-import type { DashboardCampaign } from '../types/dashboard.types';
+import type { DashboardSummary } from '../services/dashboard.service';
 
-import { CampaignStatusBadge } from './campaign-status-badge';
+import { Badge } from '@/components/ui/badge';
+import { campaignStatusLabels } from '@/features/campaigns/types/stored-campaign.types';
 
 interface RecentCampaignsProps {
-  campaigns: DashboardCampaign[];
+  campaigns: DashboardSummary['recentCampaigns'];
 }
 
 export function RecentCampaigns({ campaigns }: RecentCampaignsProps) {
@@ -48,21 +49,29 @@ export function RecentCampaigns({ campaigns }: RecentCampaignsProps) {
           <TableHeader>
             <TableRow>
               <TableHead>Campaña</TableHead>
-              <TableHead>Producto</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead className="text-right">Fecha</TableHead>
             </TableRow>
           </TableHeader>
 
           <TableBody>
+            {campaigns.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={3} className="py-10 text-center text-muted-foreground">
+                  Crea tu primera campaña para verla aquí.
+                </TableCell>
+              </TableRow>
+            )}
             {campaigns.map((campaign) => (
               <TableRow key={campaign.id}>
-                <TableCell className="font-medium">{campaign.name}</TableCell>
-
-                <TableCell className="text-muted-foreground">{campaign.productName}</TableCell>
+                <TableCell className="font-medium">
+                  <Link href={'/campaigns/' + campaign.id} className="hover:underline">
+                    {campaign.title}
+                  </Link>
+                </TableCell>
 
                 <TableCell>
-                  <CampaignStatusBadge status={campaign.status} />
+                  <Badge variant="secondary">{campaignStatusLabels[campaign.status]}</Badge>
                 </TableCell>
 
                 <TableCell className="text-right text-muted-foreground">

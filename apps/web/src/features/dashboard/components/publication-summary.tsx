@@ -52,7 +52,7 @@ export function PublicationSummary({ publications }: PublicationSummaryProps) {
           return (
             <div key={publication.platform} className="flex items-center gap-4">
               <div
-                className={`flex size-10 items-center justify-center rounded-xl border ${config.color || 'bg-muted/40'}`}
+                className={`flex size-10 shrink-0 items-center justify-center rounded-xl border text-white ${config.color || 'bg-muted/40'}`}
               >
                 <Icon className="size-5" />
               </div>
@@ -60,7 +60,7 @@ export function PublicationSummary({ publications }: PublicationSummaryProps) {
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{config.label}</p>
 
-                <div className="mt-1 flex gap-3 text-xs text-muted-foreground">
+                <div className="mt-1 flex flex-wrap gap-3 text-xs text-muted-foreground">
                   <span>{publication.published} publicadas</span>
 
                   <span>{publication.pending} pendientes</span>

@@ -1,4 +1,5 @@
 'use client';
+import { Package, Plus } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,7 @@ export function ProductList() {
         description="Administra los productos y servicios utilizados en tus campañas."
         actions={
           <Button nativeButton={false} render={<Link href="/products/new" />}>
-            Nuevo producto
+            <Plus className="mr-2 size-4" /> Nuevo producto
           </Button>
         }
       />
@@ -34,7 +35,15 @@ export function ProductList() {
         </div>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">{meta?.total ?? 0} productos y servicios</p>
+          <div className="flex items-center gap-4 rounded-xl border bg-card p-5">
+            <div className="rounded-xl bg-primary/10 p-3 text-primary">
+              <Package className="size-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold">{meta?.total ?? 0}</p>
+              <p className="text-sm text-muted-foreground">productos y servicios</p>
+            </div>
+          </div>
           {products?.length ? (
             <ProductTable products={products} />
           ) : page === 1 ? (
