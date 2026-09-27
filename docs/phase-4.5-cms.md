@@ -12,7 +12,7 @@ Estado: incremento de productos, plantillas, campañas y consulta de publicacion
 | Publicaciones    | Consulta paginada por campaña: estado por destino, último intento, error, ID externo y fecha real de publicación |
 | Dashboard        | Demostración identificada; métricas y actividades simuladas                                                      |
 | Cuentas sociales | Demostración identificada; no vincula cuentas reales                                                             |
-| Configuración    | Demostración identificada; cambios temporales                                                                    |
+| Configuración    | Perfil de empresa persistido: nombre, descripción y tono de marca                                                |
 | Login            | Pantalla informativa; autenticación pendiente                                                                    |
 
 ## Implementación y decisiones
@@ -59,3 +59,5 @@ Las comprobaciones finales del PR se registran al cerrar el incremento. La valid
 - ESLint conserva cinco advertencias en componentes existentes (React Hook Form y etiquetas img), sin errores.
 - PostgreSQL, MinIO y n8n estaban activos. Integración ejecutó las migraciones dos veces en un esquema temporal aislado y lo eliminó al terminar.
 - Sigue pendiente la comprobación manual completa en navegador; no se presenta como realizada.
+
+Configuración persistida: ver [el incremento de organización](phase-4.5-organization-settings.md).

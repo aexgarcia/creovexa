@@ -1,4 +1,8 @@
 import {
+  OrganizationNotFoundError,
+  InvalidOrganizationProfileError,
+} from '#app/modules/organizations/domain/errors/organization.errors';
+import {
   Catch,
   HttpException,
   Inject,
@@ -80,6 +84,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
           : 'CAMPAIGN_RESOURCE_NOT_FOUND';
       message = error.message;
     } else if (
+      error instanceof OrganizationNotFoundError ||
       error instanceof ProductNotFoundError ||
       error instanceof TemplateNotFoundError ||
       error instanceof ProductOrganizationNotFoundError ||
@@ -94,6 +99,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
             : 'ORGANIZATION_NOT_FOUND';
       message = error.message;
     } else if (
+      error instanceof InvalidOrganizationProfileError ||
       error instanceof InvalidEntityIdError ||
       error instanceof InvalidCampaignError ||
       error instanceof InvalidPromotionError ||

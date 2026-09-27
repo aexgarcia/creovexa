@@ -1,3 +1,4 @@
+import { OrganizationController } from '#app/modules/organizations/presentation/organization.controller';
 import { ConsoleLogger, Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { catalogHttpConfigProvider } from '#app/config/catalog-http.config';
@@ -15,6 +16,7 @@ import { PublicationPersistenceModule } from './publication-persistence.module.j
 @Module({
   imports: [CommercialPersistenceModule, CampaignPersistenceModule, PublicationPersistenceModule],
   controllers: [
+    OrganizationController,
     ProductsController,
     TemplatesController,
     CampaignsController,

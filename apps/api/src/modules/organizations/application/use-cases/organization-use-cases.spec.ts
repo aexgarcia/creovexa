@@ -1,4 +1,5 @@
 import { CreateOrganization } from './create-organization.js';
+import { GetOrganization } from './get-organization.js';
 import { UpdateOrganizationProfile } from './update-organization-profile.js';
 import { Organization } from '../../domain/entities/organization.js';
 import {
@@ -17,6 +18,20 @@ import {
 } from '../../../../../test/support/commercial-fakes.js';
 
 describe('Organization use cases', () => {
+  it('queries the selected profile and rejects a missing organization', async () => {
+    const repository = new OrganizationRepositoryFake();
+    await repository.add(
+      Organization.create(ORGANIZATION_ID, { name: 'Empresa' }, creationClock.now()),
+    );
+    const get = new GetOrganization(repository);
+    expect(await get.execute({ organizationId: ORGANIZATION_ID })).toMatchObject({
+      id: ORGANIZATION_ID,
+      name: 'Empresa',
+    });
+    await expect(get.execute({ organizationId: OTHER_ORGANIZATION_ID })).rejects.toThrow(
+      OrganizationNotFoundError,
+    );
+  });
   it('creates and stores a valid organization and returns an application result', async () => {
     const repository = new OrganizationRepositoryFake();
     const useCase = new CreateOrganization(

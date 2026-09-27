@@ -1,3 +1,4 @@
+import { GetOrganization } from '#app/modules/organizations/application/use-cases/get-organization';
 import { Module } from '@nestjs/common';
 import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
@@ -21,6 +22,11 @@ import { RuntimeModule, CLOCK, ID_GENERATOR } from './runtime.module.js';
 @Module({
   imports: [DatabaseModule, RuntimeModule],
   providers: [
+    {
+      provide: GetOrganization,
+      inject: [PrismaOrganizationRepository],
+      useFactory: (repository: PrismaOrganizationRepository) => new GetOrganization(repository),
+    },
     {
       provide: GetProduct,
       inject: [PrismaProductRepository],
@@ -101,6 +107,7 @@ import { RuntimeModule, CLOCK, ID_GENERATOR } from './runtime.module.js';
     },
   ],
   exports: [
+    GetOrganization,
     GetProduct,
     ListProducts,
     GetTemplate,
