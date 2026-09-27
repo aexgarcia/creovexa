@@ -58,4 +58,6 @@ Las verificaciones se limitaron a la API y a la documentación de este increment
 
 ## Alcance pendiente
 
+Este incremento se integró mediante el PR #15. El incremento siguiente incorpora [aprobación y consulta de publicaciones](phase-4-approval-publications.md), con sus contratos y verificaciones documentados por separado.
+
 La organización fija de desarrollo sigue sin representar autenticación. La generación real, edición, aprobación, regeneración, publicación y vista previa no forman parte de este incremento. El siguiente incremento aborda aprobación y consultas de publicaciones, coordinando generación y envíos con las integraciones de fases posteriores.
