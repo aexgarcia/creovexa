@@ -1,3 +1,6 @@
+import { Organization } from '#app/modules/organizations/domain/entities/organization';
+import { PrismaOrganizationRepository } from '#app/modules/organizations/infrastructure/persistence/prisma/prisma-organization.repository';
+import { OrganizationRepositoryFake, ASSET_ID, creationClock } from './support/commercial-fakes.js';
 import { randomUUID } from 'node:crypto';
 import { vi } from 'vitest';
 import { Test } from '@nestjs/testing';
@@ -36,12 +39,21 @@ const validTemplate = { name: 'Plantilla', dimensions: { width: 1080, height: 10
 describe('Catalog HTTP with real use cases', () => {
   let app: INestApplication<App>;
   let products: ProductRepositoryFake;
+  let organizations: OrganizationRepositoryFake;
   let templates: TemplateRepositoryFake;
   const context: { organizationId: string | null } = { organizationId: ORGANIZATION_ID };
   const logger = { log: vi.fn(), error: vi.fn() };
 
   beforeEach(async () => {
     products = new ProductRepositoryFake();
+    organizations = new OrganizationRepositoryFake();
+    await organizations.add(
+      Organization.create(
+        ORGANIZATION_ID,
+        { name: 'Empresa', logoAssetId: ASSET_ID },
+        creationClock.now(),
+      ),
+    );
     templates = new TemplateRepositoryFake();
     context.organizationId = ORGANIZATION_ID;
     logger.log.mockClear();
@@ -51,6 +63,8 @@ describe('Catalog HTTP with real use cases', () => {
       .useValue({ url: 'postgresql://unused:unused@127.0.0.1:1/unused', schema: 'public' })
       .overrideProvider(CATALOG_HTTP_CONFIG)
       .useValue(context)
+      .overrideProvider(PrismaOrganizationRepository)
+      .useValue(organizations)
       .overrideProvider(PrismaProductRepository)
       .useValue(products)
       .overrideProvider(PrismaTemplateRepository)
@@ -66,6 +80,50 @@ describe('Catalog HTTP with real use cases', () => {
   });
   afterEach(async () => {
     await app?.close();
+  });
+
+  it('reads and updates only the contextual organization while preserving its logo', async () => {
+    await request(app.getHttpServer()).get('/organization').expect(200);
+    const response = await request(app.getHttpServer())
+      .patch('/organization')
+      .send({ name: ' Nueva empresa ', description: 'Perfil', brandTone: 'Cercano' })
+      .expect(200);
+    expect(response.body.data).toMatchObject({
+      id: ORGANIZATION_ID,
+      name: 'Nueva empresa',
+      description: 'Perfil',
+      brandTone: 'Cercano',
+      logoAssetId: ASSET_ID,
+    });
+    const cleared = await request(app.getHttpServer())
+      .patch('/organization')
+      .send({ brandTone: null })
+      .expect(200);
+    expect(cleared.body.data.brandTone).toBeNull();
+    expect(cleared.body.data.name).toBe('Nueva empresa');
+  });
+  it.each([
+    {},
+    { name: ' ' },
+    { name: null },
+    { description: null },
+    { brandTone: 42 },
+    { name: 'x'.repeat(201) },
+    { description: 'x'.repeat(5001) },
+    { brandTone: 'x'.repeat(201) },
+    { organizationId: OTHER_ORGANIZATION_ID },
+    { logoAssetId: ASSET_ID },
+    { primaryColor: '#ffffff' },
+  ])('rejects invalid profile patch %j', async (body) => {
+    await request(app.getHttpServer()).patch('/organization').send(body).expect(400);
+    expect(organizations.records.get(ORGANIZATION_ID)?.name).toBe('Empresa');
+  });
+  it('returns not found for a missing contextual organization and refuses an absent context', async () => {
+    context.organizationId = OTHER_ORGANIZATION_ID;
+    await request(app.getHttpServer()).get('/organization').expect(404);
+    await request(app.getHttpServer()).patch('/organization').send({ name: 'Other' }).expect(404);
+    context.organizationId = null;
+    await request(app.getHttpServer()).get('/organization').expect(503);
   });
 
   it('creates, reads, lists and partially updates a product through the real use cases', async () => {

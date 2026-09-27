@@ -1,51 +1,31 @@
-import { companySettingsMock } from '../mocks/company-settings.mock';
-
-import type { CompanySettings, UpdateCompanySettingsInput } from '../types/company-settings.types';
-
-let companySettings = {
-  ...companySettingsMock,
+import { apiRequest } from '@/lib/api-client';
+export interface OrganizationSettings {
+  id: string;
+  name: string;
+  description: string;
+  brandTone: string | null;
+  logoAssetId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+export type UpdateOrganizationSettings = Pick<
+  OrganizationSettings,
+  'name' | 'description' | 'brandTone'
+>;
+export const companySettingsService = {
+  async get(signal?: AbortSignal): Promise<OrganizationSettings> {
+    return (await apiRequest<{ data: OrganizationSettings }>('/organization', { signal })).data;
+  },
+  async update(input: UpdateOrganizationSettings): Promise<OrganizationSettings> {
+    return (
+      await apiRequest<{ data: OrganizationSettings }>('/organization', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          name: input.name,
+          description: input.description,
+          brandTone: input.brandTone,
+        }),
+      })
+    ).data;
+  },
 };
-
-function delay(ms = 400) {
-  return new Promise<void>((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-class CompanySettingsService {
-  async get(): Promise<CompanySettings> {
-    await delay();
-
-    return {
-      ...companySettings,
-    };
-  }
-
-  async update(input: UpdateCompanySettingsInput): Promise<CompanySettings> {
-    await delay();
-
-    companySettings = {
-      ...companySettings,
-
-      businessName: input.businessName,
-
-      description: input.description,
-
-      logoUrl: input.logoUrl || null,
-
-      brandTone: input.brandTone,
-
-      primaryColor: input.primaryColor,
-
-      defaultCta: input.defaultCta,
-
-      updatedAt: new Date().toISOString(),
-    };
-
-    return {
-      ...companySettings,
-    };
-  }
-}
-
-export const companySettingsService = new CompanySettingsService();

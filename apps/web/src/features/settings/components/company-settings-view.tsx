@@ -1,81 +1,106 @@
 'use client';
-
-import { toast } from 'sonner';
-
+import { useState, type FormEvent } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
-
-import { Skeleton } from '@/components/ui/skeleton';
-
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
 import { useCompanySettings } from '../hooks/use-company-settings';
-
 import { useUpdateCompanySettings } from '../hooks/use-update-company-settings';
-
-import type { CompanySettingsFormValues } from '../schemas/company-settings.schema';
-
-import { CompanySettingsForm } from './company-settings-form';
+import type { OrganizationSettings } from '../services/company-settings.service';
 
 export function CompanySettingsView() {
-  const { data: settings, isLoading, isError } = useCompanySettings();
-
-  const updateSettings = useUpdateCompanySettings();
-
-  if (isLoading) {
+  const query = useCompanySettings();
+  if (query.isLoading) return <p role="status">Cargando configuración…</p>;
+  if (query.error || !query.data)
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-72" />
-
-        <Skeleton className="h-[650px] w-full" />
+      <div role="alert">
+        <p>{query.error?.message ?? 'No se encontró la organización.'}</p>
+        <Button onClick={() => void query.refetch()}>Reintentar</Button>
       </div>
     );
-  }
-
-  if (isError || !settings) {
-    return (
-      <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6 text-sm text-destructive">
-        No se pudo cargar la configuración.
-      </div>
-    );
-  }
-
-  async function handleSubmit(values: CompanySettingsFormValues) {
-    try {
-      await updateSettings.mutateAsync(values);
-
-      toast.success('Configuración actualizada correctamente');
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'No se pudo actualizar la configuración',
-      );
-    }
-  }
-
   return (
     <div className="space-y-6">
-      <p role="note" className="rounded-lg border bg-muted p-4 text-sm">
-        Vista de demostración: los cambios solo se guardan temporalmente y se perderán al recargar.
-      </p>
       <PageHeader
-        title="Configuración"
-        description="Administra la identidad y preferencias de tu empresa."
+        title="Configuración de empresa"
+        description="Información utilizada para preparar tus campañas."
       />
-
-      <CompanySettingsForm
-        defaultValues={{
-          businessName: settings.businessName,
-
-          description: settings.description,
-
-          logoUrl: settings.logoUrl ?? '',
-
-          brandTone: settings.brandTone,
-
-          primaryColor: settings.primaryColor,
-
-          defaultCta: settings.defaultCta,
-        }}
-        onSubmit={handleSubmit}
-        isSubmitting={updateSettings.isPending}
-      />
+      <OrganizationForm key={query.data.id} settings={query.data} />
     </div>
+  );
+}
+function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
+  const [name, setName] = useState(settings.name);
+  const [description, setDescription] = useState(settings.description);
+  const [tone, setTone] = useState(settings.brandTone ?? '');
+  const [message, setMessage] = useState('');
+  const update = useUpdateCompanySettings();
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (update.isPending) return;
+    setMessage('');
+    update.reset();
+    if (!name.trim()) {
+      setMessage('Introduce el nombre de la empresa.');
+      return;
+    }
+    try {
+      const saved = await update.mutateAsync({
+        name: name.trim(),
+        description: description.trim(),
+        brandTone: tone.trim() || null,
+      });
+      setName(saved.name);
+      setDescription(saved.description);
+      setTone(saved.brandTone ?? '');
+      setMessage('Configuración guardada correctamente.');
+    } catch {
+      /* The mutation displays its safe error below. */
+    }
+  }
+  return (
+    <form onSubmit={submit} className="max-w-2xl space-y-5 rounded-xl border bg-card p-6">
+      <fieldset disabled={update.isPending} className="space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="organization-name">Nombre de empresa</Label>
+          <Input
+            id="organization-name"
+            required
+            maxLength={200}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="organization-description">Descripción</Label>
+          <Textarea
+            id="organization-description"
+            maxLength={5000}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="organization-tone">Tono de marca (opcional)</Label>
+          <Input
+            id="organization-tone"
+            maxLength={200}
+            placeholder="Ej. cercano y profesional"
+            value={tone}
+            onChange={(e) => setTone(e.target.value)}
+          />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          La edición del logo, el color y el CTA predeterminado estará disponible próximamente.
+        </p>
+        {update.error && (
+          <p role="alert" className="text-destructive">
+            {update.error.message}
+          </p>
+        )}
+        {message && <p role="status">{message}</p>}
+        <Button type="submit">{update.isPending ? 'Guardando…' : 'Guardar cambios'}</Button>
+      </fieldset>
+    </form>
   );
 }

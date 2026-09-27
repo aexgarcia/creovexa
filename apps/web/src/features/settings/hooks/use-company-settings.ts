@@ -8,6 +8,7 @@ export function useCompanySettings() {
   return useQuery({
     queryKey: ['company-settings'],
 
-    queryFn: () => companySettingsService.get(),
+    queryFn: ({ signal }) => companySettingsService.get(signal),
+    retry: false,
   });
 }

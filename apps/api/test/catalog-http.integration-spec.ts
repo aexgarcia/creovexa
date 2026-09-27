@@ -74,6 +74,28 @@ describe('Catalog HTTP with PostgreSQL', () => {
     await app?.close();
   });
 
+  it('persists the organization profile and preserves a different organization', async () => {
+    const other = await module.get(CreateOrganization).execute({ name: 'Other organization' });
+    await request(app.getHttpServer())
+      .patch('/organization')
+      .send({
+        name: 'Saved organization',
+        description: 'Stored profile',
+        brandTone: 'Professional',
+      })
+      .expect(200);
+    const saved = await request(app.getHttpServer()).get('/organization').expect(200);
+    expect(saved.body.data).toMatchObject({
+      id: context.organizationId,
+      name: 'Saved organization',
+      description: 'Stored profile',
+      brandTone: 'Professional',
+    });
+    context.organizationId = entityId(other.id);
+    const untouched = await request(app.getHttpServer()).get('/organization').expect(200);
+    expect(untouched.body.data.name).toBe('Other organization');
+  });
+
   async function campaignInput() {
     const organizationId = context.organizationId!;
     const product = await module.get(CreateProduct).execute({
