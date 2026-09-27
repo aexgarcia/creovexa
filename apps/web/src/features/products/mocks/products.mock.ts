@@ -1,0 +1,48 @@
+// Original design examples; the product screens now use the API.
+
+export const productsMock = [
+  {
+    id: 'prd-001',
+    name: 'Plan Premium',
+    description: 'Servicio premium con atención personalizada y beneficios adicionales.',
+    regularPrice: 120,
+    promotionPrice: 99,
+    imageUrl: null,
+    isActive: true,
+    createdAt: '2026-09-20T10:00:00',
+    updatedAt: '2026-09-22T15:30:00',
+  },
+  {
+    id: 'prd-002',
+    name: 'Pack Empresarial',
+    description: 'Paquete orientado a pequeñas empresas que necesitan promocionar sus servicios.',
+    regularPrice: 250,
+    promotionPrice: null,
+    imageUrl: null,
+    isActive: true,
+    createdAt: '2026-09-18T12:30:00',
+    updatedAt: '2026-09-18T12:30:00',
+  },
+  {
+    id: 'prd-003',
+    name: 'Plan Básico',
+    description: 'Alternativa económica para campañas promocionales básicas.',
+    regularPrice: 60,
+    promotionPrice: 49,
+    imageUrl: null,
+    isActive: false,
+    createdAt: '2026-09-15T09:15:00',
+    updatedAt: '2026-09-21T11:20:00',
+  },
+  {
+    id: 'prd-004',
+    name: 'Servicio Social Ads',
+    description: 'Gestión y preparación de contenido promocional para redes sociales.',
+    regularPrice: 180,
+    promotionPrice: 150,
+    imageUrl: null,
+    isActive: true,
+    createdAt: '2026-09-14T14:00:00',
+    updatedAt: '2026-09-20T17:10:00',
+  },
+];
