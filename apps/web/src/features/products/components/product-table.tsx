@@ -1,3 +1,4 @@
+import { Package } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -10,7 +11,7 @@ import type { Product } from '../types/product.types';
 import { ProductActions } from './product-actions';
 export function ProductTable({ products }: { products: Product[] }) {
   return (
-    <div className="overflow-x-auto rounded-xl border">
+    <div className="overflow-x-auto rounded-xl border bg-card">
       <Table>
         <TableHeader>
           <TableRow>
@@ -27,7 +28,12 @@ export function ProductTable({ products }: { products: Product[] }) {
           {products.map((product) => (
             <TableRow key={product.id}>
               <TableCell>
-                <p className="font-medium">{product.name}</p>
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <Package className="size-5 text-muted-foreground" />
+                  </div>
+                  <p className="font-medium">{product.name}</p>
+                </div>
                 <p className="max-w-md truncate text-xs text-muted-foreground">
                   {product.description}
                 </p>

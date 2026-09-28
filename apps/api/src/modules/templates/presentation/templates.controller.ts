@@ -1,3 +1,6 @@
+import { Patch } from '@nestjs/common';
+import { UpdateTemplate } from '../application/use-cases/update-template.js';
+import { UpdateTemplateRequest } from './update-template.request.js';
 import {
   Body,
   Controller,
@@ -37,10 +40,25 @@ import { TemplateEnvelope, TemplatePageResponse, templateResponse } from './temp
 @Controller('templates')
 export class TemplatesController {
   constructor(
+    @Inject(UpdateTemplate) private readonly updateTemplate: UpdateTemplate,
     @Inject(CreateTemplate) private readonly createTemplate: CreateTemplate,
     @Inject(GetTemplate) private readonly getTemplate: GetTemplate,
     @Inject(ListTemplates) private readonly listTemplates: ListTemplates,
   ) {}
+  @Patch(':id')
+  @ApiBody({ type: UpdateTemplateRequest })
+  @ApiOkResponse({ type: TemplateEnvelope })
+  async update(
+    @OrganizationId() organizationId: string,
+    @Param('id', new ParseUUIDPipe()) templateId: string,
+    @Body(validateRequest(UpdateTemplateRequest)) body: UpdateTemplateRequest,
+  ): Promise<TemplateEnvelope> {
+    return {
+      data: templateResponse(
+        await this.updateTemplate.execute({ ...body, organizationId, templateId }),
+      ),
+    };
+  }
   @Post()
   @ApiOperation({ summary: 'Crear plantilla con su revisión inicial' })
   @ApiBody({ type: CreateTemplateRequest })

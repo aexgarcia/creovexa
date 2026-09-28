@@ -1,47 +1,38 @@
-import { campaignService } from '@/features/campaigns/services/campaign.service';
-
-import type { PublicationRecord } from '../types/publication.types';
-
-class PublicationService {
-  async findAll(): Promise<PublicationRecord[]> {
-    const campaigns = await campaignService.findAll();
-
-    const publications = campaigns.flatMap((campaign) =>
-      campaign.publications.map(
-        (publication): PublicationRecord => ({
-          id: publication.id,
-
-          campaignId: campaign.id,
-
-          campaignName: campaign.name,
-
-          platform: publication.platform,
-
-          status: publication.status,
-
-          externalPublicationId: publication.externalPublicationId,
-
-          externalUrl: publication.externalUrl,
-
-          failureReason: publication.failureReason,
-
-          /*
-           * Temporalmente usamos
-           * updatedAt de Campaign.
-           *
-           * Cuando tengamos backend,
-           * Publication tendrá su
-           * propio publishedAt.
-           */
-          publishedAt: campaign.updatedAt,
-        }),
-      ),
-    );
-
-    return publications.sort(
-      (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime(),
-    );
-  }
+import { apiRequest, type ApiPage } from '@/lib/api-client';
+export interface PublicationSummary {
+  id: string;
+  campaignId: string;
+  campaignTitle: string;
+  platform: string;
+  status: string;
+  socialAccountId: string;
+  failureCode: string | null;
+  externalPostId: string | null;
+  publishedAt: string | null;
+  createdAt: string;
 }
-
-export const publicationService = new PublicationService();
+export interface PublicationAttemptSummary {
+  id: string;
+  number: number;
+  startedAt: string;
+  result: {
+    status: string;
+    failureCode: string | null;
+    externalPostId: string | null;
+    recordedAt: string;
+  } | null;
+}
+export const publicationService = {
+  findAll(page = 1, signal?: AbortSignal): Promise<ApiPage<PublicationSummary>> {
+    return apiRequest(`/publications?page=${page}&limit=20`, { signal });
+  },
+  attempts(
+    id: string,
+    page = 1,
+    signal?: AbortSignal,
+  ): Promise<ApiPage<PublicationAttemptSummary>> {
+    return apiRequest(`/publications/${encodeURIComponent(id)}/attempts?page=${page}&limit=20`, {
+      signal,
+    });
+  },
+};

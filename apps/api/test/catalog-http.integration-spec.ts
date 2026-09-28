@@ -96,6 +96,69 @@ describe('Catalog HTTP with PostgreSQL', () => {
     expect(untouched.body.data.name).toBe('Other organization');
   });
 
+  it('returns real scoped totals including empty organizations', async () => {
+    const empty = await request(app.getHttpServer()).get('/dashboard').expect(200);
+    expect(empty.body.data.totals).toEqual({
+      products: 0,
+      templates: 0,
+      campaigns: 0,
+      published: 0,
+      pendingApproval: 0,
+    });
+    const own = context.organizationId!;
+    await request(app.getHttpServer())
+      .post('/campaigns')
+      .send(await campaignInput())
+      .expect(201);
+    const totals = await request(app.getHttpServer()).get('/dashboard').expect(200);
+    expect(totals.body.data.totals).toMatchObject({
+      products: 1,
+      templates: 1,
+      campaigns: 1,
+      pendingApproval: 0,
+    });
+    expect(totals.body.data.campaignsByStatus).toEqual([{ status: 'DRAFT', count: 1 }]);
+    context.organizationId = entityId(
+      (await module.get(CreateOrganization).execute({ name: 'Other dashboard' })).id,
+    );
+    const other = await request(app.getHttpServer())
+      .get('/dashboard')
+      .set('X-Organization-Id', own)
+      .expect(200);
+    expect(other.body.data.totals.campaigns).toBe(0);
+  });
+  it('edits templates atomically, detects concurrent revisions and preserves pinned campaigns', async () => {
+    const input = await campaignInput();
+    const campaign = await request(app.getHttpServer()).post('/campaigns').send(input).expect(201);
+    clock.value = LATER;
+    const responses = await Promise.all(
+      ['One', 'Two'].map((name) =>
+        request(app.getHttpServer())
+          .patch('/templates/' + input.templateId)
+          .send({ name, expectedRevisionId: input.templateRevisionId }),
+      ),
+    );
+    expect(responses.map((r) => r.status).sort()).toEqual([200, 409]);
+    expect(await database.templateRevision.count({ where: { templateId: input.templateId } })).toBe(
+      2,
+    );
+    const read = await request(app.getHttpServer())
+      .get('/templates/' + input.templateId)
+      .expect(200);
+    expect(read.body.data.currentRevision.number).toBe(2);
+    const pinned = await request(app.getHttpServer())
+      .get('/campaigns/' + campaign.body.data.id)
+      .expect(200);
+    expect(pinned.body.data.templateRevisionId).toBe(input.templateRevisionId);
+    context.organizationId = entityId(
+      (await module.get(CreateOrganization).execute({ name: 'Other template' })).id,
+    );
+    await request(app.getHttpServer())
+      .patch('/templates/' + input.templateId)
+      .send({ name: 'Foreign', expectedRevisionId: read.body.data.currentRevision.id })
+      .expect(404);
+  });
+
   async function campaignInput() {
     const organizationId = context.organizationId!;
     const product = await module.get(CreateProduct).execute({
@@ -188,6 +251,31 @@ describe('Catalog HTTP with PostgreSQL', () => {
       await repositories.campaigns.save(own, publishing, approved.version);
       for (const publication of publications) await repositories.publications.add(own, publication);
     });
+    const globalPage = await request(app.getHttpServer())
+      .get('/publications?limit=1&page=2')
+      .expect(200);
+    expect(globalPage.body.meta).toMatchObject({ total: 2, totalPages: 2 });
+    expect(globalPage.body.data[0]).toMatchObject({ campaignId: candidate.id, publishedAt: null });
+    const destination = publications[0]!;
+    const started = destination.startAttempt(randomUUID(), NOW);
+    const finished = started.recordSuccess(started.attempt!.id, 'external-post', LATER);
+    await module.get<PublicationTransaction>(PUBLICATION_TRANSACTION).run(async (repositories) => {
+      await repositories.publications.save(own, started, destination.version);
+      await repositories.publications.save(own, finished, started.version);
+      await repositories.campaigns.save(
+        own,
+        publishing.recordPublicationSummary(summary(finished, publications[1]!), LATER),
+        publishing.version,
+      );
+    });
+    const attempts = await request(app.getHttpServer())
+      .get('/publications/' + destination.id + '/attempts')
+      .expect(200);
+    expect(attempts.body.data).toMatchObject([
+      { number: 1, result: { status: 'PUBLISHED', externalPostId: 'external-post' } },
+    ]);
+    const realTotals = await request(app.getHttpServer()).get('/dashboard').expect(200);
+    expect(realTotals.body.data.totals.published).toBe(1);
     const path = `/campaigns/${candidate.id}/publications`;
     const page = await request(app.getHttpServer())
       .get(path + '?page=2&limit=1')
@@ -200,7 +288,7 @@ describe('Catalog HTTP with PostgreSQL', () => {
     );
     expect(page.body).toMatchObject({
       meta: { page: 2, limit: 1, total: 2, totalPages: 2 },
-      data: [{ status: 'PENDING', attempt: null, failureCode: null, externalPostId: null }],
+      data: [{ campaignId: candidate.id }],
     });
     const empty = await request(app.getHttpServer())
       .get(path + '?page=3&limit=1')
@@ -210,6 +298,11 @@ describe('Catalog HTTP with PostgreSQL', () => {
       (await module.get(CreateOrganization).execute({ name: 'Ajena' })).id,
     );
     await request(app.getHttpServer()).get(path).expect(404);
+    await request(app.getHttpServer())
+      .get('/publications/' + destination.id + '/attempts')
+      .expect(404);
+    const isolated = await request(app.getHttpServer()).get('/publications').expect(200);
+    expect(isolated.body.meta.total).toBe(0);
     context.organizationId = own;
     const draft = await request(app.getHttpServer())
       .post('/campaigns')

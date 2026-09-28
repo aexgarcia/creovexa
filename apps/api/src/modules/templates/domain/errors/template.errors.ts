@@ -32,3 +32,10 @@ export class InvalidTemplateRevisionError extends Error {
     this.name = 'InvalidTemplateRevisionError';
   }
 }
+
+export class TemplateRevisionConflictError extends Error {
+  constructor() {
+    super('La plantilla cambió. Actualiza antes de guardar.');
+    this.name = 'TemplateRevisionConflictError';
+  }
+}

@@ -1,4 +1,5 @@
 'use client';
+import { LayoutGrid, Plus } from 'lucide-react';
 import { useState } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
@@ -18,11 +19,21 @@ export function TemplateList() {
         description="Administra las plantillas y consulta sus revisiones."
         actions={
           <Button nativeButton={false} render={<Link href="/templates/new" />}>
-            Nueva plantilla
+            <Plus className="mr-2 size-4" /> Nueva plantilla
           </Button>
         }
       />
-      {meta && <p className="text-sm text-muted-foreground">{meta.total} plantillas</p>}
+      {meta && (
+        <div className="flex items-center gap-4 rounded-xl border bg-card p-5">
+          <div className="rounded-xl bg-primary/10 p-3 text-primary">
+            <LayoutGrid className="size-6" />
+          </div>
+          <div>
+            <p className="text-2xl font-semibold">{meta?.total ?? 0}</p>
+            <p className="text-sm text-muted-foreground">plantillas</p>
+          </div>
+        </div>
+      )}
       {isLoading && <Skeleton className="h-64 w-full" />}
       {error && (
         <div role="alert" className="space-y-3">

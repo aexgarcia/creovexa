@@ -4,16 +4,16 @@ Estado: incremento de productos, plantillas, campañas y consulta de publicacion
 
 ## Pantallas
 
-| Área             | Comportamiento                                                                                                   |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Productos        | Listado paginado, creación, consulta y edición persistidos                                                       |
-| Plantillas       | Creación 1080 × 1080, listado y detalle de revisión persistidos; edición visual pendiente                        |
-| Campañas         | Creación con revisión fija de plantilla, listado, detalle del contenido candidato y aprobación por contentId     |
-| Publicaciones    | Consulta paginada por campaña: estado por destino, último intento, error, ID externo y fecha real de publicación |
-| Dashboard        | Demostración identificada; métricas y actividades simuladas                                                      |
-| Cuentas sociales | Demostración identificada; no vincula cuentas reales                                                             |
-| Configuración    | Perfil de empresa persistido: nombre, descripción y tono de marca                                                |
-| Login            | Pantalla informativa; autenticación pendiente                                                                    |
+| Área             | Comportamiento                                                                                               |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| Productos        | Listado paginado, creación, consulta y edición persistidos                                                   |
+| Plantillas       | Creación 1080 × 1080, edición de nombre con revisión nueva y vista del formato                               |
+| Campañas         | Creación con revisión fija de plantilla, listado, detalle del contenido candidato y aprobación por contentId |
+| Publicaciones    | Listado global y por campaña, estados/errores e historial paginado de intentos                               |
+| Dashboard        | Totales reales, estados por plataforma y campañas recientes                                                  |
+| Cuentas sociales | Disponibilidad explícita; conexión real pendiente de fase 8                                                  |
+| Configuración    | Perfil de empresa persistido: nombre, descripción y tono de marca                                            |
+| Login            | Pantalla informativa; autenticación pendiente                                                                |
 
 ## Implementación y decisiones
 
@@ -61,3 +61,5 @@ Las comprobaciones finales del PR se registran al cerrar el incremento. La valid
 - Sigue pendiente la comprobación manual completa en navegador; no se presenta como realizada.
 
 Configuración persistida: ver [el incremento de organización](phase-4.5-organization-settings.md).
+
+Estado actualizado del cierre local y dependencias: [phase-4.5-completion.md](phase-4.5-completion.md). No abrir nuevos PR hasta completar la fase, según instrucción del usuario.

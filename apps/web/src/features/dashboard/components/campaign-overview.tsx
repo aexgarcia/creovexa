@@ -2,37 +2,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 import { Progress } from '@/components/ui/progress';
 
-import type { CampaignStatusSummary } from '../types/dashboard.types';
+import type { DashboardSummary } from '../services/dashboard.service';
+import { campaignStatusLabels } from '@/features/campaigns/types/stored-campaign.types';
 
 interface CampaignOverviewProps {
-  data: CampaignStatusSummary;
+  data: DashboardSummary['campaignsByStatus'];
 }
 
 export function CampaignOverview({ data }: CampaignOverviewProps) {
-  const total = data.draft + data.pendingApproval + data.approved + data.published + data.failed;
-
-  const items = [
-    {
-      label: 'Publicadas',
-      value: data.published,
-    },
-    {
-      label: 'Pendientes de aprobación',
-      value: data.pendingApproval,
-    },
-    {
-      label: 'Aprobadas',
-      value: data.approved,
-    },
-    {
-      label: 'Borradores',
-      value: data.draft,
-    },
-    {
-      label: 'Fallidas',
-      value: data.failed,
-    },
-  ];
+  const total = data.reduce((sum, row) => sum + row.count, 0);
+  const items = Object.entries(campaignStatusLabels).map(([status, label]) => ({
+    label,
+    value: data.find((row) => row.status === status)?.count ?? 0,
+  }));
 
   return (
     <Card>

@@ -61,6 +61,12 @@ export class Template {
     return new Template({ ...this.#state, currentRevision, updatedAt });
   }
 
+  revise(id: string, name: string, at: Date): Template {
+    if (typeof name !== 'string' || !name.trim()) throw new InvalidTemplateNameError();
+    const revised = this.createRevision(id, this.currentRevision.dimensions, at);
+    return new Template({ ...revised.#state, name: name.trim() });
+  }
+
   static restore(
     id: string,
     organizationId: string,

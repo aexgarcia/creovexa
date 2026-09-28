@@ -1,3 +1,5 @@
+import { PublicationNotFoundError } from '#app/modules/publications/application/publication-history-reader';
+import { TemplateRevisionConflictError } from '#app/modules/templates/domain/errors/template.errors';
 import {
   OrganizationNotFoundError,
   InvalidOrganizationProfileError,
@@ -74,14 +76,17 @@ export class ApiExceptionFilter implements ExceptionFilter {
       message = error.message;
       details = error.details;
     } else if (
+      error instanceof PublicationNotFoundError ||
       error instanceof CampaignNotFoundError ||
       error instanceof CampaignResourceNotFoundError
     ) {
       status = 404;
       code =
-        error instanceof CampaignNotFoundError
-          ? 'CAMPAIGN_NOT_FOUND'
-          : 'CAMPAIGN_RESOURCE_NOT_FOUND';
+        error instanceof PublicationNotFoundError
+          ? 'PUBLICATION_NOT_FOUND'
+          : error instanceof CampaignNotFoundError
+            ? 'CAMPAIGN_NOT_FOUND'
+            : 'CAMPAIGN_RESOURCE_NOT_FOUND';
       message = error.message;
     } else if (
       error instanceof OrganizationNotFoundError ||
@@ -119,6 +124,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
       error instanceof InvalidCampaignTransitionError ||
       error instanceof ContentRevisionMismatchError ||
       error instanceof ConcurrentCampaignModificationError ||
+      error instanceof TemplateRevisionConflictError ||
       error instanceof PersistenceConflictError ||
       error instanceof PersistenceReferenceError
     ) {

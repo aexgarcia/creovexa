@@ -1,3 +1,4 @@
+import { TemplateRevisionConflictError } from '../../../domain/errors/template.errors.js';
 import type { EntityId } from '#app/domain/entity-id';
 import { pagination, type Page, type Pagination } from '#app/domain/pagination';
 import type { PrismaClient } from '#app/infrastructure/persistence/prisma/generated/client';
@@ -41,6 +42,32 @@ export class PrismaTemplateRepository implements TemplateRepository {
       },
       { isolationLevel: 'RepeatableRead' },
     );
+  }
+
+  async save(
+    organizationId: EntityId,
+    template: Template,
+    expectedRevisionId: EntityId,
+  ): Promise<void> {
+    if (template.organizationId !== organizationId) throw new PersistenceScopeError();
+    const row = TemplateMapper.toPersistence(template);
+    try {
+      await this.client.$transaction(async (tx) => {
+        const changed = await tx.template.updateMany({
+          where: { id: template.id, organizationId, currentRevisionId: expectedRevisionId },
+          data: {
+            name: template.name,
+            currentRevisionId: template.currentRevision.id,
+            updatedAt: template.updatedAt,
+          },
+        });
+        if (changed.count !== 1) throw new TemplateRevisionConflictError();
+        await tx.templateRevision.create({ data: row.revision });
+      });
+    } catch (error) {
+      if (error instanceof TemplateRevisionConflictError) throw error;
+      translatePrismaError(error);
+    }
   }
 
   async add(organizationId: EntityId, template: Template): Promise<void> {

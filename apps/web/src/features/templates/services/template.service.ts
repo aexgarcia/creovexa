@@ -2,6 +2,18 @@ import { apiRequest, type ApiPage } from '@/lib/api-client';
 import type { CreateStoredTemplateInput, StoredTemplate } from '../types/stored-template.types';
 
 class TemplateService {
+  async update(
+    id: string,
+    input: { name: string; expectedRevisionId: string },
+  ): Promise<StoredTemplate> {
+    return (
+      await apiRequest<{ data: StoredTemplate }>(`/templates/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(input),
+      })
+    ).data;
+  }
+
   findAll(page = 1, signal?: AbortSignal): Promise<ApiPage<StoredTemplate>> {
     return apiRequest(`/templates?page=${page}&limit=20`, { signal });
   }
