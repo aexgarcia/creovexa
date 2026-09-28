@@ -44,4 +44,6 @@ Resultados: 383 pruebas unitarias API, 67 PostgreSQL, 92 HTTP y 23 web correctas
 
 El PR de este incremento depende del cierre del CMS en #20. Mientras ese PR siga abierto, la base es `feat/cms-phase-4-5-completion` para mostrar únicamente el incremento de copy; después de integrarlo se debe cambiar la base a main y verificar el diff antes de fusionar.
 
+CI también escucha PR dirigidos a `feat/**` para validar incrementos dependientes antes de integrarlos en main, conservando los mismos permisos y verificaciones.
+
 El siguiente módulo es la generación y composición de imagen de fase 6: consumir el copy persistido, generar y almacenar assets y formar GeneratedContent sin relajar las reglas de aprobación. La creatividad de copy puede ampliarse posteriormente con una estrategia explícita de verificación de hechos.
