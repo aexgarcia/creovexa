@@ -3,7 +3,6 @@ import type { OpenAICopyConfig } from '#app/config/openai.config';
 import type { GenerationSnapshotData } from '../domain/value-objects/generation-snapshot.js';
 import { CopyGenerationError, type CopyGenerator } from '../application/ports/copy-generator.js';
 import { copyChoices, validateCopy } from '../application/copy-policy.js';
-export const COPY_GENERATOR = Symbol('COPY_GENERATOR');
 interface CopyLogger {
   log(event: { event: string; attempt: number; code?: string }): void;
 }

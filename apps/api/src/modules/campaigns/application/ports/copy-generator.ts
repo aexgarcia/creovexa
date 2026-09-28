@@ -1,3 +1,4 @@
+export const COPY_GENERATOR = Symbol('COPY_GENERATOR');
 import type { GenerationSnapshotData } from '../../domain/value-objects/generation-snapshot.js';
 export interface CampaignCopy {
   headline: string;

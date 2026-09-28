@@ -1,4 +1,4 @@
-import { COPY_GENERATOR } from '#app/modules/campaigns/infrastructure/openai-copy-generator';
+import { COPY_GENERATOR } from '#app/modules/campaigns/application/ports/copy-generator';
 import { copyChoices } from '#app/modules/campaigns/application/copy-policy';
 import type { GenerationSnapshotData } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
 import { PrismaCampaignCopyRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign-copy.repository';
