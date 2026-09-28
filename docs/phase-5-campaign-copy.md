@@ -2,7 +2,7 @@
 
 ## Alcance de este incremento
 
-Generación y consulta de copy persistido, adapter OpenAI con salida estructurada y tarjeta «Texto de campaña» en el detalle del CMS. El diseño de los módulos se conserva. No incluye imagen, renderizado, n8n, publicación ni OAuth.
+Generación y consulta de copy persistido, adapters Gemini/OpenAI con salida estructurada y tarjeta «Texto de campaña» en el detalle del CMS. Gemini es el proveedor predeterminado para pruebas; se selecciona mediante COPY_PROVIDER. El diseño de los módulos se conserva. No incluye imagen, renderizado, n8n, publicación ni OAuth.
 
 - `POST /campaigns/:id/copy`: desde DRAFT congela los datos y comienza una generación; desde GENERATING recupera el resultado o reintenta un trabajo fallido. Devuelve headline, caption, cta, hashtags, imagePrompt y generationId.
 - `GET /campaigns/:id/copy`: consulta el texto de la generación vigente; devuelve `data: null` si no hay resultado.
@@ -23,8 +23,8 @@ El adapter utiliza [Structured Outputs de Responses API](https://developers.open
 ## Configuración local
 
 1. Aplicar la nueva migración con `pnpm db:migrate`.
-2. Configurar `OPENAI_API_KEY` y `OPENAI_COPY_MODEL` en `apps/api/.env`, con un modelo disponible en tu cuenta que admita Structured Outputs. No guardar la clave en Git ni usar una variable NEXT_PUBLIC.
-3. Opcional: `OPENAI_COPY_TIMEOUT_MS=20000` (por intento, rango 100–40000).
+2. Configurar `COPY_PROVIDER=gemini`, `GEMINI_API_KEY` y `GEMINI_COPY_MODEL=gemini-2.5-flash-lite` en `apps/api/.env` siguiendo la [guía de Gemini](gemini-copy-setup.md). Para OpenAI, seleccionar explícitamente `COPY_PROVIDER=openai` y configurar `OPENAI_API_KEY` y `OPENAI_COPY_MODEL`. No guardar claves en Git ni usar variables NEXT_PUBLIC.
+3. Opcional: `GEMINI_COPY_TIMEOUT_MS=20000` u `OPENAI_COPY_TIMEOUT_MS=20000` según el proveedor (por intento, rango 100–40000).
 4. Reiniciar la API y abrir una campaña en borrador. Pulsar «Generar texto».
 
 Sin configuración, la consulta sigue disponible y la generación responde 503 sin modificar el borrador. No se sustituye el resultado por datos ficticios. Una respuesta correcta no habilita aún aprobar/publicar: eso requiere la imagen final de fase 6.

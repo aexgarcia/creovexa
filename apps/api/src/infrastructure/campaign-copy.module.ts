@@ -1,19 +1,20 @@
 import { ConsoleLogger, Module } from '@nestjs/common';
 import {
-  OPENAI_COPY_CONFIG,
-  openAICopyConfigProvider,
-  type OpenAICopyConfig,
-} from '#app/config/openai.config';
+  COPY_GENERATION_CONFIG,
+  copyGenerationConfigProvider,
+  type CopyGenerationConfig,
+} from '#app/config/copy-generation.config';
 import { CampaignCopyController } from '#app/modules/campaigns/presentation/campaign-copy.controller';
 import {
   GenerateCampaignCopy,
   GetCampaignCopy,
 } from '#app/modules/campaigns/application/use-cases/generate-campaign-copy';
-import type { CopyGenerator } from '#app/modules/campaigns/application/ports/copy-generator';
 import {
   COPY_GENERATOR,
-  OpenAICopyGenerator,
-} from '#app/modules/campaigns/infrastructure/openai-copy-generator';
+  type CopyGenerator,
+} from '#app/modules/campaigns/application/ports/copy-generator';
+import { OpenAICopyGenerator } from '#app/modules/campaigns/infrastructure/openai-copy-generator';
+import { GeminiCopyGenerator } from '#app/modules/campaigns/infrastructure/gemini-copy-generator';
 import { PrismaCampaignCopyRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign-copy.repository';
 import { PrismaCampaignRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign.repository';
 import { PrismaCampaignLookups } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign-lookups';
@@ -31,12 +32,22 @@ import { PrismaService } from './persistence/prisma/prisma.service.js';
   providers: [
     catalogHttpConfigProvider,
     DevelopmentOrganizationGuard,
-    openAICopyConfigProvider,
+    copyGenerationConfigProvider,
     {
       provide: COPY_GENERATOR,
-      inject: [OPENAI_COPY_CONFIG],
-      useFactory: (config: OpenAICopyConfig) =>
-        new OpenAICopyGenerator(config, fetch, new ConsoleLogger('CopyGeneration', { json: true })),
+      inject: [COPY_GENERATION_CONFIG],
+      useFactory: (config: CopyGenerationConfig) =>
+        config.provider === 'gemini'
+          ? new GeminiCopyGenerator(
+              config.settings,
+              fetch,
+              new ConsoleLogger('CopyGeneration', { json: true }),
+            )
+          : new OpenAICopyGenerator(
+              config.settings,
+              fetch,
+              new ConsoleLogger('CopyGeneration', { json: true }),
+            ),
     },
     {
       provide: PrismaCampaignCopyRepository,
