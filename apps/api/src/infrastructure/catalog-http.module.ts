@@ -1,3 +1,4 @@
+import { CampaignCopyModule } from './campaign-copy.module.js';
 import {
   ListPublicationHistory,
   ListPublicationAttempts,
@@ -26,6 +27,7 @@ import { PublicationPersistenceModule } from './publication-persistence.module.j
 
 @Module({
   imports: [
+    CampaignCopyModule,
     DatabaseModule,
     CommercialPersistenceModule,
     CampaignPersistenceModule,

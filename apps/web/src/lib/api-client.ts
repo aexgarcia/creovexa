@@ -12,14 +12,18 @@ export class ApiError extends Error {
     this.requestId = requestId;
   }
 }
-export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function apiRequest<T>(
+  path: string,
+  options: RequestInit = {},
+  timeoutMs = 15000,
+): Promise<T> {
   const base = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
   const headers = new Headers(options.headers);
   headers.set('Accept', 'application/json');
   if (options.body !== undefined) headers.set('Content-Type', 'application/json');
   let response: Response;
   try {
-    const timeout = AbortSignal.timeout(15000);
+    const timeout = AbortSignal.timeout(timeoutMs);
     response = await fetch(base.replace(/\/$/, '') + path, {
       ...options,
       headers,

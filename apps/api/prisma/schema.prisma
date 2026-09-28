@@ -156,6 +156,7 @@ model CampaignGeneration {
   campaign       Campaign                   @relation("CampaignGenerations", fields: [organizationId, campaignId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   currentFor     Campaign[]                 @relation("CurrentGeneration")
   content        GeneratedContent?
+  copy           CampaignCopy?
   failure        CampaignGenerationFailure?
 
   @@unique([organizationId, campaignId, id])
@@ -267,4 +268,25 @@ model PublicationAttemptResult {
   attempt        PublicationAttempt      @relation(fields: [attemptId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@map("publication_attempt_results")
+}
+
+enum CampaignCopyStatus {
+  RUNNING
+  READY
+  FAILED
+}
+
+model CampaignCopy {
+  generationId   String             @id @map("generation_id") @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  campaignId     String             @map("campaign_id") @db.Uuid
+  token          String             @db.Uuid
+  status         CampaignCopyStatus
+  expiresAt      DateTime           @map("expires_at") @db.Timestamptz(3)
+  content        Json?
+  generation     CampaignGeneration @relation(fields: [organizationId, campaignId, generationId], references: [organizationId, campaignId, id], onDelete: Restrict, onUpdate: Restrict, map: "campaign_copies_generation_fkey")
+
+  @@unique([organizationId, campaignId, generationId], map: "campaign_copies_owner_generation_key")
+  @@index([organizationId, campaignId], map: "campaign_copies_owner_idx")
+  @@map("campaign_copies")
 }
