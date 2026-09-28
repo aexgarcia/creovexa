@@ -56,6 +56,8 @@ import { RuntimeModule, CLOCK, ID_GENERATOR } from './runtime.module.js';
     })),
   ],
   exports: [
+    PrismaCampaignRepository,
+    PrismaCampaignLookups,
     GetCampaign,
     ListCampaigns,
     CreateCampaign,

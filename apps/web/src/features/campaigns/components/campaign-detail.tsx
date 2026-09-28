@@ -1,5 +1,6 @@
 'use client';
-import { ImageIcon, Sparkles, Send, RotateCcw } from 'lucide-react';
+import { CampaignCopyCard } from './campaign-copy-card';
+import { ImageIcon, Send, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useState } from 'react';
 import Link from 'next/link';
@@ -143,13 +144,9 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
         </section>
       </div>
       <p className="text-sm text-muted-foreground">
-        Edición, generación, regeneración y envío a redes próximamente.
+        Edición, generación de imagen, regeneración y envío a redes próximamente.
       </p>
       <div className="flex flex-wrap gap-3" aria-label="Funciones pendientes de integración">
-        <Button disabled>
-          <Sparkles className="mr-2 size-4" />
-          Generar contenido
-        </Button>
         <Button disabled variant="outline">
           <RotateCcw className="mr-2 size-4" />
           Regenerar contenido
@@ -159,6 +156,7 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
           Publicar en redes
         </Button>
       </div>
+      <CampaignCopyCard campaign={campaign} />
       <CampaignPublications key={campaign.id} campaignId={campaign.id} />
     </div>
   );

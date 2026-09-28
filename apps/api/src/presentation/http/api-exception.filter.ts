@@ -1,3 +1,5 @@
+import { CopyGenerationError } from '#app/modules/campaigns/application/ports/copy-generator';
+import { StaleGenerationResultError } from '#app/modules/campaigns/domain/errors/campaign.errors';
 import { PublicationNotFoundError } from '#app/modules/publications/application/publication-history-reader';
 import { TemplateRevisionConflictError } from '#app/modules/templates/domain/errors/template.errors';
 import {
@@ -70,7 +72,22 @@ export class ApiExceptionFilter implements ExceptionFilter {
     let code: string | undefined;
     let message: string | undefined;
     let details: ValidationDetail[] | undefined;
-    if (error instanceof RequestValidationError) {
+    if (error instanceof CopyGenerationError) {
+      status =
+        error.code === 'BUSY'
+          ? 409
+          : error.code === 'TIMEOUT'
+            ? 504
+            : error.code === 'UNAVAILABLE'
+              ? 503
+              : 502;
+      code = 'COPY_' + error.code;
+      message = error.message;
+    } else if (error instanceof StaleGenerationResultError) {
+      status = 409;
+      code = 'STALE_GENERATION';
+      message = error.message;
+    } else if (error instanceof RequestValidationError) {
       status = 400;
       code = 'VALIDATION_ERROR';
       message = error.message;

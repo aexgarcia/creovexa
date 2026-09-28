@@ -1,3 +1,7 @@
+import { COPY_GENERATOR } from '#app/modules/campaigns/infrastructure/openai-copy-generator';
+import { copyChoices } from '#app/modules/campaigns/application/copy-policy';
+import type { GenerationSnapshotData } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
+import { PrismaCampaignCopyRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign-copy.repository';
 import { randomUUID } from 'node:crypto';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
@@ -44,12 +48,27 @@ describe('Catalog HTTP with PostgreSQL', () => {
   let database: PrismaService;
   const context: CatalogHttpConfig = { organizationId: null };
   const clock = { value: NOW, now: () => new Date(clock.value) };
+  const copyGenerator = {
+    assertAvailable() {},
+    generate: vi.fn(async (snapshot: GenerationSnapshotData) => {
+      const c = copyChoices(snapshot);
+      return {
+        headline: c.headline[0],
+        caption: c.caption[0],
+        cta: c.cta[0],
+        hashtags: [],
+        imagePrompt: c.imagePrompt[0],
+      };
+    }),
+  };
   beforeAll(async () => {
     const schema = process.env.CREOVEXA_TEST_SCHEMA ?? '';
     const config = readDatabaseConfig({ DATABASE_URL: process.env.TEST_DATABASE_URL });
     if (!/^creovexa_test_[0-9a-f]{32}$/.test(schema) || config.schema !== schema)
       throw new Error('Usa pnpm test:integration con un esquema aislado.');
     module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(COPY_GENERATOR)
+      .useValue(copyGenerator)
       .overrideProvider(DATABASE_CONFIG)
       .useValue(config)
       .overrideProvider(CATALOG_HTTP_CONFIG)
@@ -66,6 +85,7 @@ describe('Catalog HTTP with PostgreSQL', () => {
   });
   beforeEach(async () => {
     clock.value = NOW;
+    copyGenerator.generate.mockClear();
     context.organizationId = entityId(
       (await module.get(CreateOrganization).execute({ name: 'Organización HTTP' })).id,
     );
@@ -177,6 +197,73 @@ describe('Catalog HTTP with PostgreSQL', () => {
       promotion: { amountMinor: 1000, currency: 'PEN', endsAt: '2099-12-31T23:59:59Z' },
     };
   }
+
+  it('persists copy once without allowing approval and isolates organization access', async () => {
+    const input = await campaignInput();
+    const created = await request(app.getHttpServer()).post('/campaigns').send(input).expect(201);
+    const path = '/campaigns/' + created.body.data.id + '/copy';
+    expect((await request(app.getHttpServer()).get(path).expect(200)).body.data).toBeNull();
+    const result = await request(app.getHttpServer()).post(path).expect(200);
+    expect(result.body.data.caption).toContain('PEN 10.00');
+    const again = await request(app.getHttpServer()).post(path).expect(200);
+    expect(again.body.data).toEqual(result.body.data);
+    expect(copyGenerator.generate).toHaveBeenCalledTimes(1);
+    const campaign = await database.campaign.findUniqueOrThrow({
+      where: { id: created.body.data.id },
+    });
+    expect(campaign.status).toBe('GENERATING');
+    expect(campaign.candidateContentId).toBeNull();
+    expect(await database.campaignCopy.count({ where: { campaignId: campaign.id } })).toBe(1);
+    context.organizationId = entityId(
+      (await module.get(CreateOrganization).execute({ name: 'Other copy owner' })).id,
+    );
+    await request(app.getHttpServer()).get(path).expect(404);
+    await request(app.getHttpServer()).post(path).expect(404);
+  });
+  it('serializes copy leases, recovers expired work and fences stale completion', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/campaigns')
+      .send(await campaignInput())
+      .expect(201);
+    const selection = {
+      organizationId: context.organizationId!,
+      campaignId: entityId(created.body.data.id as string),
+    };
+    const campaign = await module.get(RequestCampaignGeneration).execute(selection);
+    const repo = new PrismaCampaignCopyRepository(database);
+    const first = {
+      ...selection,
+      generationId: entityId(campaign.generation!.id),
+      token: entityId(randomUUID()),
+      now: NOW,
+      expiresAt: new Date(NOW.getTime() + 120000),
+    };
+    const second = { ...first, token: entityId(randomUUID()) };
+    expect((await Promise.all([repo.claim(first), repo.claim(second)])).sort()).toEqual([
+      false,
+      true,
+    ]);
+    const recovered = {
+      ...second,
+      token: entityId(randomUUID()),
+      now: LATER,
+      expiresAt: new Date(LATER.getTime() + 120000),
+    };
+    expect(await repo.claim(recovered)).toBe(true);
+    const c = copyChoices(campaign.generation!.snapshot);
+    const content = {
+      headline: c.headline[0]!,
+      caption: c.caption[0]!,
+      cta: c.cta[0]!,
+      hashtags: [],
+      imagePrompt: c.imagePrompt[0]!,
+    };
+    await expect(repo.complete(first, content)).rejects.toMatchObject({ code: 'BUSY' });
+    await repo.complete(recovered, content);
+    await repo.release(first);
+    expect(await repo.find(first)).toEqual(content);
+    expect(await repo.claim(recovered)).toBe(false);
+  });
 
   async function candidateCampaign() {
     const input = await campaignInput();
