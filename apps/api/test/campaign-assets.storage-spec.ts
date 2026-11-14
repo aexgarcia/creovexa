@@ -28,6 +28,7 @@ import {
 } from '#app/modules/campaigns/application/ports/template-renderer';
 import { UpdateTemplate } from '#app/modules/templates/application/use-cases/update-template';
 import { readStorageConfig } from '#app/config/storage.config';
+import { S3ObjectStorage } from '#app/modules/assets/infrastructure/s3-object-storage';
 import { LocalImageArtifacts } from '#app/modules/campaigns/infrastructure/local-image-artifacts';
 import { MinioStorageProvider } from '#app/modules/campaigns/infrastructure/minio-storage-provider';
 import { GenerateCampaignImage } from '#app/modules/campaigns/application/use-cases/generate-campaign-image';
@@ -40,6 +41,7 @@ describe('Private campaign assets (MinIO + PostgreSQL)', () => {
   const bucket = 'creovexa-test-' + randomUUID().replaceAll('-', '');
   let client: S3Client;
   let storage: MinioStorageProvider;
+  let objects: S3ObjectStorage;
   let artifacts: LocalImageArtifacts;
   let directory: string;
   let created = false;
@@ -55,7 +57,8 @@ describe('Private campaign assets (MinIO + PostgreSQL)', () => {
     directory = await mkdtemp(join(tmpdir(), 'creovexa-image-test-'));
     artifacts = new LocalImageArtifacts(directory);
     await context.init({ storage: config, artifacts });
-    storage = new MinioStorageProvider(context.database, artifacts, config);
+    objects = new S3ObjectStorage(config);
+    storage = new MinioStorageProvider(context.database, artifacts, objects);
     client = new S3Client({
       endpoint: config.endpoint,
       region: config.region,
@@ -79,7 +82,7 @@ describe('Private campaign assets (MinIO + PostgreSQL)', () => {
       }
     } finally {
       client?.destroy();
-      storage?.close();
+      objects?.close();
       await context.close();
       if (directory && resolve(directory).startsWith(resolve(tmpdir()) + '\\creovexa-image-test-'))
         await rm(directory, { recursive: true });

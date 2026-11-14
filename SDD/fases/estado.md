@@ -42,7 +42,7 @@ Cada paso es un cambio pequeño y verificable con la suite de tests existente.
 
 1. ~~Commitear el estado actual de la fase 6 en una rama propia, tal como está.~~ Hecho: rama `feat/campaign-image-generation`.
 2. ~~Cableado NestJS por módulo ([ADR-0011](../adr/0011-cableado-nestjs-por-modulo.md)), sin cambiar comportamiento.~~ Hecho. De paso, los tests unitarios se movieron de `src/` a `test/`.
-3. Extraer el módulo `assets` y unificar los tres adapters de storage ([ADR-0010](../adr/0010-dividir-campaigns.md)).
+3. ~~Extraer el módulo `assets` y unificar los tres adapters de storage ([ADR-0010](../adr/0010-dividir-campaigns.md)).~~ Hecho: un solo cliente S3 detrás del port `ObjectStorage`. Las tres tablas de assets siguen separadas.
 4. Extraer `content-generation` desde `campaigns` ([ADR-0010](../adr/0010-dividir-campaigns.md)).
 5. Cola de trabajos y worker; los endpoints de generación pasan a responder `202` ([ADR-0008](../adr/0008-cola-de-trabajos-y-worker.md)).
 

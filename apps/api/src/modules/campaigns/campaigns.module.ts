@@ -17,12 +17,15 @@ import {
   rendererConfigProvider,
   type RendererConfig,
 } from '#app/config/renderer.config';
-import { STORAGE_CONFIG, type StorageConfig } from '#app/config/storage.config';
 import { HttpCommonModule } from '#app/infrastructure/http-common.module';
 import { DatabaseModule } from '#app/infrastructure/persistence/prisma/database.module';
 import { PrismaService } from '#app/infrastructure/persistence/prisma/prisma.service';
 import { RuntimeModule, CLOCK, ID_GENERATOR } from '#app/infrastructure/runtime.module';
-import { StorageModule } from '#app/infrastructure/storage.module';
+import { AssetsModule } from '#app/modules/assets/assets.module';
+import {
+  OBJECT_STORAGE,
+  type ObjectStorage,
+} from '#app/modules/assets/application/ports/object-storage';
 import {
   ORGANIZATION_LOGOS,
   type OrganizationLogos,
@@ -79,7 +82,7 @@ import { CampaignsController } from './presentation/campaigns.controller.js';
   imports: [
     DatabaseModule,
     RuntimeModule,
-    StorageModule,
+    AssetsModule,
     HttpCommonModule,
     OrganizationsModule,
     ProductsModule,
@@ -193,12 +196,9 @@ import { CampaignsController } from './presentation/campaigns.controller.js';
     },
     {
       provide: MinioStorageProvider,
-      inject: [PrismaService, LocalImageArtifacts, STORAGE_CONFIG],
-      useFactory: (
-        db: PrismaService,
-        artifacts: LocalImageArtifacts,
-        config: StorageConfig | null,
-      ) => new MinioStorageProvider(db, artifacts, config),
+      inject: [PrismaService, LocalImageArtifacts, OBJECT_STORAGE],
+      useFactory: (db: PrismaService, artifacts: LocalImageArtifacts, storage: ObjectStorage) =>
+        new MinioStorageProvider(db, artifacts, storage),
     },
     { provide: CAMPAIGN_FINAL_ASSETS, useExisting: MinioStorageProvider },
     {

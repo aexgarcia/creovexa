@@ -1,6 +1,6 @@
 # ADR-0010 · Dividir `campaigns` en `campaigns`, `content-generation` y `assets`
 
-- **Estado:** Aceptado, pendiente de implementar
+- **Estado:** Aceptado, en implementación (ver "Implementación")
 - **Fecha:** 2026-11-14
 - **Ámbito:** `apps/api/src/modules`
 
@@ -36,3 +36,17 @@ Orden de ejecución: primero `assets` (elimina duplicación sin cambiar comporta
 - Unificar las tablas de assets requiere una migración de datos; puede hacerse en un segundo paso, unificando primero solo el adapter.
 - El [contrato de campaigns](../modulos/campaigns/contrato.md) se dividirá en tres contratos cuando se ejecute.
 - El documento de [dominio](../arquitectura/dominio.md) indicaba que no habría un módulo `generated-contents`; eso se mantiene: `GeneratedContent` sigue perteneciendo a `campaigns`. Lo que sale es la **ejecución** de la generación.
+
+## Implementación
+
+**Paso 1, hecho el 14 de noviembre de 2026: módulo `assets`.**
+
+- Port `ObjectStorage` y adapter `S3ObjectStorage`: un solo cliente S3 para toda la aplicación.
+- `MinioProductImages`, `MinioOrganizationLogos` y `MinioStorageProvider` ya no crean su cliente ni repiten la lectura con límites; delegan en el port y conservan solo sus reglas y sus metadatos.
+- `StorageModule` se eliminó; `AssetsModule` entrega la configuración y el port.
+- Sin cambios de esquema ni de comportamiento observable. Detalle en el [contrato de assets](../modulos/assets/contrato.md).
+
+Pendiente:
+
+- Paso 2: extraer `content-generation`.
+- Unificar las tres tablas de assets y mover la validación de bytes a `assets`.

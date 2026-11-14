@@ -1,13 +1,12 @@
 import { createHash } from 'node:crypto';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import type { PrismaClient } from '#app/infrastructure/persistence/prisma/generated/client';
-import type { StorageConfig } from '#app/config/storage.config';
 import {
   inspectImageBytes,
   prepareUploadedImage,
   InvalidImageFileError,
   MAX_IMAGE_BYTES,
 } from '#app/infrastructure/image-files';
+import type { ObjectStorage } from '#app/modules/assets/application/ports/object-storage';
 import type {
   ProductImages,
   ProductImageSelection,
@@ -16,50 +15,33 @@ import type {
 import { ProductImageError } from '../application/errors/product-image.error.js';
 
 export class MinioProductImages implements ProductImages {
-  private readonly client: S3Client | null;
   constructor(
     private readonly database: PrismaClient,
-    private readonly config: StorageConfig | null,
-  ) {
-    this.client = config
-      ? new S3Client({
-          endpoint: config.endpoint,
-          region: config.region,
-          forcePathStyle: true,
-          credentials: { accessKeyId: config.accessKeyId, secretAccessKey: config.secretAccessKey },
-          maxAttempts: 2,
-        })
-      : null;
-  }
-  onModuleDestroy() {
-    this.client?.destroy();
-  }
+    private readonly storage: ObjectStorage,
+  ) {}
+
   assertAvailable(): void {
-    if (!this.client || !this.config) throw new ProductImageError('UNAVAILABLE');
+    if (!this.storage.bucket) throw new ProductImageError('UNAVAILABLE');
   }
 
   async save(
     input: ProductImageSelection & { bytes: Uint8Array; at: Date; expectedUpdatedAt: Date },
   ): Promise<void> {
-    if (!this.client || !this.config) throw new ProductImageError('UNAVAILABLE');
+    const bucket = this.storage.bucket;
+    if (!bucket) throw new ProductImageError('UNAVAILABLE');
     try {
       const bytes = await prepareUploadedImage(input.bytes);
       const metadata = await inspectImageBytes(bytes);
       const objectKey = `products/${input.organizationId}/${input.productId}/${input.assetId}`;
       const sha256 = digest(bytes);
-      await this.client.send(
-        new PutObjectCommand({
-          Bucket: this.config.bucket,
-          Key: objectKey,
-          Body: bytes,
-          ContentType: metadata.contentType,
-          ContentLength: bytes.byteLength,
-          IfNoneMatch: '*',
-          Metadata: { sha256 },
-        }),
-        { abortSignal: AbortSignal.timeout(30_000) },
-      );
-      const bucket = this.config.bucket;
+      const created = await this.storage.putIfAbsent({
+        key: objectKey,
+        bytes,
+        contentType: metadata.contentType,
+        sha256,
+      });
+      // Asset ids are new per upload, so an occupied key is never this upload's object.
+      if (!created) throw new ProductImageError('UNAVAILABLE');
       await this.database.$transaction(async (tx) => {
         const result = await tx.product.updateMany({
           where: {
@@ -101,30 +83,10 @@ export class MinioProductImages implements ProductImages {
       },
     });
     if (!row) return null;
-    if (!this.client || !this.config || row.bucket !== this.config.bucket)
+    if (!this.storage.bucket || row.bucket !== this.storage.bucket)
       throw new ProductImageError('UNAVAILABLE');
     try {
-      const response = await this.client.send(
-        new GetObjectCommand({ Bucket: row.bucket, Key: row.objectKey }),
-        { abortSignal: AbortSignal.timeout(30_000) },
-      );
-      if (!response.Body) throw new ProductImageError('UNAVAILABLE');
-      const reader = response.Body.transformToWebStream().getReader();
-      const chunks: Uint8Array[] = [];
-      let length = 0;
-      try {
-        while (true) {
-          const chunk = await reader.read();
-          if (chunk.done) break;
-          length += chunk.value.byteLength;
-          if (length > MAX_IMAGE_BYTES) throw new ProductImageError('UNAVAILABLE');
-          chunks.push(chunk.value);
-        }
-      } finally {
-        await reader.cancel();
-        reader.releaseLock();
-      }
-      const bytes = Buffer.concat(chunks);
+      const bytes = await this.storage.read(row.objectKey, MAX_IMAGE_BYTES);
       if (bytes.length !== row.byteLength || digest(bytes) !== row.sha256)
         throw new ProductImageError('UNAVAILABLE');
       return {

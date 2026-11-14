@@ -1,12 +1,14 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { inspectImageBytes } from '#app/infrastructure/image-files';
 import { entityId, type EntityId } from '#app/domain/entity-id';
-import type { StorageConfig } from '#app/config/storage.config';
 import type {
   PrismaClient,
   CampaignAsset,
 } from '#app/infrastructure/persistence/prisma/generated/client';
+import {
+  ObjectStorageError,
+  type ObjectStorage,
+} from '#app/modules/assets/application/ports/object-storage';
 import { CampaignImageError } from '../application/errors/campaign-image.error.js';
 import type {
   StorageProvider,
@@ -20,47 +22,20 @@ import {
 } from './persistence/prisma/prisma-campaign-image.repository.js';
 
 export class MinioStorageProvider implements StorageProvider {
-  private readonly client: S3Client | null;
   constructor(
     private readonly database: PrismaClient,
     private readonly artifacts: LocalImageArtifacts,
-    private readonly settings: StorageConfig | null,
-  ) {
-    this.client = settings
-      ? new S3Client({
-          endpoint: settings.endpoint,
-          region: settings.region,
-          forcePathStyle: true,
-          credentials: {
-            accessKeyId: settings.accessKeyId,
-            secretAccessKey: settings.secretAccessKey,
-          },
-          maxAttempts: 2,
-        })
-      : null;
-  }
+    private readonly storage: ObjectStorage,
+  ) {}
 
-  private get config(): StorageConfig {
-    if (!this.settings) throw new CampaignImageError('UNAVAILABLE');
-    return this.settings;
+  private get bucket(): string {
+    const bucket = this.storage.bucket;
+    if (!bucket) throw new CampaignImageError('UNAVAILABLE');
+    return bucket;
   }
 
   assertAvailable(): void {
-    if (
-      !this.config.bucket ||
-      !this.config.endpoint ||
-      !this.config.accessKeyId ||
-      !this.config.secretAccessKey
-    )
-      throw new CampaignImageError('UNAVAILABLE');
-  }
-
-  close(): void {
-    this.client?.destroy();
-  }
-
-  onModuleDestroy(): void {
-    this.close();
+    void this.bucket;
   }
 
   async store(input: StoreCampaignAssetInput): Promise<StoredCampaignAsset> {
@@ -85,21 +60,13 @@ export class MinioStorageProvider implements StorageProvider {
         await lockImageCampaign(tx, selection);
         await requireImageLease(tx, selection, input.operationId);
       });
-      try {
-        await this.client!.send(
-          new PutObjectCommand({
-            Bucket: this.config.bucket,
-            Key: objectKey,
-            Body: bytes,
-            ContentType: input.source.contentType,
-            ContentLength: bytes.length,
-            IfNoneMatch: '*',
-            Metadata: { sha256 },
-          }),
-          { abortSignal: AbortSignal.timeout(30_000) },
-        );
-      } catch (error) {
-        if (!isPreconditionFailure(error)) throw error;
+      const created = await this.storage.putIfAbsent({
+        key: objectKey,
+        bytes,
+        contentType: input.source.contentType,
+        sha256,
+      });
+      if (!created) {
         // An earlier upload may have succeeded before metadata committed. Never overwrite it.
         const stored = await this.readObject(objectKey);
         if (digest(stored) !== sha256) throw new CampaignImageError('INVALID_OUTPUT');
@@ -116,7 +83,7 @@ export class MinioStorageProvider implements StorageProvider {
           data: {
             ...where,
             id: randomUUID(),
-            bucket: this.config.bucket,
+            bucket: this.bucket,
             objectKey,
             sha256,
             byteLength: bytes.length,
@@ -179,7 +146,7 @@ export class MinioStorageProvider implements StorageProvider {
         where: { id: assetId, organizationId },
       });
       if (!row) return null;
-      if (row.bucket !== this.config.bucket) throw new CampaignImageError('UNAVAILABLE');
+      if (row.bucket !== this.bucket) throw new CampaignImageError('UNAVAILABLE');
       const bytes = await this.readObject(row.objectKey);
       if (bytes.length !== row.byteLength || digest(bytes) !== row.sha256)
         throw new CampaignImageError('INVALID_OUTPUT');
@@ -191,37 +158,15 @@ export class MinioStorageProvider implements StorageProvider {
   }
 
   private async readObject(key: string): Promise<Buffer> {
-    const deadline = AbortSignal.timeout(30_000);
-    const response = await this.client!.send(
-      new GetObjectCommand({ Bucket: this.config.bucket, Key: key }),
-      {
-        abortSignal: deadline,
-      },
-    );
-    if (!response.Body || deadline.aborted) throw new CampaignImageError('INVALID_OUTPUT');
-    const stream = response.Body.transformToWebStream();
-    const reader = stream.getReader();
-    const cancel = () => {
-      void reader.cancel().catch(() => {});
-    };
-    deadline.addEventListener('abort', cancel, { once: true });
-    const chunks: Uint8Array[] = [];
-    let length = 0;
     try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (deadline.aborted) throw new CampaignImageError('TIMEOUT');
-        if (done) break;
-        length += value.byteLength;
-        if (length > MAX_IMAGE_BYTES) throw new CampaignImageError('INVALID_OUTPUT');
-        chunks.push(value);
-      }
-    } finally {
-      deadline.removeEventListener('abort', cancel);
-      await reader.cancel();
-      reader.releaseLock();
+      return await this.storage.read(key, MAX_IMAGE_BYTES);
+    } catch (error) {
+      if (!(error instanceof ObjectStorageError)) throw error;
+      if (error.code === 'TIMEOUT') throw new CampaignImageError('TIMEOUT');
+      if (error.code === 'EMPTY' || error.code === 'TOO_LARGE')
+        throw new CampaignImageError('INVALID_OUTPUT');
+      throw new CampaignImageError('UNAVAILABLE');
     }
-    return Buffer.concat(chunks);
   }
 
   private assertSame(row: CampaignAsset, input: StoreCampaignAssetInput, hash: string): void {
@@ -230,7 +175,7 @@ export class MinioStorageProvider implements StorageProvider {
       row.contentType !== input.source.contentType ||
       row.width !== input.source.width ||
       row.height !== input.source.height ||
-      row.bucket !== this.config.bucket
+      row.bucket !== this.bucket
     )
       throw new CampaignImageError('INVALID_OUTPUT');
   }
@@ -258,14 +203,6 @@ async function validateImage(bytes: Buffer, input: StoreCampaignAssetInput): Pro
 
 function digest(bytes: Uint8Array): string {
   return createHash('sha256').update(bytes).digest('hex');
-}
-function isPreconditionFailure(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    '$metadata' in error &&
-    (error.$metadata as { httpStatusCode?: number }).httpStatusCode === 412
-  );
 }
 function assetResult(row: CampaignAsset): StoredCampaignAsset {
   return {

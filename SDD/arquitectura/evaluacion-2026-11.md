@@ -25,7 +25,7 @@ La base es buena y no requiere rehacerse. Las capas están bien separadas y el m
 
 4,760 de las ~8,400 líneas de los módulos (sin specs). Contiene ciclo de vida de campaña, política y generación de copy, generación de imagen, composición HTML, renderer Playwright, storage MinIO y lectura de assets. Decisión: [ADR-0010](../adr/0010-dividir-campaigns.md).
 
-### H2 · Storage triplicado (medio)
+### H2 · Storage triplicado (medio) · adapter unificado el 2026-11-14
 
 Tres adapters S3 independientes: `minio-storage-provider.ts` (campañas), `minio-product-images.ts` y `minio-organization-logos.ts`, con tres tablas de assets. Se unifica en el módulo `assets` de [ADR-0010](../adr/0010-dividir-campaigns.md).
 

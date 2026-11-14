@@ -1,13 +1,16 @@
 import { Module } from '@nestjs/common';
 import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
-import { STORAGE_CONFIG, type StorageConfig } from '#app/config/storage.config';
 import { HttpCommonModule } from '#app/infrastructure/http-common.module';
 import { DatabaseModule } from '#app/infrastructure/persistence/prisma/database.module';
 import { PrismaOrganizationLookup } from '#app/infrastructure/persistence/prisma/prisma-organization-lookup';
 import { PrismaService } from '#app/infrastructure/persistence/prisma/prisma.service';
 import { RuntimeModule, CLOCK, ID_GENERATOR } from '#app/infrastructure/runtime.module';
-import { StorageModule } from '#app/infrastructure/storage.module';
+import { AssetsModule } from '#app/modules/assets/assets.module';
+import {
+  OBJECT_STORAGE,
+  type ObjectStorage,
+} from '#app/modules/assets/application/ports/object-storage';
 import {
   ORGANIZATION_LOGOS,
   type OrganizationLogos,
@@ -22,7 +25,7 @@ import { PrismaOrganizationRepository } from './infrastructure/persistence/prism
 import { OrganizationController } from './presentation/organization.controller.js';
 
 @Module({
-  imports: [DatabaseModule, RuntimeModule, StorageModule, HttpCommonModule],
+  imports: [DatabaseModule, RuntimeModule, AssetsModule, HttpCommonModule],
   controllers: [OrganizationController],
   providers: [
     {
@@ -37,9 +40,9 @@ import { OrganizationController } from './presentation/organization.controller.j
     },
     {
       provide: ORGANIZATION_LOGOS,
-      inject: [PrismaService, STORAGE_CONFIG],
-      useFactory: (client: PrismaService, config: StorageConfig | null) =>
-        new MinioOrganizationLogos(client, config),
+      inject: [PrismaService, OBJECT_STORAGE],
+      useFactory: (client: PrismaService, storage: ObjectStorage) =>
+        new MinioOrganizationLogos(client, storage),
     },
     {
       provide: GetOrganization,

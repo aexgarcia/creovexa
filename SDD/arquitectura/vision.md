@@ -53,6 +53,7 @@ Verificado en noviembre de 2026: ningún archivo de `domain` ni `application` im
 | `campaigns` | Campaña, generación de copy e imagen, composición, assets y aprobación | [contrato](../modulos/campaigns/contrato.md) |
 | `publications` | Resultado e intentos por destino social | [contrato](../modulos/publications/contrato.md) |
 | `dashboard` | Indicadores de solo lectura | [contrato](../modulos/dashboard/contrato.md) |
+| `assets` | Almacenamiento privado e inmutable de archivos | [contrato](../modulos/assets/contrato.md) |
 
 ### Objetivo
 

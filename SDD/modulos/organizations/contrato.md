@@ -56,7 +56,7 @@ Formato de respuestas y errores: [ADR-0004](../../adr/0004-contrato-http-y-error
 | Dependencia | Port | Implementación actual |
 | --- | --- | --- |
 | Persistencia | `OrganizationRepository` | `PrismaOrganizationRepository` |
-| Storage de logos | `OrganizationLogos` | `MinioOrganizationLogos` |
+| Storage de logos | `OrganizationLogos` | `MinioOrganizationLogos`, sobre `ObjectStorage` de [assets](../assets/contrato.md) |
 
 ## Decisiones
 
@@ -66,5 +66,4 @@ Formato de respuestas y errores: [ADR-0004](../../adr/0004-contrato-http-y-error
 ## Pendiente
 
 - No hay endpoint para crear organizaciones ni para listar las de un usuario; depende de [ADR-0012](../../adr/0012-autenticacion-antes-de-publicar.md).
-- El storage de logos pasará al módulo `assets` ([ADR-0010](../../adr/0010-dividir-campaigns.md)).
 - Región, zona horaria e idioma de la organización, hoy fijos en el flyer.

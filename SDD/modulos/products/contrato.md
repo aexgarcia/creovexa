@@ -58,7 +58,7 @@ Formato de respuestas y errores: [ADR-0004](../../adr/0004-contrato-http-y-error
 | --- | --- | --- |
 | Persistencia | `ProductRepository` | `PrismaProductRepository` |
 | Existencia de la organización | `OrganizationLookup` | Consulta Prisma |
-| Storage de imágenes | `ProductImages` | `MinioProductImages` |
+| Storage de imágenes | `ProductImages` | `MinioProductImages`, sobre `ObjectStorage` de [assets](../assets/contrato.md) |
 
 ## Decisiones
 
@@ -69,4 +69,3 @@ Formato de respuestas y errores: [ADR-0004](../../adr/0004-contrato-http-y-error
 ## Pendiente
 
 - No hay eliminación ni archivado de productos.
-- El storage de imágenes pasará al módulo `assets` ([ADR-0010](../../adr/0010-dividir-campaigns.md)).

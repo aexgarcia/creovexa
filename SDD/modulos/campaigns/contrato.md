@@ -10,7 +10,7 @@ Hoy cubre tres cosas:
 
 1. **Campaña** (se queda en `campaigns`): brief, oferta, estados, contenido generado, aprobación y resumen de publicación.
 2. **Generación** (irá a `content-generation`): producir copy e imagen con IA y componer el flyer.
-3. **Assets de campaña** (irá a `assets`): guardar y leer la imagen base y el flyer final.
+3. **Assets de campaña**: registrar y leer la imagen base y el flyer final. El acceso al storage ya está en [assets](../assets/contrato.md).
 
 ## Datos que posee
 
@@ -93,7 +93,7 @@ La regeneración existe en dominio y aplicación, pero todavía no tiene endpoin
 | Generación de imagen | `ImageGenerator` | `OpenAIImageGenerator`, `GeminiImageGenerator` |
 | Composición | `TemplateRenderer` | `PlaywrightTemplateRenderer` |
 | Recursos del render | `CampaignRenderResources` | `PrismaCampaignRenderResources` (usa `OrganizationLogos` de `organizations`) |
-| Storage de assets | `StorageProvider`, `CampaignFinalAssets` | `MinioStorageProvider` |
+| Storage de assets | `StorageProvider`, `CampaignFinalAssets` | `MinioStorageProvider`, sobre `ObjectStorage` de [assets](../assets/contrato.md) |
 | Reloj e identificadores | `Clock`, `IdGenerator` | `RuntimeModule` |
 
 ## Garantías
