@@ -6,10 +6,10 @@ import sharp from 'sharp';
 import { Currency } from '#app/domain/value-objects/money';
 import { FlyerDesign } from '#app/domain/value-objects/flyer-design';
 import { domainFixture, ORG, CAMPAIGN, GENERATION, testId } from './support/campaign-fakes.js';
-import type { CampaignRenderResources } from '#app/modules/campaigns/application/ports/campaign-render-resources';
-import type { RenderCampaignTemplateInput } from '#app/modules/campaigns/application/ports/template-renderer';
-import { PlaywrightTemplateRenderer } from '#app/modules/campaigns/infrastructure/playwright-template-renderer';
-import { LocalImageArtifacts } from '#app/modules/campaigns/infrastructure/local-image-artifacts';
+import type { CampaignRenderResources } from '#app/modules/content-generation/application/ports/campaign-render-resources';
+import type { RenderCampaignTemplateInput } from '#app/modules/content-generation/application/ports/template-renderer';
+import { PlaywrightTemplateRenderer } from '#app/modules/content-generation/infrastructure/playwright-template-renderer';
+import { LocalImageArtifacts } from '#app/modules/content-generation/infrastructure/local-image-artifacts';
 import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
 
 describe('Flyer composition with real Chromium', () => {

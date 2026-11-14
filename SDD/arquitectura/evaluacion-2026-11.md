@@ -21,7 +21,7 @@ La base es buena y no requiere rehacerse. Las capas están bien separadas y el m
 
 ## Hallazgos
 
-### H1 · `campaigns` concentra demasiado (alto)
+### H1 · `campaigns` concentra demasiado (alto) · resuelto el 2026-11-14
 
 4,760 de las ~8,400 líneas de los módulos (sin specs). Contiene ciclo de vida de campaña, política y generación de copy, generación de imagen, composición HTML, renderer Playwright, storage MinIO y lectura de assets. Decisión: [ADR-0010](../adr/0010-dividir-campaigns.md).
 

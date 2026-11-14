@@ -8,6 +8,8 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Res,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -16,9 +18,11 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiProduces,
   ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
+import type { Response } from 'express';
 import {
   DevelopmentOrganizationGuard,
   OrganizationId,
@@ -28,6 +32,7 @@ import { PaginationRequest, paginationResponse } from '#app/presentation/http/pa
 import { validateRequest } from '#app/presentation/http/request-validation';
 import { CreateCampaign } from '../application/use-cases/create-campaign.js';
 import { GetCampaign } from '../application/use-cases/get-campaign.js';
+import { GetCampaignFinalAsset } from '../application/use-cases/get-campaign-final-asset.js';
 import { ListCampaigns } from '../application/use-cases/list-campaigns.js';
 import { CreateCampaignRequest, ApproveCampaignRequest } from './campaign.requests.js';
 import { ApproveCampaign } from '../application/use-cases/approve-campaign.js';
@@ -43,6 +48,7 @@ export class CampaignsController {
     @Inject(CreateCampaign) private readonly createCampaign: CreateCampaign,
     @Inject(GetCampaign) private readonly getCampaign: GetCampaign,
     @Inject(ListCampaigns) private readonly listCampaigns: ListCampaigns,
+    @Inject(GetCampaignFinalAsset) private readonly getFinalAsset: GetCampaignFinalAsset,
   ) {}
 
   @Post(':id/approve')
@@ -116,5 +122,22 @@ export class CampaignsController {
     return {
       data: campaignResponse(await this.getCampaign.execute({ organizationId, campaignId: id })),
     };
+  }
+
+  @Get(':id/assets/:assetId')
+  @ApiOperation({ summary: 'Leer el flyer final de la revisión candidata de campaña' })
+  @ApiProduces('image/png')
+  async readFinalAsset(
+    @OrganizationId() organizationId: string,
+    @Param('id', new ParseUUIDPipe()) campaignId: string,
+    @Param('assetId', new ParseUUIDPipe()) assetId: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.getFinalAsset.execute({ organizationId, campaignId, assetId });
+    response.setHeader('Content-Type', 'image/png');
+    response.setHeader('Content-Length', result.bytes.byteLength);
+    response.setHeader('Cache-Control', 'private, no-store');
+    response.setHeader('X-Content-Type-Options', 'nosniff');
+    return new StreamableFile(result.bytes);
   }
 }

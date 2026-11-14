@@ -1,9 +1,9 @@
-import { COPY_GENERATOR } from '#app/modules/campaigns/application/ports/copy-generator';
+import { COPY_GENERATOR } from '#app/modules/content-generation/application/ports/copy-generator';
 import { CAMPAIGN_FINAL_ASSETS } from '#app/modules/campaigns/application/ports/campaign-final-assets';
 import { finalAssetsFake } from './support/final-assets-fake.js';
-import { copyChoices } from '#app/modules/campaigns/application/copy-policy';
+import { copyChoices } from '#app/modules/content-generation/application/copy-policy';
 import type { GenerationSnapshotData } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
-import { PrismaCampaignCopyRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign-copy.repository';
+import { PrismaCampaignCopyRepository } from '#app/modules/content-generation/infrastructure/persistence/prisma/prisma-campaign-copy.repository';
 import { randomUUID } from 'node:crypto';
 import { FlyerDesign } from '#app/domain/value-objects/flyer-design';
 import { Test, type TestingModule } from '@nestjs/testing';

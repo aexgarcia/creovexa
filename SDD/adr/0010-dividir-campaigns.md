@@ -1,6 +1,6 @@
 # ADR-0010 · Dividir `campaigns` en `campaigns`, `content-generation` y `assets`
 
-- **Estado:** Aceptado, en implementación (ver "Implementación")
+- **Estado:** Aceptado, implementado el 2026-11-14 con pendientes menores (ver "Implementación")
 - **Fecha:** 2026-11-14
 - **Ámbito:** `apps/api/src/modules`
 
@@ -46,7 +46,18 @@ Orden de ejecución: primero `assets` (elimina duplicación sin cambiar comporta
 - `StorageModule` se eliminó; `AssetsModule` entrega la configuración y el port.
 - Sin cambios de esquema ni de comportamiento observable. Detalle en el [contrato de assets](../modulos/assets/contrato.md).
 
+**Paso 2, hecho el 14 de noviembre de 2026: módulo `content-generation`.**
+
+- Se movieron 26 archivos de `campaigns` (casos de uso de copy e imagen, política de copy, ports, adapters de IA, renderer, repositorios de copy e imagen y sus dos controllers) con sus pruebas. `campaigns` pasó de unas 4,800 a unas 2,600 líneas.
+- `campaigns` conserva la **lectura** de assets (`StoredCampaignAssets`, port `CampaignFinalAssets`), porque la aprobación la necesita; `content-generation` conserva la **escritura**. El endpoint `GET /campaigns/:id/assets/:assetId` quedó en `CampaignsController`, con la misma ruta.
+- Dependencia en un solo sentido, `content-generation` → `campaigns`, vigilada por una regla `no-restricted-imports` de ESLint.
+- Sin cambios de rutas, de códigos de error ni de esquema. Detalle en el [contrato de content-generation](../modulos/content-generation/contrato.md).
+
+Diferencia con la decisión original: se preveía que `content-generation` registrara el resultado "mediante un port". En la práctica usa directamente la entidad `Campaign` y su repositorio, porque el contenido generado, el cambio de estado y el cierre de la reserva deben confirmarse en una sola transacción. Queda documentado como la única excepción permitida a la regla de no importar el dominio de otro módulo.
+
 Pendiente:
 
-- Paso 2: extraer `content-generation`.
 - Unificar las tres tablas de assets y mover la validación de bytes a `assets`.
+- Renombrar los adapters con prefijo `Minio`.
+- Separar `CampaignImageError` en errores de lectura (campaña) y de generación.
+- Registrar los repositorios bajo tokens de contrato ([ADR-0011](0011-cableado-nestjs-por-modulo.md)).

@@ -7,9 +7,9 @@ import { IMAGE_GENERATION_CONFIG } from '#app/config/image-generation.config';
 import {
   IMAGE_GENERATOR,
   type ImageGenerator,
-} from '#app/modules/campaigns/application/ports/image-generator';
+} from '#app/modules/content-generation/application/ports/image-generator';
 import { CATALOG_HTTP_CONFIG, type CatalogHttpConfig } from '#app/config/catalog-http.config';
-import { LocalImageArtifacts } from '#app/modules/campaigns/infrastructure/local-image-artifacts';
+import { LocalImageArtifacts } from '#app/modules/content-generation/infrastructure/local-image-artifacts';
 import { HTTP_LOGGER } from '#app/presentation/http/http-logging';
 import { PrismaService } from '#app/infrastructure/persistence/prisma/prisma.service';
 import { entityId } from '#app/domain/entity-id';
@@ -20,10 +20,10 @@ import { ProductKind } from '#app/modules/products/domain/product-kind';
 import { CreateCampaign } from '#app/modules/campaigns/application/use-cases/create-campaign';
 import { RequestCampaignGeneration } from '#app/modules/campaigns/application/use-cases/request-campaign-generation';
 import { PrismaCampaignRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign.repository';
-import { PrismaCampaignImageRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign-image.repository';
+import { PrismaCampaignImageRepository } from '#app/modules/content-generation/infrastructure/persistence/prisma/prisma-campaign-image.repository';
 import { GeneratedContent } from '#app/modules/campaigns/domain/entities/generated-content';
-import type { CampaignImageLease } from '#app/modules/campaigns/application/ports/campaign-image-repository';
-import type { StoredCampaignAsset } from '#app/modules/campaigns/application/ports/storage-provider';
+import type { CampaignImageLease } from '#app/modules/content-generation/application/ports/campaign-image-repository';
+import type { StoredCampaignAsset } from '#app/modules/content-generation/application/ports/storage-provider';
 
 export const uuid = () => entityId(randomUUID());
 export class ImagePersistenceContext {

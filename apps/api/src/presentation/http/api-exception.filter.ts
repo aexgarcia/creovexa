@@ -1,4 +1,4 @@
-import { CopyGenerationError } from '#app/modules/campaigns/application/ports/copy-generator';
+import { CopyGenerationError } from '#app/modules/content-generation/application/ports/copy-generator';
 import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
 import { InvalidFlyerDesignError } from '#app/domain/value-objects/flyer-design';
 import { ProductImageError } from '#app/modules/products/application/errors/product-image.error';

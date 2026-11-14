@@ -16,24 +16,24 @@ import { FlyerDesign } from '#app/domain/value-objects/flyer-design';
 import {
   IMAGE_GENERATOR,
   type ImageGenerator,
-} from '#app/modules/campaigns/application/ports/image-generator';
+} from '#app/modules/content-generation/application/ports/image-generator';
 import {
   CAMPAIGN_RENDER_RESOURCES,
   type CampaignRenderResources,
-} from '#app/modules/campaigns/application/ports/campaign-render-resources';
+} from '#app/modules/content-generation/application/ports/campaign-render-resources';
 import {
   TEMPLATE_RENDERER,
   type TemplateRenderer,
   type RenderCampaignTemplateInput,
-} from '#app/modules/campaigns/application/ports/template-renderer';
+} from '#app/modules/content-generation/application/ports/template-renderer';
 import { UpdateTemplate } from '#app/modules/templates/application/use-cases/update-template';
 import { readStorageConfig } from '#app/config/storage.config';
 import { S3ObjectStorage } from '#app/modules/assets/infrastructure/s3-object-storage';
-import { LocalImageArtifacts } from '#app/modules/campaigns/infrastructure/local-image-artifacts';
-import { MinioStorageProvider } from '#app/modules/campaigns/infrastructure/minio-storage-provider';
-import { GenerateCampaignImage } from '#app/modules/campaigns/application/use-cases/generate-campaign-image';
-import { PrismaCampaignCopyRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign-copy.repository';
-import type { StoreCampaignAssetInput } from '#app/modules/campaigns/application/ports/storage-provider';
+import { LocalImageArtifacts } from '#app/modules/content-generation/infrastructure/local-image-artifacts';
+import { MinioStorageProvider } from '#app/modules/content-generation/infrastructure/minio-storage-provider';
+import { GenerateCampaignImage } from '#app/modules/content-generation/application/use-cases/generate-campaign-image';
+import { PrismaCampaignCopyRepository } from '#app/modules/content-generation/infrastructure/persistence/prisma/prisma-campaign-copy.repository';
+import type { StoreCampaignAssetInput } from '#app/modules/content-generation/application/ports/storage-provider';
 import { ImagePersistenceContext, uuid } from './support/image-persistence-context.js';
 
 describe('Private campaign assets (MinIO + PostgreSQL)', () => {

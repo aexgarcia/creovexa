@@ -17,8 +17,8 @@ import type { INestApplication } from '@nestjs/common';
 import { readStorageConfig } from '#app/config/storage.config';
 import type { CatalogHttpConfig } from '#app/config/catalog-http.config';
 import { configureHttp } from '#app/presentation/http/configure-http';
-import { LocalImageArtifacts } from '#app/modules/campaigns/infrastructure/local-image-artifacts';
-import { StoredProductImageSource } from '#app/modules/campaigns/infrastructure/stored-product-image-source';
+import { LocalImageArtifacts } from '#app/modules/content-generation/infrastructure/local-image-artifacts';
+import { StoredProductImageSource } from '#app/modules/content-generation/infrastructure/stored-product-image-source';
 import {
   PRODUCT_IMAGES,
   type ProductImages,

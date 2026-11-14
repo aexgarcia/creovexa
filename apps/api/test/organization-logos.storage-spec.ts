@@ -22,19 +22,19 @@ import {
   type OrganizationLogos,
 } from '#app/modules/organizations/application/ports/organization-logos';
 import { PrismaOrganizationRepository } from '#app/modules/organizations/infrastructure/persistence/prisma/prisma-organization.repository';
-import { LocalImageArtifacts } from '#app/modules/campaigns/infrastructure/local-image-artifacts';
-import { MinioStorageProvider } from '#app/modules/campaigns/infrastructure/minio-storage-provider';
+import { LocalImageArtifacts } from '#app/modules/content-generation/infrastructure/local-image-artifacts';
+import { MinioStorageProvider } from '#app/modules/content-generation/infrastructure/minio-storage-provider';
 import { CreateCampaign } from '#app/modules/campaigns/application/use-cases/create-campaign';
 import { RequestCampaignGeneration } from '#app/modules/campaigns/application/use-cases/request-campaign-generation';
 import {
   CAMPAIGN_RENDER_RESOURCES,
   type CampaignRenderResources,
-} from '#app/modules/campaigns/application/ports/campaign-render-resources';
+} from '#app/modules/content-generation/application/ports/campaign-render-resources';
 import {
   TEMPLATE_RENDERER,
   type TemplateRenderer,
   type RenderCampaignTemplateInput,
-} from '#app/modules/campaigns/application/ports/template-renderer';
+} from '#app/modules/content-generation/application/ports/template-renderer';
 import { entityId } from '#app/domain/entity-id';
 import { ImagePersistenceContext, uuid } from './support/image-persistence-context.js';
 

@@ -50,7 +50,8 @@ Verificado en noviembre de 2026: ningún archivo de `domain` ni `application` im
 | `organizations` | Empresa, perfil de marca y logo | [contrato](../modulos/organizations/contrato.md) |
 | `products` | Catálogo de productos y servicios, precio e imagen única | [contrato](../modulos/products/contrato.md) |
 | `templates` | Plantillas de flyer con revisiones inmutables | [contrato](../modulos/templates/contrato.md) |
-| `campaigns` | Campaña, generación de copy e imagen, composición, assets y aprobación | [contrato](../modulos/campaigns/contrato.md) |
+| `campaigns` | Campaña: ciclo de vida, contenido generado y aprobación | [contrato](../modulos/campaigns/contrato.md) |
+| `content-generation` | Generación de copy e imagen con IA y composición del flyer | [contrato](../modulos/content-generation/contrato.md) |
 | `publications` | Resultado e intentos por destino social | [contrato](../modulos/publications/contrato.md) |
 | `dashboard` | Indicadores de solo lectura | [contrato](../modulos/dashboard/contrato.md) |
 | `assets` | Almacenamiento privado e inmutable de archivos | [contrato](../modulos/assets/contrato.md) |
@@ -85,11 +86,11 @@ flowchart TD
     dashboard -.->|solo lectura| publications
 ```
 
-Cambios respecto a hoy: `campaigns` se divide en tres ([ADR-0010](../adr/0010-dividir-campaigns.md)), se agregan `identity`, `social-accounts` y `audit`, y cada módulo declara su propio módulo NestJS ([ADR-0011](../adr/0011-cableado-nestjs-por-modulo.md)).
+Ya hecho: `campaigns` dividido en tres ([ADR-0010](../adr/0010-dividir-campaigns.md)) y un módulo NestJS por módulo de negocio ([ADR-0011](../adr/0011-cableado-nestjs-por-modulo.md)). Falta: `identity`, `social-accounts` y `audit`.
 
 ## Reglas entre módulos
 
-1. Un módulo nunca importa entidades ni repositorios de otro. Se comunica mediante **ports de consulta** definidos por el consumidor (por ejemplo `ProductLookup` en `campaigns`) e identificadores.
+1. Un módulo nunca importa entidades ni repositorios de otro. Se comunica mediante **ports de consulta** definidos por el consumidor (por ejemplo `ProductLookup` en `campaigns`) e identificadores. Única excepción: `content-generation` usa el dominio de `campaigns`, en un solo sentido ([ADR-0010](../adr/0010-dividir-campaigns.md)).
 2. Toda consulta y escritura lleva `organizationId` ([ADR-0003](../adr/0003-aislamiento-por-organizacion.md)).
 3. Los datos que una campaña necesita de otros módulos se copian en un snapshot inmutable al solicitar la generación ([ADR-0016](../modulos/campaigns/adr/0016-snapshot-inmutable-por-generacion.md)); lo que cambie después en el catálogo no altera una generación en curso ni una ya aprobada.
 4. El trabajo lento o que depende de terceros (IA, render, publicación) se ejecuta en el worker, no en el request ([ADR-0008](../adr/0008-cola-de-trabajos-y-worker.md)).

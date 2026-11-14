@@ -17,16 +17,19 @@ import type { INestApplication } from '@nestjs/common';
 import { readStorageConfig } from '#app/config/storage.config';
 import type { CatalogHttpConfig } from '#app/config/catalog-http.config';
 import { configureHttp } from '#app/presentation/http/configure-http';
-import { LocalImageArtifacts } from '#app/modules/campaigns/infrastructure/local-image-artifacts';
-import type { GenerateImageInput } from '#app/modules/campaigns/application/ports/image-generator';
+import { LocalImageArtifacts } from '#app/modules/content-generation/infrastructure/local-image-artifacts';
+import type { GenerateImageInput } from '#app/modules/content-generation/application/ports/image-generator';
 import {
   IMAGE_GENERATOR,
   type ImageGenerator,
-} from '#app/modules/campaigns/application/ports/image-generator';
+} from '#app/modules/content-generation/application/ports/image-generator';
 import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
 import { CreateCampaign } from '#app/modules/campaigns/application/use-cases/create-campaign';
 import { RequestCampaignGeneration } from '#app/modules/campaigns/application/use-cases/request-campaign-generation';
-import { MinioStorageProvider } from '#app/modules/campaigns/infrastructure/minio-storage-provider';
+import {
+  CAMPAIGN_FINAL_ASSETS,
+  type CampaignFinalAssets,
+} from '#app/modules/campaigns/application/ports/campaign-final-assets';
 import { entityId } from '#app/domain/entity-id';
 import { ImagePersistenceContext, uuid } from './support/image-persistence-context.js';
 
@@ -247,7 +250,7 @@ describe('Final flyer HTTP (real database, storage and composition)', () => {
     ).toBeNull();
     expect(
       await context.module
-        .get(MinioStorageProvider)
+        .get<CampaignFinalAssets>(CAMPAIGN_FINAL_ASSETS)
         .readFinal({ ...f, generationId: entityId(f.generationId), assetId: uuid() }),
     ).toBeNull();
   });
