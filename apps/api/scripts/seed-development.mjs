@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { loadEnvFile } from 'node:process';
 import { NestFactory } from '@nestjs/core';
-import { CommercialPersistenceModule } from '../dist/infrastructure/commercial-persistence.module.js';
+import { OrganizationsModule } from '../dist/modules/organizations/organizations.module.js';
 import { PrismaOrganizationRepository } from '../dist/modules/organizations/infrastructure/persistence/prisma/prisma-organization.repository.js';
 import { CreateOrganization } from '../dist/modules/organizations/application/use-cases/create-organization.js';
 import { readCatalogHttpConfig } from '../dist/config/catalog-http.config.js';
@@ -16,7 +16,7 @@ if (!['development', 'test', undefined].includes(process.env.NODE_ENV))
 const config = readCatalogHttpConfig(process.env);
 const id = config.organizationId ?? entityId(randomUUID());
 const original = await readFile(envFile, 'utf8');
-const app = await NestFactory.createApplicationContext(CommercialPersistenceModule, {
+const app = await NestFactory.createApplicationContext(OrganizationsModule, {
   logger: false,
 });
 try {

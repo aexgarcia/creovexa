@@ -29,7 +29,7 @@ La base es buena y no requiere rehacerse. Las capas están bien separadas y el m
 
 Tres adapters S3 independientes: `minio-storage-provider.ts` (campañas), `minio-product-images.ts` y `minio-organization-logos.ts`, con tres tablas de assets. Se unifica en el módulo `assets` de [ADR-0010](../adr/0010-dividir-campaigns.md).
 
-### H3 · Cableado NestJS fuera de los módulos (medio)
+### H3 · Cableado NestJS fuera de los módulos (medio) · resuelto el 2026-11-14
 
 Todos los módulos NestJS están en `src/infrastructure/*.module.ts`. `CatalogHttpModule` registra los controllers de los seis módulos y los repositorios se crean con `new` dentro de cada factory, repetidos entre módulos. Decisión: [ADR-0011](../adr/0011-cableado-nestjs-por-modulo.md).
 
@@ -57,7 +57,7 @@ No hay ciclo de imports en producción: `publications` usa un error de `campaign
 
 ### H9 · Higiene del repositorio (bajo)
 
-- La fase 6 está sin commitear sobre una rama cuyo nombre corresponde al copy de fase 5.
+- La fase 6 estaba sin commitear sobre una rama cuyo nombre corresponde al copy de fase 5. Resuelto el 2026-11-14: rama `feat/campaign-image-generation`.
 - `automation/n8n` solo contiene un README y Docker Compose levanta un servicio `n8n` que ya no es parte del plan.
 - `IMAGE_PROVIDER` y `COPY_PROVIDER` conviven con adapters de dos proveedores; correcto, pero el `.env.example` debe indicar cuáles son obligatorios.
 

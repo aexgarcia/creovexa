@@ -11,8 +11,8 @@ Actualizado el 14 de noviembre de 2026. Las guías originales son [fases 1 a 4.5
 | 3 | Persistencia con Prisma | Hecha | [fase 3](../historial/fase-3.md) |
 | 4 | API HTTP | Hecha | [fase 4](../historial/fase-4.md) |
 | 4.5 | CMS | Hecha | [fase 4.5](../historial/fase-4.5.md) |
-| 5 | Copy con IA (OpenAI y Gemini) | Hecha; ajustes sin commitear | [fase 5](../historial/fase-5.md) |
-| 6 | Imagen y composición | **A medias, sin commitear** | [fase 6](../historial/fase-6.md) |
+| 5 | Copy con IA (OpenAI y Gemini) | Hecha | [fase 5](../historial/fase-5.md) |
+| 6 | Imagen y composición | **A medias** (commiteada en `feat/campaign-image-generation`) | [fase 6](../historial/fase-6.md) |
 | 7 | Orquestación | Replanificada (ver abajo) | — |
 | 8 | Redes sociales | Pendiente | — |
 | 9 | Autenticación, seguridad y auditoría | Pendiente; se propone adelantar parte | — |
@@ -32,16 +32,16 @@ Pendiente de la fase 6 según su historial: regeneración de imagen, historial c
 
 Cada paso es un cambio pequeño y verificable con la suite de tests existente.
 
-### Etapa A · Documentar (en curso)
+### Etapa A · Documentar (hecha)
 
 - [x] Reorganizar `SDD/` y consolidar el historial.
 - [x] ADRs retroactivos y contratos por módulo.
-- [ ] Revisión del autor del proyecto: confirmar que los ADRs retroactivos reflejan la intención original.
+- [x] Revisión del autor del proyecto: ADRs confirmados el 14 de noviembre de 2026.
 
 ### Etapa B · Ordenar el código
 
-1. Commitear el estado actual de la fase 6 en una rama propia, tal como está.
-2. Cableado NestJS por módulo ([ADR-0011](../adr/0011-cableado-nestjs-por-modulo.md)), sin cambiar comportamiento.
+1. ~~Commitear el estado actual de la fase 6 en una rama propia, tal como está.~~ Hecho: rama `feat/campaign-image-generation`.
+2. ~~Cableado NestJS por módulo ([ADR-0011](../adr/0011-cableado-nestjs-por-modulo.md)), sin cambiar comportamiento.~~ Hecho. De paso, los tests unitarios se movieron de `src/` a `test/`.
 3. Extraer el módulo `assets` y unificar los tres adapters de storage ([ADR-0010](../adr/0010-dividir-campaigns.md)).
 4. Extraer `content-generation` desde `campaigns` ([ADR-0010](../adr/0010-dividir-campaigns.md)).
 5. Cola de trabajos y worker; los endpoints de generación pasan a responder `202` ([ADR-0008](../adr/0008-cola-de-trabajos-y-worker.md)).

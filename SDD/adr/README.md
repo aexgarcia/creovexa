@@ -27,7 +27,7 @@
 | [0008](0008-cola-de-trabajos-y-worker.md) | Cola de trabajos en PostgreSQL y worker propio; n8n opcional | Aceptado, pendiente de implementar |
 | [0009](0009-estrategia-de-generacion-del-flyer.md) | Estrategia de generación del flyer: IA completa con verificación o composición | **Propuesto** |
 | [0010](0010-dividir-campaigns.md) | Dividir `campaigns` en `campaigns`, `content-generation` y `assets` | Aceptado, pendiente de implementar |
-| [0011](0011-cableado-nestjs-por-modulo.md) | Un módulo NestJS por módulo de negocio | Aceptado, pendiente de implementar |
+| [0011](0011-cableado-nestjs-por-modulo.md) | Un módulo NestJS por módulo de negocio | Aceptado, implementado |
 | [0012](0012-autenticacion-antes-de-publicar.md) | Identidad y contexto de organización antes de publicar en redes | **Propuesto** |
 
 ## Por módulo
