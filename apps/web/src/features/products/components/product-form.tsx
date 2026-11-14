@@ -1,5 +1,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Package, ImageIcon } from 'lucide-react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -14,7 +16,7 @@ import type { Product } from '../types/product.types';
 interface ProductFormProps {
   product?: Product;
   isSubmitting?: boolean;
-  onSubmit: (values: ProductFormValues) => Promise<void>;
+  onSubmit: (values: ProductFormValues, image: File | null) => Promise<void>;
 }
 export function ProductForm({ product, isSubmitting = false, onSubmit }: ProductFormProps) {
   const router = useRouter();
@@ -34,8 +36,43 @@ export function ProductForm({ product, isSubmitting = false, onSubmit }: Product
     },
   });
   const preview = useWatch({ control });
+  const [image, setImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState('');
+  const temporaryUrl = useRef<string | null>(null);
+  useEffect(
+    () => () => {
+      if (temporaryUrl.current) URL.revokeObjectURL(temporaryUrl.current);
+    },
+    [],
+  );
+  function selectImage(file: File | undefined) {
+    setImageError('');
+    if (
+      file &&
+      (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
+        file.size > 10 * 1024 * 1024 ||
+        !file.size)
+    ) {
+      if (temporaryUrl.current) URL.revokeObjectURL(temporaryUrl.current);
+      temporaryUrl.current = null;
+      setPreviewUrl(null);
+      setImage(null);
+      setImageError(
+        file.size > 10 * 1024 * 1024
+          ? 'La imagen supera el máximo de 10 MB.'
+          : 'Selecciona una imagen PNG, JPEG o WebP válida.',
+      );
+      return;
+    }
+    if (temporaryUrl.current) URL.revokeObjectURL(temporaryUrl.current);
+    temporaryUrl.current = file ? URL.createObjectURL(file) : null;
+    setPreviewUrl(temporaryUrl.current);
+    setImage(file ?? null);
+  }
+  const imageUrl = previewUrl ?? product?.imageUrl;
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit((values) => onSubmit(values, image))} className="space-y-6">
       <div className="grid items-start gap-6 xl:grid-cols-[1fr_360px]">
         <fieldset
           disabled={isSubmitting || saving}
@@ -119,14 +156,25 @@ export function ProductForm({ product, isSubmitting = false, onSubmit }: Product
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            Las ofertas se configuran en cada campaña. La carga de imágenes estará disponible más
-            adelante.
+            Las ofertas se configuran en cada campaña. La imagen guardada se usará automáticamente
+            para componer tu publicidad.
           </p>
         </fieldset>
         <aside className="space-y-5 rounded-xl border bg-card p-6">
           <h2 className="font-semibold">Vista previa del producto</h2>
           <div className="flex aspect-square items-center justify-center rounded-xl border border-dashed bg-muted/20">
-            <Package className="size-16 text-muted-foreground/50" />
+            {imageUrl ? (
+              <Image
+                src={imageUrl}
+                alt={preview.name || 'Producto o servicio'}
+                width={1080}
+                height={1080}
+                unoptimized
+                className="h-full w-full rounded-xl object-contain"
+              />
+            ) : (
+              <Package className="size-16 text-muted-foreground/50" />
+            )}
           </div>
           <div>
             <p className="text-xs text-muted-foreground">
@@ -147,9 +195,36 @@ export function ProductForm({ product, isSubmitting = false, onSubmit }: Product
               <ImageIcon className="size-4" />
               Imagen del producto
             </p>
-            <Button type="button" disabled variant="outline" className="w-full">
-              Subir imagen · Próximamente
-            </Button>
+            <Label htmlFor="product-image">
+              {product?.imageAssetIds.length ? 'Reemplazar imagen' : 'Subir imagen'}
+            </Label>
+            <Input
+              id="product-image"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              disabled={isSubmitting || saving}
+              aria-describedby="product-image-help product-image-error"
+              onChange={(event) => {
+                selectImage(event.target.files?.[0]);
+                event.target.value = '';
+              }}
+            />
+            <p id="product-image-help" className="text-xs text-muted-foreground">
+              Una imagen PNG, JPEG o WebP, máximo 10 MB. Se guardará al confirmar el formulario.
+            </p>
+            {(image || imageError) && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSubmitting || saving}
+                onClick={() => selectImage(undefined)}
+              >
+                Descartar selección
+              </Button>
+            )}
+            <p id="product-image-error" role="alert" className="text-sm text-destructive">
+              {imageError}
+            </p>
           </div>
         </aside>
       </div>
@@ -162,7 +237,7 @@ export function ProductForm({ product, isSubmitting = false, onSubmit }: Product
         >
           Cancelar
         </Button>
-        <Button type="submit" disabled={isSubmitting || saving}>
+        <Button type="submit" disabled={isSubmitting || saving || Boolean(imageError)}>
           {isSubmitting || saving ? 'Guardando…' : product ? 'Guardar cambios' : 'Crear producto'}
         </Button>
       </div>

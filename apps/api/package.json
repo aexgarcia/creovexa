@@ -27,12 +27,17 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "pnpm db:generate && vitest run --config ./vitest.config.e2e.ts",
     "test:integration": "pnpm db:generate && node scripts/test-integration.mjs",
+    "test:storage": "pnpm db:generate && node scripts/test-integration.mjs --storage",
+    "test:render": "vitest run --config ./vitest.config.render.ts",
+    "renderer:setup": "playwright install chromium",
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate deploy",
-    "db:seed:dev": "pnpm build && node scripts/seed-development.mjs"
+    "db:seed:dev": "pnpm build && node scripts/seed-development.mjs",
+    "storage:setup": "node scripts/setup-storage.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1142.0",
     "@nestjs/common": "^12.0.1",
     "@nestjs/core": "^12.0.1",
     "@nestjs/platform-express": "^12.0.1",
@@ -42,8 +47,10 @@
     "class-transformer": "0.5.1",
     "class-validator": "0.15.1",
     "pg": "8.23.0",
+    "playwright": "^1.63.0",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@creovexa/config": "workspace:*",
@@ -51,6 +58,7 @@
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
     "@types/express": "^5.0.0",
+    "@types/multer": "^2.3.0",
     "@types/node": "^24.0.0",
     "@types/pg": "8.23.1",
     "@types/supertest": "^7.0.0",

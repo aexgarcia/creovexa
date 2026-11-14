@@ -1,13 +1,14 @@
 'use client';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useCampaignCopy } from '../hooks/use-campaign-copy';
-import type { StoredCampaign } from '../types/stored-campaign.types';
-export function CampaignCopyCard({ campaign }: { campaign: StoredCampaign }) {
-  const { query, generate } = useCampaignCopy(campaign.id, campaign.version);
-  const eligible = ['DRAFT', 'GENERATING'].includes(campaign.status);
+import type { useCampaignCopy } from '../hooks/use-campaign-copy';
+export function CampaignCopyCard({
+  query,
+}: {
+  query: ReturnType<typeof useCampaignCopy>['query'];
+}) {
   return (
     <Card>
       <CardHeader>
@@ -47,34 +48,10 @@ export function CampaignCopyCard({ campaign }: { campaign: StoredCampaign }) {
             <p className="break-words font-medium text-primary">{query.data.cta}</p>
             <p className="text-sm text-muted-foreground">{query.data.hashtags.join(' ')}</p>
             <p className="border-t pt-3 text-xs text-muted-foreground">
-              La imagen y la pieza final se incorporarán en el siguiente módulo. Este texto todavía
-              no se puede aprobar ni publicar.
+              El texto está preparado. Genera el flyer para revisar la publicidad completa antes de
+              aprobarla.
             </p>
           </div>
-        )}
-        {generate.error && (
-          <div role="alert" className="space-y-2 text-sm">
-            <p className="text-destructive">{generate.error.message}</p>
-            <p className="text-muted-foreground">
-              Si otra solicitud está en curso, espera y actualiza la consulta.
-            </p>
-            <Button variant="outline" onClick={() => void query.refetch()}>
-              Actualizar consulta
-            </Button>
-          </div>
-        )}
-        {eligible && !query.data && (
-          <Button
-            disabled={generate.isPending || query.isLoading || Boolean(query.error)}
-            onClick={() => generate.mutate()}
-          >
-            {generate.isPending ? (
-              <Loader2 className="mr-2 size-4 animate-spin" />
-            ) : (
-              <Sparkles className="mr-2 size-4" />
-            )}
-            {generate.isPending ? 'Preparando texto…' : 'Generar texto'}
-          </Button>
         )}
       </CardContent>
     </Card>

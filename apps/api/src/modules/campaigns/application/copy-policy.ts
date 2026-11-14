@@ -19,6 +19,13 @@ export function copyChoices(input: GenerationSnapshotData) {
     .filter(Boolean)
     .join('\n');
   return {
+    facts,
+    productName: input.product.name,
+    requiredPrices: [input.product.regularPrice, ...(input.promotion ? [input.promotion] : [])],
+    requiredPriceTexts: [
+      input.product.regularPrice,
+      ...(input.promotion ? [input.promotion] : []),
+    ].map(amount),
     headline: [
       input.product.name,
       'Conoce ' + input.product.name,
@@ -39,22 +46,56 @@ export function validateCopy(value: unknown, input: GenerationSnapshotData): Cam
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new CopyGenerationError('INVALID_OUTPUT');
   const row = value as Record<string, unknown>,
-    choices = copyChoices(input);
-  const keys = ['headline', 'caption', 'cta', 'hashtags', 'imagePrompt'];
+    choices = copyChoices(input),
+    keys = ['headline', 'caption', 'cta', 'hashtags', 'imagePrompt'];
   if (
     Object.keys(row).length !== keys.length ||
     Object.keys(row).some((key) => !keys.includes(key))
   )
     throw new CopyGenerationError('INVALID_OUTPUT');
-  for (const key of ['headline', 'caption', 'cta', 'imagePrompt'] as const) {
-    if (typeof row[key] !== 'string' || row[key].length > 12000 || !choices[key].includes(row[key]))
+  if (
+    typeof row.headline !== 'string' ||
+    row.headline.length < 3 ||
+    row.headline.length > 200 ||
+    /\b(gratis|oferta|descuento|garant[ií]a|certificado)\b/i.test(row.headline)
+  )
+    throw new CopyGenerationError('INVALID_OUTPUT');
+  if (
+    typeof row.caption !== 'string' ||
+    row.caption.length < 3 ||
+    row.caption.length > 12000 ||
+    !row.caption.includes(choices.productName)
+  )
+    throw new CopyGenerationError('INVALID_OUTPUT');
+  for (const price of choices.requiredPrices) {
+    const exact =
+      price.currency +
+      ' ' +
+      (BigInt(price.amountMinor) / 100n).toString() +
+      '.' +
+      (BigInt(price.amountMinor) % 100n).toString().padStart(2, '0');
+    const reversed = exact.replace(/^([A-Z]{3})\s+/, '') + ' ' + price.currency;
+    if (!row.caption.includes(exact) && !row.caption.includes(reversed))
       throw new CopyGenerationError('INVALID_OUTPUT');
   }
   if (
+    row.cta !== input.cta ||
+    typeof row.imagePrompt !== 'string' ||
+    row.imagePrompt.length < 3 ||
+    row.imagePrompt.length > 4000 ||
+    /\b(certificado|gratis|garant[ií]a|descuento)\b/i.test(row.imagePrompt)
+  )
+    throw new CopyGenerationError('INVALID_OUTPUT');
+  if (
     !Array.isArray(row.hashtags) ||
-    row.hashtags.length > 2 ||
+    row.hashtags.length > 5 ||
     new Set(row.hashtags).size !== row.hashtags.length ||
-    row.hashtags.some((tag) => typeof tag !== 'string' || !choices.hashtags.includes(tag))
+    row.hashtags.some(
+      (tag) =>
+        typeof tag !== 'string' ||
+        !/^#[\p{L}0-9_]{2,40}$/u.test(tag) ||
+        /#(?:gratis|oferta|descuento|garant[ií]a|certificado)/iu.test(tag),
+    )
   )
     throw new CopyGenerationError('INVALID_OUTPUT');
   return {

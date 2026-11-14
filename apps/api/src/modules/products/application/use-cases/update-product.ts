@@ -38,9 +38,9 @@ export class UpdateProduct {
             : Money.fromMinorUnits(input.regularPrice.amountMinor, input.regularPrice.currency),
         imageAssetIds: input.imageAssetIds,
       },
-      this.clock.now(),
+      new Date(Math.max(this.clock.now().getTime(), product.updatedAt.getTime() + 1)),
     );
-    await this.products.save(organizationId, updated);
+    await this.products.save(organizationId, updated, product.updatedAt);
     return productResult(updated);
   }
 }

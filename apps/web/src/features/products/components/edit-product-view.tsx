@@ -5,9 +5,11 @@ import { toast } from 'sonner';
 
 import { PageHeader } from '@/components/layout/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ApiError } from '@/lib/api-client';
 
 import { useProduct } from '../hooks/use-product';
 import { useUpdateProduct } from '../hooks/use-update-product';
+import { useUploadProductImage } from '../hooks/use-upload-product-image';
 
 import { productInput, type ProductFormValues } from '../schemas/product.schema';
 
@@ -23,8 +25,10 @@ export function EditProductView({ productId }: EditProductViewProps) {
   const { data: product, isLoading, isError, error, refetch } = useProduct(productId);
 
   const updateProduct = useUpdateProduct();
+  const upload = useUploadProductImage();
 
-  async function handleSubmit(values: ProductFormValues) {
+  async function handleSubmit(values: ProductFormValues, image: File | null) {
+    let productSaved = false;
     try {
       await updateProduct.mutateAsync({
         id: productId,
@@ -34,12 +38,23 @@ export function EditProductView({ productId }: EditProductViewProps) {
           regularPrice: productInput(values).regularPrice,
         },
       });
+      productSaved = true;
+      if (image) await upload.mutateAsync({ id: productId, file: image });
 
       toast.success('Producto actualizado correctamente');
 
       router.push('/products');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'No se pudo actualizar el producto');
+      const message =
+        error instanceof ApiError ? error.message : 'No se pudo actualizar el producto.';
+      toast.error(
+        productSaved && image
+          ? 'Los datos se guardaron; no se pudo reemplazar la imagen. Puedes reintentar.' +
+              (error instanceof ApiError
+                ? ' ' + message
+                : ' Recarga la página e inténtalo de nuevo.')
+          : message,
+      );
     }
   }
 
@@ -77,7 +92,7 @@ export function EditProductView({ productId }: EditProductViewProps) {
         key={product.id}
         product={product}
         onSubmit={handleSubmit}
-        isSubmitting={updateProduct.isPending}
+        isSubmitting={updateProduct.isPending || upload.isPending}
       />
     </div>
   );

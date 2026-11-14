@@ -27,6 +27,7 @@ export interface StoredCampaign {
   id: string;
   organizationId: string;
   productId: string;
+  productImageUrl?: string | null;
   templateId: string;
   templateRevisionId: string;
   title: string;
@@ -46,6 +47,8 @@ export interface StoredCampaign {
     cta: string;
     hashtags: string[];
     assetIds: string[];
+    /** Only the composed flyer; never a fallback to the product photo. */
+    finalAssetUrl?: string | null;
     createdAt: string;
   } | null;
 }

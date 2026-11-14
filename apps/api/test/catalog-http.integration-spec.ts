@@ -1,8 +1,11 @@
 import { COPY_GENERATOR } from '#app/modules/campaigns/application/ports/copy-generator';
+import { CAMPAIGN_FINAL_ASSETS } from '#app/modules/campaigns/application/ports/campaign-final-assets';
+import { finalAssetsFake } from './support/final-assets-fake.js';
 import { copyChoices } from '#app/modules/campaigns/application/copy-policy';
 import type { GenerationSnapshotData } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
 import { PrismaCampaignCopyRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign-copy.repository';
 import { randomUUID } from 'node:crypto';
+import { FlyerDesign } from '#app/domain/value-objects/flyer-design';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -67,6 +70,8 @@ describe('Catalog HTTP with PostgreSQL', () => {
     if (!/^creovexa_test_[0-9a-f]{32}$/.test(schema) || config.schema !== schema)
       throw new Error('Usa pnpm test:integration con un esquema aislado.');
     module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(CAMPAIGN_FINAL_ASSETS)
+      .useValue(finalAssetsFake)
       .overrideProvider(COPY_GENERATOR)
       .useValue(copyGenerator)
       .overrideProvider(DATABASE_CONFIG)
@@ -177,6 +182,77 @@ describe('Catalog HTTP with PostgreSQL', () => {
       .patch('/templates/' + input.templateId)
       .send({ name: 'Foreign', expectedRevisionId: read.body.data.currentRevision.id })
       .expect(404);
+  });
+  it('persists design over HTTP, retains the historical revision and rejects malformed configuration', async () => {
+    const design = {
+      ...FlyerDesign.create().data,
+      layout: 'PRODUCT_FOCUS',
+      palette: 'CORAL',
+      settings: { ...FlyerDesign.create().data.settings, showRegularPrice: false },
+    };
+    const created = await request(app.getHttpServer())
+      .post('/templates')
+      .send({ ...templateBody, design })
+      .expect(201);
+    expect(created.body.data.currentRevision.design).toEqual(design);
+    const revision = created.body.data.currentRevision.id;
+    clock.value = LATER;
+    const edited = await request(app.getHttpServer())
+      .patch('/templates/' + created.body.data.id)
+      .send({
+        name: 'Diseño revisado',
+        expectedRevisionId: revision,
+        design: FlyerDesign.create().data,
+      })
+      .expect(200);
+    expect(edited.body.data.currentRevision.design).toEqual(FlyerDesign.create().data);
+    expect(
+      (await database.templateRevision.findUniqueOrThrow({ where: { id: revision } })).design,
+    ).toEqual(design);
+    const read = await request(app.getHttpServer())
+      .get('/templates/' + created.body.data.id)
+      .expect(200);
+    expect(read.body.data.currentRevision.design).toEqual(FlyerDesign.create().data);
+    await request(app.getHttpServer())
+      .post('/templates')
+      .send({ ...templateBody, design: { ...design, html: '<script>' } })
+      .expect(400);
+    await request(app.getHttpServer())
+      .patch('/templates/' + created.body.data.id)
+      .send({
+        name: 'Inválida',
+        expectedRevisionId: edited.body.data.currentRevision.id,
+        design: { ...design, settings: { ...design.settings, showLogo: 'false' } },
+      })
+      .expect(400);
+    expect(
+      await database.templateRevision.count({ where: { templateId: created.body.data.id } }),
+    ).toBe(2);
+    await expect(
+      database.templateRevision.update({
+        where: { id: revision },
+        data: {
+          design: {
+            ...FlyerDesign.create().data,
+            settings: { ...FlyerDesign.create().data.settings },
+          },
+        },
+      }),
+    ).rejects.toThrow();
+    await expect(
+      database.templateRevision.create({
+        data: {
+          id: randomUUID(),
+          templateId: created.body.data.id,
+          organizationId: context.organizationId!,
+          number: 3n,
+          width: 1080,
+          height: 1080,
+          createdAt: LATER,
+          design: { layout: 'CLASSIC' },
+        },
+      }),
+    ).rejects.toThrow();
   });
 
   async function campaignInput() {

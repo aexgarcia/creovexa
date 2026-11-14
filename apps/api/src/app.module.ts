@@ -5,6 +5,7 @@ import { CommercialPersistenceModule } from './infrastructure/commercial-persist
 import { CampaignPersistenceModule } from './infrastructure/campaign-persistence.module.js';
 import { PublicationPersistenceModule } from './infrastructure/publication-persistence.module.js';
 import { CatalogHttpModule } from './infrastructure/catalog-http.module.js';
+import { CampaignImageModule } from './infrastructure/campaign-image.module.js';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { CatalogHttpModule } from './infrastructure/catalog-http.module.js';
     CampaignPersistenceModule,
     PublicationPersistenceModule,
     CatalogHttpModule,
+    CampaignImageModule,
   ],
   controllers: [HealthController],
   providers: [applicationConfigProvider],

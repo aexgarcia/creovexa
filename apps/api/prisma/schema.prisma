@@ -31,24 +31,26 @@ model Organization {
   products    Product[]
   templates   Template[]
   campaigns   Campaign[]
+  logos       OrganizationLogoAsset[]
 
   @@index([createdAt])
   @@map("organizations")
 }
 
 model Product {
-  id             String       @id @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
+  id             String              @id @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
   kind           ProductKind
   name           String
   description    String
-  amountMinor    BigInt       @map("amount_minor")
+  amountMinor    BigInt              @map("amount_minor")
   currency       Currency
-  imageAssetIds  String[]     @default([]) @map("image_asset_ids") @db.Uuid
-  createdAt      DateTime     @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime     @map("updated_at") @db.Timestamptz(3)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  imageAssetIds  String[]            @default([]) @map("image_asset_ids") @db.Uuid
+  createdAt      DateTime            @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime            @map("updated_at") @db.Timestamptz(3)
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   campaigns      Campaign[]
+  images         ProductImageAsset[]
 
   @@unique([organizationId, id])
   @@index([organizationId, createdAt])
@@ -78,6 +80,7 @@ model TemplateRevision {
   number         BigInt
   width          Int
   height         Int
+  design         Json       @default("{\"layout\":\"CLASSIC\",\"palette\":\"BLUE\",\"settings\":{\"showLogo\":true,\"showRegularPrice\":true,\"showPromotionPrice\":true,\"showHeadline\":true,\"showCta\":true,\"showMainImage\":true}}")
   createdAt      DateTime   @map("created_at") @db.Timestamptz(3)
   template       Template   @relation("TemplateRevisions", fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   currentFor     Template[] @relation("CurrentRevision")
@@ -157,6 +160,8 @@ model CampaignGeneration {
   currentFor     Campaign[]                 @relation("CurrentGeneration")
   content        GeneratedContent?
   copy           CampaignCopy?
+  imageJob       CampaignImageJob?
+  assets         CampaignAsset[]
   failure        CampaignGenerationFailure?
 
   @@unique([organizationId, campaignId, id])
@@ -289,4 +294,88 @@ model CampaignCopy {
   @@unique([organizationId, campaignId, generationId], map: "campaign_copies_owner_generation_key")
   @@index([organizationId, campaignId], map: "campaign_copies_owner_idx")
   @@map("campaign_copies")
+}
+
+enum CampaignImageJobStatus {
+  RUNNING
+  READY
+  FAILED
+}
+
+enum CampaignAssetPurpose {
+  BASE_IMAGE
+  FINAL_PIECE
+}
+
+model CampaignImageJob {
+  generationId    String                 @id @map("generation_id") @db.Uuid
+  organizationId  String                 @map("organization_id") @db.Uuid
+  campaignId      String                 @map("campaign_id") @db.Uuid
+  token           String                 @db.Uuid
+  expectedVersion BigInt                 @map("expected_version")
+  status          CampaignImageJobStatus
+  expiresAt       DateTime               @map("expires_at") @db.Timestamptz(3)
+  generation      CampaignGeneration     @relation(fields: [organizationId, campaignId, generationId], references: [organizationId, campaignId, id], onDelete: Restrict, onUpdate: Restrict, map: "campaign_image_jobs_generation_fkey")
+
+  @@unique([organizationId, campaignId, generationId], map: "campaign_image_jobs_owner_generation_key")
+  @@index([status, expiresAt])
+  @@map("campaign_image_jobs")
+}
+
+model CampaignAsset {
+  id             String               @id @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  campaignId     String               @map("campaign_id") @db.Uuid
+  generationId   String               @map("generation_id") @db.Uuid
+  operationId    String               @map("operation_id") @db.Uuid
+  purpose        CampaignAssetPurpose
+  bucket         String
+  objectKey      String               @map("object_key")
+  sha256         String
+  byteLength     Int                  @map("byte_length")
+  contentType    String               @map("content_type")
+  width          Int
+  height         Int
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  generation     CampaignGeneration   @relation(fields: [organizationId, campaignId, generationId], references: [organizationId, campaignId, id], onDelete: Restrict, onUpdate: Restrict, map: "campaign_assets_generation_fkey")
+
+  @@unique([organizationId, campaignId, generationId, operationId, purpose], map: "campaign_assets_operation_key")
+  @@unique([bucket, objectKey])
+  @@index([organizationId, id])
+  @@map("campaign_assets")
+}
+
+model ProductImageAsset {
+  id             String   @id @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  productId      String   @map("product_id") @db.Uuid
+  bucket         String
+  objectKey      String   @unique @map("object_key")
+  sha256         String
+  byteLength     Int      @map("byte_length")
+  contentType    String   @map("content_type")
+  width          Int
+  height         Int
+  createdAt      DateTime @map("created_at") @db.Timestamptz(3)
+  product        Product  @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([organizationId, productId, id])
+  @@map("product_image_assets")
+}
+
+model OrganizationLogoAsset {
+  id             String       @id @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  bucket         String
+  objectKey      String       @unique @map("object_key")
+  sha256         String
+  byteLength     Int          @map("byte_length")
+  contentType    String       @map("content_type")
+  width          Int
+  height         Int
+  createdAt      DateTime     @map("created_at") @db.Timestamptz(3)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([organizationId, id])
+  @@map("organization_logo_assets")
 }

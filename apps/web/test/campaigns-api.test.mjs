@@ -22,6 +22,67 @@ const originalFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = originalFetch;
 });
+
+test('flyer generation pins the reviewed copy generation and resolves only the final URL', async () => {
+  let calls = 0;
+  globalThis.fetch = async (url, options) => {
+    calls++;
+    assert.ok(url.endsWith('/campaigns/campaign%2F1/image'));
+    assert.equal(options.method, 'POST');
+    assert.deepEqual(JSON.parse(options.body), { generationId: 'generation-1' });
+    return Response.json({
+      data: {
+        contentId: 'content-1',
+        generationId: 'generation-1',
+        finalAssetUrl: '/campaigns/campaign-1/assets/final-1',
+      },
+    });
+  };
+  const result = await campaignApi.generateImage('campaign/1', 'generation-1');
+  assert.ok(result.finalAssetUrl.startsWith('http'));
+  assert.ok(result.finalAssetUrl.endsWith('/campaigns/campaign-1/assets/final-1'));
+  assert.equal(calls, 1);
+});
+
+test('detail and list resolve the final asset separately from the product photo', async () => {
+  const campaign = {
+    id: 'campaign-1',
+    productImageUrl: '/products/product-1/images/photo-1',
+    candidateContent: { id: 'content-1', finalAssetUrl: '/campaigns/campaign-1/assets/final-1' },
+  };
+  globalThis.fetch = async (url) =>
+    Response.json(
+      url.includes('?')
+        ? { data: [campaign], meta: { page: 1, totalPages: 1 } }
+        : { data: campaign },
+    );
+  for (const result of [await campaignApi.get('campaign-1'), (await campaignApi.list()).data[0]]) {
+    assert.ok(result.productImageUrl.endsWith('/products/product-1/images/photo-1'));
+    assert.ok(
+      result.candidateContent.finalAssetUrl.endsWith('/campaigns/campaign-1/assets/final-1'),
+    );
+    assert.notEqual(result.productImageUrl, result.candidateContent.finalAssetUrl);
+  }
+});
+
+test('failed flyer generation is not retried automatically and hides provider details', async () => {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return Response.json(
+      { error: { code: 'IMAGE_RATE_LIMITED', message: 'private details' } },
+      { status: 429 },
+    );
+  };
+  await assert.rejects(
+    campaignApi.generateImage('campaign-1', 'generation-1'),
+    (error) =>
+      error.status === 429 &&
+      error.message.includes('límite') &&
+      !error.message.includes('private'),
+  );
+  assert.equal(calls, 1);
+});
 const product = { id: 'product-1', regularPrice: { amountMinor: 1000, currency: 'PEN' } };
 const template = { id: 'template-1', currentRevision: { id: 'revision-3' } };
 const draft = {

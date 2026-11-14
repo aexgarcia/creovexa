@@ -9,6 +9,7 @@ export function TemplateCard({ template }: { template: StoredTemplate }) {
     <article className="group overflow-hidden rounded-xl border bg-card transition hover:border-primary/40 hover:shadow-md">
       <div className="bg-muted/20 p-4">
         <TemplateDesignPreview
+          design={revision.design}
           width={revision.dimensions.width}
           height={revision.dimensions.height}
         />
@@ -24,7 +25,13 @@ export function TemplateCard({ template }: { template: StoredTemplate }) {
             {revision.dimensions.width} × {revision.dimensions.height} px
           </Badge>
         </div>
-        <p className="text-sm text-muted-foreground">Personalización visual próximamente.</p>
+        <p className="text-sm text-muted-foreground">
+          {revision.design?.layout === 'PRODUCT_FOCUS'
+            ? 'Producto destacado'
+            : 'Composición clásica'}
+          {' · '}
+          {revision.design?.palette === 'CORAL' ? 'Coral' : 'Azul'}
+        </p>
       </div>
     </article>
   );

@@ -9,7 +9,9 @@ import {
   MaxLength,
   Min,
   ValidateNested,
+  ValidateIf,
 } from 'class-validator';
+import { TemplateDesignRequest } from './template-design.request.js';
 
 export class DimensionsRequest {
   @ApiProperty({
@@ -30,6 +32,12 @@ export class DimensionsRequest {
   height!: number;
 }
 export class CreateTemplateRequest {
+  @ApiProperty({ type: TemplateDesignRequest, required: false })
+  @ValidateIf((_object, value) => value !== undefined)
+  @IsObject()
+  @ValidateNested()
+  @Type(() => TemplateDesignRequest)
+  design?: TemplateDesignRequest;
   @ApiProperty({ type: String, maxLength: 200 }) @IsString() @MaxLength(200) name!: string;
   @ApiProperty({ type: DimensionsRequest })
   @IsDefined()

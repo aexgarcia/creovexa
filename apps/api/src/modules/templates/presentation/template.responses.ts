@@ -1,12 +1,28 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PaginationResponse } from '#app/presentation/http/pagination.dto';
 import type { TemplateResult } from '../application/template-result.js';
+import type { FlyerDesignData } from '#app/domain/value-objects/flyer-design';
+
+export class TemplateElementsResponse {
+  @ApiProperty({ type: Boolean }) showLogo!: boolean;
+  @ApiProperty({ type: Boolean }) showRegularPrice!: boolean;
+  @ApiProperty({ type: Boolean }) showPromotionPrice!: boolean;
+  @ApiProperty({ type: Boolean }) showHeadline!: boolean;
+  @ApiProperty({ type: Boolean }) showCta!: boolean;
+  @ApiProperty({ type: Boolean }) showMainImage!: boolean;
+}
+export class TemplateDesignResponse {
+  @ApiProperty({ enum: ['CLASSIC', 'PRODUCT_FOCUS'] }) layout!: FlyerDesignData['layout'];
+  @ApiProperty({ enum: ['BLUE', 'CORAL'] }) palette!: FlyerDesignData['palette'];
+  @ApiProperty({ type: TemplateElementsResponse }) settings!: TemplateElementsResponse;
+}
 
 export class DimensionsResponse {
   @ApiProperty({ type: Number }) width!: number;
   @ApiProperty({ type: Number }) height!: number;
 }
 export class TemplateRevisionResponse {
+  @ApiProperty({ type: TemplateDesignResponse }) design!: TemplateDesignResponse;
   @ApiProperty({ type: String, format: 'uuid' }) id!: string;
   @ApiProperty({ type: Number }) number!: number;
   @ApiProperty({ type: DimensionsResponse }) dimensions!: DimensionsResponse;
@@ -38,6 +54,10 @@ export function templateResponse(result: TemplateResult): TemplateResponse {
       dimensions: {
         width: result.currentRevision.dimensions.width,
         height: result.currentRevision.dimensions.height,
+      },
+      design: {
+        ...result.currentRevision.design,
+        settings: { ...result.currentRevision.design.settings },
       },
       createdAt: result.currentRevision.createdAt,
     },

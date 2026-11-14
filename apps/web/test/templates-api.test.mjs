@@ -12,6 +12,18 @@ registerHooks({
 });
 const { templateService } = await import('../src/features/templates/services/template.service.ts');
 const originalFetch = globalThis.fetch;
+const design = {
+  layout: 'PRODUCT_FOCUS',
+  palette: 'CORAL',
+  settings: {
+    showLogo: true,
+    showRegularPrice: false,
+    showPromotionPrice: true,
+    showHeadline: true,
+    showCta: true,
+    showMainImage: true,
+  },
+};
 afterEach(() => {
   globalThis.fetch = originalFetch;
 });
@@ -24,6 +36,7 @@ const template = {
     id: 'revision-1',
     number: 1,
     dimensions: { width: 1080, height: 1080 },
+    design,
     createdAt: '2026-09-26T00:00:00Z',
   },
   createdAt: '2026-09-26T00:00:00Z',
@@ -74,4 +87,31 @@ test('template detail encodes identifiers and never replaces failures with fixtu
     templateService.create({ name: 'Oferta', dimensions: { width: 1080, height: 1080 } }),
     (error) => error.status === 0,
   );
+});
+
+test('template create and update preserve the complete selected design', async () => {
+  const calls = [];
+  globalThis.fetch = async (_url, options) => {
+    calls.push({ method: options.method, body: JSON.parse(options.body) });
+    return Response.json({ data: template });
+  };
+  assert.deepEqual(
+    await templateService.create({
+      name: 'Oferta',
+      dimensions: { width: 1080, height: 1080 },
+      design,
+    }),
+    template,
+  );
+  assert.deepEqual(
+    await templateService.update(template.id, {
+      name: 'Oferta',
+      expectedRevisionId: 'revision-1',
+      design,
+    }),
+    template,
+  );
+  assert.equal(calls.length, 2);
+  assert.deepEqual(calls[0].body.design, design);
+  assert.deepEqual(calls[1].body, { name: 'Oferta', expectedRevisionId: 'revision-1', design });
 });

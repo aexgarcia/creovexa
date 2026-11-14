@@ -6,6 +6,7 @@ export function useCampaignCopy(id: string, version: number) {
   const queryKey = ['campaign-copy', id, version];
   const query = useQuery({
     queryKey,
+    enabled: Boolean(id),
     queryFn: ({ signal }) => campaignCopyService.get(id, signal),
     retry: false,
     refetchOnMount: 'always',

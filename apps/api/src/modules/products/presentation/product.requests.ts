@@ -54,10 +54,15 @@ export class CreateProductRequest {
   @ValidateNested()
   @Type(() => PriceRequest)
   regularPrice!: PriceRequest;
-  @ApiPropertyOptional({ type: [String], maxItems: 20, uniqueItems: true })
+  @ApiPropertyOptional({
+    type: [String],
+    maxItems: 1,
+    uniqueItems: true,
+    description: 'Una imagen del producto/servicio; [] para retirarla.',
+  })
   @ValidateIf((_object, value: unknown) => value !== undefined)
   @IsArray()
-  @ArrayMaxSize(20)
+  @ArrayMaxSize(1)
   @ArrayUnique()
   @IsUUID('all', { each: true })
   imageAssetIds?: string[];

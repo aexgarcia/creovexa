@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
 import { loadEnvFile } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -29,6 +30,15 @@ const environment = {
   TEST_DATABASE_URL: url.toString(),
   CREOVEXA_TEST_SCHEMA: schema,
 };
+const storageTests = process.argv.includes('--storage');
+if (storageTests && !environment.TEST_STORAGE_ENDPOINT) {
+  // Only the local Docker service may use development root credentials as a test fallback.
+  const rootEnv = new URL('../../../.env', import.meta.url);
+  const local = existsSync(rootEnv) ? parseEnv(readFileSync(rootEnv, 'utf8')) : {};
+  environment.TEST_STORAGE_ENDPOINT = `http://127.0.0.1:${local.MINIO_PORT || '9000'}`;
+  environment.TEST_STORAGE_ACCESS_KEY = local.MINIO_ROOT_USER;
+  environment.TEST_STORAGE_SECRET_KEY = local.MINIO_ROOT_PASSWORD;
+}
 const administrator = new pg.Client({
   connectionString: connection,
   connectionTimeoutMillis: 5000,
@@ -52,7 +62,11 @@ try {
   created = true;
   run('../node_modules/prisma/build/index.js', ['migrate', 'deploy']);
   run('../node_modules/prisma/build/index.js', ['migrate', 'deploy']);
-  run('../node_modules/vitest/vitest.mjs', ['run', '--config', './vitest.config.integration.ts']);
+  run('../node_modules/vitest/vitest.mjs', [
+    'run',
+    '--config',
+    storageTests ? './vitest.config.storage.ts' : './vitest.config.integration.ts',
+  ]);
 } finally {
   try {
     if (created && /^creovexa_test_[0-9a-f]{32}$/.test(schema)) {

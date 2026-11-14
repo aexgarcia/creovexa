@@ -1,10 +1,15 @@
 import { CopyGenerationError } from '#app/modules/campaigns/application/ports/copy-generator';
+import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
+import { InvalidFlyerDesignError } from '#app/domain/value-objects/flyer-design';
+import { ProductImageError } from '#app/modules/products/application/errors/product-image.error';
+import { OrganizationLogoError } from '#app/modules/organizations/application/errors/organization-logo.error';
 import { StaleGenerationResultError } from '#app/modules/campaigns/domain/errors/campaign.errors';
 import { PublicationNotFoundError } from '#app/modules/publications/application/publication-history-reader';
 import { TemplateRevisionConflictError } from '#app/modules/templates/domain/errors/template.errors';
 import {
   OrganizationNotFoundError,
   InvalidOrganizationProfileError,
+  OrganizationProfileConflictError,
 } from '#app/modules/organizations/domain/errors/organization.errors';
 import {
   Catch,
@@ -72,7 +77,44 @@ export class ApiExceptionFilter implements ExceptionFilter {
     let code: string | undefined;
     let message: string | undefined;
     let details: ValidationDetail[] | undefined;
-    if (error instanceof CopyGenerationError) {
+    if (error instanceof ProductImageError || error instanceof OrganizationLogoError) {
+      status =
+        error.code === 'INVALID_IMAGE'
+          ? 400
+          : error.code === 'TOO_LARGE'
+            ? 413
+            : error.code === 'CONFLICT'
+              ? 409
+              : error.code === 'NOT_FOUND'
+                ? 404
+                : 503;
+      code =
+        (error instanceof ProductImageError ? 'PRODUCT_IMAGE_' : 'ORGANIZATION_LOGO_') + error.code;
+      message = error.message;
+    } else if (error instanceof CampaignImageError) {
+      status =
+        error.code === 'NOT_FOUND'
+          ? 404
+          : [
+                'COPY_REQUIRED',
+                'PRODUCT_IMAGE_REQUIRED',
+                'FINAL_ASSET_REQUIRED',
+                'BUSY',
+                'STALE_RESULT',
+              ].includes(error.code)
+            ? 409
+            : error.code === 'UNSUPPORTED_DIMENSIONS'
+              ? 400
+              : error.code === 'TIMEOUT'
+                ? 504
+                : ['UNAVAILABLE', 'LOGO_UNAVAILABLE'].includes(error.code)
+                  ? 503
+                  : error.code === 'RATE_LIMITED'
+                    ? 429
+                    : 502;
+      code = 'IMAGE_' + error.code;
+      message = error.message;
+    } else if (error instanceof CopyGenerationError) {
       status =
         error.code === 'BUSY'
           ? 409
@@ -122,6 +164,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
       message = error.message;
     } else if (
       error instanceof InvalidOrganizationProfileError ||
+      error instanceof InvalidFlyerDesignError ||
       error instanceof InvalidEntityIdError ||
       error instanceof InvalidCampaignError ||
       error instanceof InvalidPromotionError ||
@@ -142,6 +185,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
       error instanceof ContentRevisionMismatchError ||
       error instanceof ConcurrentCampaignModificationError ||
       error instanceof TemplateRevisionConflictError ||
+      error instanceof OrganizationProfileConflictError ||
       error instanceof PersistenceConflictError ||
       error instanceof PersistenceReferenceError
     ) {
@@ -157,7 +201,11 @@ export class ApiExceptionFilter implements ExceptionFilter {
     }
     const fallback = httpErrors[status] ?? httpErrors[500]!;
     if (status >= 500)
-      this.logger.error({ event: 'http_error', requestId: req.requestId, code: fallback.code });
+      this.logger.error({
+        event: 'http_error',
+        requestId: req.requestId,
+        code: code ?? fallback.code,
+      });
     res.status(status).json({
       error: {
         code: code ?? fallback.code,

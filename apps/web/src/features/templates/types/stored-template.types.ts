@@ -1,3 +1,5 @@
+import type { TemplateDesign } from './template-design';
+
 export interface StoredTemplate {
   id: string;
   organizationId: string;
@@ -6,6 +8,7 @@ export interface StoredTemplate {
     id: string;
     number: number;
     dimensions: { width: number; height: number };
+    design: TemplateDesign;
     createdAt: string;
   };
   createdAt: string;
@@ -14,4 +17,5 @@ export interface StoredTemplate {
 export interface CreateStoredTemplateInput {
   name: string;
   dimensions: { width: number; height: number };
+  design?: TemplateDesign;
 }

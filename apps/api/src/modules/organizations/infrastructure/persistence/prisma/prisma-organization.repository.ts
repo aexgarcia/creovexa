@@ -3,7 +3,10 @@ import type { PrismaClient } from '#app/infrastructure/persistence/prisma/genera
 import { translatePrismaError } from '#app/infrastructure/persistence/prisma/translate-prisma-error';
 import type { Organization } from '../../../domain/entities/organization.js';
 import type { OrganizationRepository } from '../../../domain/repositories/organization.repository.js';
-import { OrganizationNotFoundError } from '../../../domain/errors/organization.errors.js';
+import {
+  OrganizationNotFoundError,
+  OrganizationProfileConflictError,
+} from '../../../domain/errors/organization.errors.js';
 import { OrganizationMapper } from './organization.mapper.js';
 
 export class PrismaOrganizationRepository implements OrganizationRepository {
@@ -24,10 +27,10 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
     }
   }
 
-  async save(organization: Organization): Promise<void> {
+  async save(organization: Organization, expectedUpdatedAt?: Date): Promise<void> {
     const row = OrganizationMapper.toPersistence(organization);
     const result = await this.client.organization.updateMany({
-      where: { id: row.id },
+      where: { id: row.id, updatedAt: expectedUpdatedAt },
       data: {
         name: row.name,
         description: row.description,
@@ -36,6 +39,15 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
         updatedAt: row.updatedAt,
       },
     });
-    if (result.count !== 1) throw new OrganizationNotFoundError();
+    if (result.count !== 1) {
+      if (
+        !(await this.client.organization.findUnique({
+          where: { id: row.id },
+          select: { id: true },
+        }))
+      )
+        throw new OrganizationNotFoundError();
+      throw new OrganizationProfileConflictError();
+    }
   }
 }

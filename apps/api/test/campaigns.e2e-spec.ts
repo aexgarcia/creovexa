@@ -3,6 +3,8 @@ import { vi } from 'vitest';
 import { PrismaPublicationRepository } from '#app/modules/publications/infrastructure/persistence/prisma/prisma-publication.repository';
 import { PrismaPublicationCampaignLookup } from '#app/modules/publications/infrastructure/persistence/prisma/prisma-publication-campaign-lookup';
 import { ConcurrentCampaignModificationError } from '#app/modules/campaigns/domain/errors/campaign.errors';
+import { CAMPAIGN_FINAL_ASSETS } from '#app/modules/campaigns/application/ports/campaign-final-assets';
+import { finalAssetsFake } from './support/final-assets-fake.js';
 import { PublicationQueryFake } from './support/publication-query-fakes.js';
 import { pendingPublications } from './support/publication-fixtures.js';
 import { domainFixture, CAMPAIGN, CONTENT } from './support/campaign-fakes.js';
@@ -58,6 +60,8 @@ describe('Campaign HTTP with real use cases', () => {
       .useValue(repository)
       .overrideProvider(PrismaCampaignLookups)
       .useValue(new CampaignLookupsFake())
+      .overrideProvider(CAMPAIGN_FINAL_ASSETS)
+      .useValue(finalAssetsFake)
       .overrideProvider(PrismaPublicationRepository)
       .useValue(publications)
       .overrideProvider(PrismaPublicationCampaignLookup)

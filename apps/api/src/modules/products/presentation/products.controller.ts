@@ -10,6 +10,10 @@ import {
   Post,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
 import {
   ApiBody,
@@ -19,6 +23,7 @@ import {
   ApiParam,
   ApiQuery,
   ApiTags,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import {
   DevelopmentOrganizationGuard,
@@ -33,6 +38,15 @@ import { GetProduct } from '../application/use-cases/get-product.js';
 import { ListProducts } from '../application/use-cases/list-products.js';
 import { CreateProductRequest, UpdateProductRequest } from './product.requests.js';
 import { ProductEnvelope, ProductPageResponse, productResponse } from './product.responses.js';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
+import type { Options } from 'multer';
+import { SaveProductImage } from '../application/use-cases/save-product-image.js';
+import { GetProductImage } from '../application/use-cases/get-product-image.js';
+import { MAX_IMAGE_BYTES } from '#app/infrastructure/image-files';
+const productImageUploadOptions = {
+  limits: { fileSize: MAX_IMAGE_BYTES, files: 1, fields: 0, parts: 1 },
+} satisfies Pick<Options, 'limits'>;
 
 @ApiTags('Productos')
 @ApiErrors()
@@ -44,7 +58,49 @@ export class ProductsController {
     @Inject(UpdateProduct) private readonly updateProduct: UpdateProduct,
     @Inject(GetProduct) private readonly getProduct: GetProduct,
     @Inject(ListProducts) private readonly listProducts: ListProducts,
+    @Inject(SaveProductImage) private readonly saveImage: SaveProductImage,
+    @Inject(GetProductImage) private readonly getImage: GetProductImage,
   ) {}
+  @Post(':id/image')
+  @ApiOperation({ summary: 'Subir o reemplazar la única imagen del producto/servicio' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['image'],
+      properties: { image: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiCreatedResponse({ type: ProductEnvelope })
+  @UseInterceptors(FileInterceptor('image', productImageUploadOptions))
+  async uploadImage(
+    @OrganizationId() organizationId: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<ProductEnvelope> {
+    if (!file) throw new BadRequestException();
+    return {
+      data: productResponse(
+        await this.saveImage.execute({ organizationId, productId: id, bytes: file.buffer }),
+      ),
+    };
+  }
+
+  @Get(':id/images/:assetId')
+  @ApiOperation({ summary: 'Leer una imagen del producto dentro de la organización activa' })
+  async readImage(
+    @OrganizationId() organizationId: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('assetId', new ParseUUIDPipe()) assetId: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const image = await this.getImage.execute({ organizationId, productId: id, assetId });
+    response.setHeader('Content-Type', image.contentType);
+    response.setHeader('Content-Length', image.bytes.byteLength);
+    response.setHeader('Cache-Control', 'private, no-store');
+    response.setHeader('X-Content-Type-Options', 'nosniff');
+    return new StreamableFile(image.bytes);
+  }
   @Post()
   @ApiOperation({ summary: 'Crear producto o servicio' })
   @ApiBody({ type: CreateProductRequest })

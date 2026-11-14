@@ -11,3 +11,9 @@ export class OrganizationNotFoundError extends Error {
     this.name = 'OrganizationNotFoundError';
   }
 }
+export class OrganizationProfileConflictError extends Error {
+  constructor() {
+    super('La empresa cambió. Actualiza antes de guardar.');
+    this.name = 'OrganizationProfileConflictError';
+  }
+}

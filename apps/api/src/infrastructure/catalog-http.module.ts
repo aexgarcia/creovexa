@@ -1,4 +1,8 @@
 import { CampaignCopyModule } from './campaign-copy.module.js';
+import { CampaignImageModule } from './campaign-image.module.js';
+import { CampaignImageController } from '#app/modules/campaigns/presentation/campaign-image.controller';
+import { ProductImagesModule } from './product-images.module.js';
+import { OrganizationLogosModule } from './organization-logos.module.js';
 import {
   ListPublicationHistory,
   ListPublicationAttempts,
@@ -27,6 +31,9 @@ import { PublicationPersistenceModule } from './publication-persistence.module.j
 
 @Module({
   imports: [
+    CampaignImageModule,
+    OrganizationLogosModule,
+    ProductImagesModule,
     CampaignCopyModule,
     DatabaseModule,
     CommercialPersistenceModule,
@@ -34,6 +41,7 @@ import { PublicationPersistenceModule } from './publication-persistence.module.j
     PublicationPersistenceModule,
   ],
   controllers: [
+    CampaignImageController,
     PublicationHistoryController,
     DashboardController,
     OrganizationController,

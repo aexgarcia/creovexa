@@ -24,6 +24,7 @@ import { RequestCampaignGeneration } from '#app/modules/campaigns/application/us
 import { RequestCampaignRegeneration } from '#app/modules/campaigns/application/use-cases/request-campaign-regeneration';
 import { RecordGeneratedCampaign } from '#app/modules/campaigns/application/use-cases/record-generated-campaign';
 import { ApproveCampaign } from '#app/modules/campaigns/application/use-cases/approve-campaign';
+import { finalAssetsFake } from './final-assets-fake.js';
 import { RecordCampaignGenerationFailure } from '#app/modules/campaigns/application/use-cases/record-campaign-generation-failure';
 import { GenerationFailureCode } from '#app/modules/campaigns/domain/campaign-status';
 
@@ -261,7 +262,7 @@ export function campaignUseCases() {
     generate: new RequestCampaignGeneration(repository, lookups, ids, clock),
     regenerate: new RequestCampaignRegeneration(repository, lookups, ids, clock),
     record: new RecordGeneratedCampaign(repository, ids, clock),
-    approve: new ApproveCampaign(repository, clock),
+    approve: new ApproveCampaign(repository, clock, finalAssetsFake),
     fail: new RecordCampaignGenerationFailure(repository, clock),
   };
 }

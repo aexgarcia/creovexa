@@ -1,5 +1,6 @@
 import { entityId, type EntityId } from '#app/domain/entity-id';
 import { timestamp } from '#app/domain/timestamp';
+import { FlyerDesign, type FlyerDesignData } from '#app/domain/value-objects/flyer-design';
 import {
   InvalidTemplateDimensionsError,
   InvalidTemplateRevisionError,
@@ -13,6 +14,7 @@ interface TemplateRevisionState {
   organizationId: EntityId;
   number: number;
   dimensions: TemplateDimensions;
+  design: FlyerDesignData;
   createdAt: number;
 }
 
@@ -38,6 +40,7 @@ export class TemplateRevision {
     organizationId: string,
     dimensions: TemplateDimensions,
     at: Date,
+    design?: unknown,
   ): TemplateRevision {
     return new TemplateRevision({
       id: entityId(id, 'revisionId'),
@@ -45,11 +48,17 @@ export class TemplateRevision {
       organizationId: entityId(organizationId, 'organizationId'),
       number: 1,
       dimensions: supportedDimensions(dimensions),
+      design: FlyerDesign.create(design).data,
       createdAt: timestamp(at),
     });
   }
 
-  next(id: string, dimensions: TemplateDimensions, at: Date): TemplateRevision {
+  next(
+    id: string,
+    dimensions: TemplateDimensions,
+    at: Date,
+    design: unknown = this.design,
+  ): TemplateRevision {
     const revisionId = entityId(id, 'revisionId');
     const number = this.number + 1;
     if (revisionId === this.id || !Number.isSafeInteger(number)) {
@@ -60,6 +69,7 @@ export class TemplateRevision {
       id: revisionId,
       number,
       dimensions: supportedDimensions(dimensions),
+      design: FlyerDesign.create(design).data,
       createdAt: timestamp(at, this.#state.createdAt),
     });
   }
@@ -71,9 +81,17 @@ export class TemplateRevision {
     number: number,
     dimensions: TemplateDimensions,
     at: Date,
+    design?: unknown,
   ): TemplateRevision {
     if (!Number.isSafeInteger(number) || number < 1) throw new InvalidTemplateRevisionError();
-    const initial = TemplateRevision.initial(id, templateId, organizationId, dimensions, at);
+    const initial = TemplateRevision.initial(
+      id,
+      templateId,
+      organizationId,
+      dimensions,
+      at,
+      design,
+    );
     return new TemplateRevision({ ...initial.#state, number });
   }
 
@@ -91,6 +109,9 @@ export class TemplateRevision {
   }
   get dimensions(): TemplateDimensions {
     return this.#state.dimensions;
+  }
+  get design(): FlyerDesignData {
+    return this.#state.design;
   }
   get createdAt(): Date {
     return new Date(this.#state.createdAt);

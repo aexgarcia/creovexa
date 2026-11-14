@@ -8,5 +8,5 @@ export interface ProductRepository {
   /** Insert only; enforce product.organizationId === organizationId. */
   add(organizationId: EntityId, product: Product): Promise<void>;
   /** Update an existing product in this organization only; never an upsert. */
-  save(organizationId: EntityId, product: Product): Promise<void>;
+  save(organizationId: EntityId, product: Product, expectedUpdatedAt?: Date): Promise<void>;
 }

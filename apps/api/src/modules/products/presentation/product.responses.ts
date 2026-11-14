@@ -16,6 +16,7 @@ export class ProductResponse {
   @ApiProperty({ type: String }) description!: string;
   @ApiProperty({ type: PriceResponse }) regularPrice!: PriceResponse;
   @ApiProperty({ type: [String] }) imageAssetIds!: string[];
+  @ApiProperty({ type: String, nullable: true }) imageUrl!: string | null;
   @ApiProperty({ type: String, format: 'date-time' }) createdAt!: string;
   @ApiProperty({ type: String, format: 'date-time' }) updatedAt!: string;
 }
@@ -38,6 +39,10 @@ export function productResponse(result: ProductResult): ProductResponse {
       currency: result.regularPrice.currency,
     },
     imageAssetIds: [...result.imageAssetIds],
+    imageUrl:
+      result.imageAssetIds.length === 1
+        ? `/products/${result.id}/images/${result.imageAssetIds[0]}`
+        : null,
     createdAt: result.createdAt,
     updatedAt: result.updatedAt,
   };

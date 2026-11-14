@@ -30,9 +30,9 @@ export class UpdateOrganizationProfile {
         brandTone: input.brandTone,
         logoAssetId: input.logoAssetId,
       },
-      this.clock.now(),
+      new Date(Math.max(this.clock.now().getTime(), organization.updatedAt.getTime() + 1)),
     );
-    await this.organizations.save(updated);
+    await this.organizations.save(updated, organization.updatedAt);
     return organizationResult(updated);
   }
 }

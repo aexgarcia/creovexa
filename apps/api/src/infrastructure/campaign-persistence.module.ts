@@ -14,9 +14,14 @@ import { PrismaCampaignLookups } from '#app/modules/campaigns/infrastructure/per
 import { DatabaseModule } from './persistence/prisma/database.module.js';
 import { PrismaService } from './persistence/prisma/prisma.service.js';
 import { RuntimeModule, CLOCK, ID_GENERATOR } from './runtime.module.js';
+import { CampaignImageModule } from './campaign-image.module.js';
+import {
+  CAMPAIGN_FINAL_ASSETS,
+  type CampaignFinalAssets,
+} from '#app/modules/campaigns/application/ports/campaign-final-assets';
 
 @Module({
-  imports: [DatabaseModule, RuntimeModule],
+  imports: [DatabaseModule, RuntimeModule, CampaignImageModule],
   providers: [
     ...[GetCampaign, ListCampaigns].map((UseCase) => ({
       provide: UseCase,
@@ -49,7 +54,13 @@ import { RuntimeModule, CLOCK, ID_GENERATOR } from './runtime.module.js';
       useFactory: (repo: PrismaCampaignRepository, ids: IdGenerator, clock: Clock) =>
         new RecordGeneratedCampaign(repo, ids, clock),
     },
-    ...[ApproveCampaign, RecordCampaignGenerationFailure].map((UseCase) => ({
+    {
+      provide: ApproveCampaign,
+      inject: [PrismaCampaignRepository, CLOCK, CAMPAIGN_FINAL_ASSETS],
+      useFactory: (repo: PrismaCampaignRepository, clock: Clock, assets: CampaignFinalAssets) =>
+        new ApproveCampaign(repo, clock, assets),
+    },
+    ...[RecordCampaignGenerationFailure].map((UseCase) => ({
       provide: UseCase,
       inject: [PrismaCampaignRepository, CLOCK],
       useFactory: (repo: PrismaCampaignRepository, clock: Clock) => new UseCase(repo, clock),

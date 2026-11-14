@@ -34,7 +34,8 @@ function details(input: ProductDetails) {
   }
   if (!(input.regularPrice instanceof Money)) throw new InvalidProductError('regularPrice');
   const imageAssetIds = input.imageAssetIds === undefined ? [] : input.imageAssetIds;
-  if (!Array.isArray(imageAssetIds)) throw new InvalidProductError('imageAssetIds');
+  if (!Array.isArray(imageAssetIds) || imageAssetIds.length > 1)
+    throw new InvalidProductError('imageAssetIds');
   const normalizedIds = imageAssetIds.map((id: string) => entityId(id, 'imageAssetIds'));
   if (new Set(normalizedIds).size !== normalizedIds.length) {
     throw new InvalidProductError('imageAssetIds');

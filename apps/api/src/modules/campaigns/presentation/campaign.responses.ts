@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Currency } from '#app/domain/value-objects/money';
 import { PaginationResponse } from '#app/presentation/http/pagination.dto';
 import { CampaignStatus } from '../domain/campaign-status.js';
@@ -18,6 +18,7 @@ export class CandidateContentResponse {
   @ApiProperty({ type: String }) cta!: string;
   @ApiProperty({ type: [String] }) hashtags!: string[];
   @ApiProperty({ type: [String] }) assetIds!: string[];
+  @ApiProperty({ type: String, nullable: true }) finalAssetUrl!: string | null;
   @ApiProperty({ type: String, format: 'date-time' }) createdAt!: string;
 }
 export class CampaignResponse {
@@ -27,6 +28,7 @@ export class CampaignResponse {
   @ApiProperty({ type: String, format: 'uuid' }) id!: string;
   @ApiProperty({ type: String, format: 'uuid' }) organizationId!: string;
   @ApiProperty({ type: String, format: 'uuid' }) productId!: string;
+  @ApiPropertyOptional({ type: String, nullable: true }) productImageUrl?: string | null;
   @ApiProperty({ type: String, format: 'uuid' }) templateId!: string;
   @ApiProperty({ type: String, format: 'uuid' }) templateRevisionId!: string;
   @ApiProperty({ type: String }) title!: string;
@@ -56,6 +58,10 @@ export function campaignResponse(result: CampaignResult): CampaignResponse {
           cta: result.candidateContent.cta,
           hashtags: [...result.candidateContent.hashtags],
           assetIds: [...result.candidateContent.assetIds],
+          finalAssetUrl:
+            result.candidateContent.assetIds.length === 1
+              ? `/campaigns/${result.id}/assets/${result.candidateContent.assetIds[0]}`
+              : null,
           createdAt: result.candidateContent.createdAt,
         }
       : null,
@@ -63,6 +69,14 @@ export function campaignResponse(result: CampaignResult): CampaignResponse {
     id: result.id,
     organizationId: result.organizationId,
     productId: result.productId,
+    ...(result.generation
+      ? {
+          productImageUrl:
+            result.generation.snapshot.product.imageAssetIds.length === 1
+              ? `/products/${result.productId}/images/${result.generation.snapshot.product.imageAssetIds[0]}`
+              : null,
+        }
+      : {}),
     templateId: result.templateId,
     templateRevisionId: result.templateRevisionId,
     title: result.title,

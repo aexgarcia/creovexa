@@ -6,5 +6,5 @@ export interface OrganizationRepository {
   /** Insert only; an existing identifier must not be overwritten. */
   add(organization: Organization): Promise<void>;
   /** Update an existing organization only; never an upsert. */
-  save(organization: Organization): Promise<void>;
+  save(organization: Organization, expectedUpdatedAt?: Date): Promise<void>;
 }

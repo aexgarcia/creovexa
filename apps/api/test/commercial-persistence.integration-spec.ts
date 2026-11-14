@@ -131,7 +131,7 @@ describe('Commercial persistence (PostgreSQL)', () => {
         kind,
         name: 'Catálogo',
         regularPrice: { amountMinor: Number.MAX_SAFE_INTEGER, currency: Currency.EUR },
-        imageAssetIds: [uuid(), uuid()],
+        imageAssetIds: [uuid()],
       });
       const id = entityId(created.id);
       const row = await database.product.findUniqueOrThrow({ where: { id } });
