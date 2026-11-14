@@ -3,11 +3,11 @@ import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
 import {
   CampaignImageError,
-  InvalidCampaignTransitionError,
   type CampaignGenerations,
   type CampaignReference,
   type GeneratedCampaignContent,
 } from '#app/modules/campaigns/contract';
+import { checkImagePreconditions } from '../image-generation-preconditions.js';
 import type { CampaignCopyRepository } from '../ports/campaign-copy-repository.js';
 import type {
   CampaignImageLease,
@@ -65,45 +65,21 @@ function assertStoredAsset(
 
 export class GenerateCampaignImage {
   constructor(
-    private readonly generations: CampaignGenerations,
-    private readonly copies: CampaignCopyRepository,
+    readonly generations: CampaignGenerations,
+    readonly copies: CampaignCopyRepository,
     private readonly images: CampaignImageRepository,
-    private readonly productImages: ProductImageSource,
-    private readonly generator: ImageGenerator,
-    private readonly renderer: TemplateRenderer,
-    private readonly storage: StorageProvider,
+    readonly productImages: ProductImageSource,
+    readonly generator: ImageGenerator,
+    readonly renderer: TemplateRenderer,
+    readonly storage: StorageProvider,
     private readonly ids: IdGenerator,
-    private readonly clock: Clock,
+    readonly clock: Clock,
   ) {}
 
   async execute(input: GenerateCampaignImageInput): Promise<GeneratedCampaignContent> {
-    const campaign = await this.generations.view(input, input.generationId);
-    const generation = campaign.generation!;
-    if (campaign.candidateContent) return campaign.candidateContent;
-    if (campaign.status !== 'GENERATING') throw new InvalidCampaignTransitionError();
-    const selection = {
-      organizationId: campaign.organizationId,
-      campaignId: campaign.campaignId,
-      generationId: generation.id,
-    };
-    const copy = await this.copies.find(selection);
-    if (!copy) throw new CampaignImageError('COPY_REQUIRED');
-    // Copy was validated and frozen in phase 5. Do not reinterpret it using a newer copy policy.
-    if (copy.cta !== generation.snapshot.cta) throw new CampaignImageError('INVALID_OUTPUT');
-    if (typeof copy.imagePrompt !== 'string' || !copy.imagePrompt.trim())
-      throw new CampaignImageError('INVALID_OUTPUT');
-    const snapshot = generation.snapshot;
-    if (snapshot.product.imageAssetIds.length === 0)
-      throw new CampaignImageError('PRODUCT_IMAGE_REQUIRED');
-    if (snapshot.product.imageAssetIds.length !== 1) throw new CampaignImageError('INVALID_OUTPUT');
-    if (snapshot.template.width !== 1080 || snapshot.template.height !== 1080)
-      throw new CampaignImageError('UNSUPPORTED_DIMENSIONS');
-    this.productImages.assertAvailable();
-    this.generator.assertAvailable();
-    this.renderer.assertAvailable();
-    this.storage.assertAvailable();
-    const now = this.clock.now();
-    await this.generations.assertPromotionActive(input, now);
+    const ready = await checkImagePreconditions(this, input);
+    if (ready.done) return ready.done;
+    const { campaign, selection, snapshot, copy, now } = ready;
     const lease: CampaignImageLease = {
       ...selection,
       token: entityId(this.ids.next()),

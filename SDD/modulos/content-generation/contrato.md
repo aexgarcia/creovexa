@@ -12,8 +12,9 @@ No decide estados ni aprobación, ni conoce la entidad `Campaign`: pide a `campa
 
 | Tabla | Contenido |
 | --- | --- |
-| `campaign_copies` | Copy validado de una generación, incluido `imagePrompt`, y su reserva |
-| `campaign_image_jobs` | Reserva temporal del trabajo de imagen |
+| `campaign_copies` | Copy validado de una generación, incluido `imagePrompt`, su reserva, su estado (`QUEUED`, `RUNNING`, `READY`, `FAILED`) y `failure_code` |
+| `campaign_image_jobs` | Reserva del trabajo de imagen, su estado y `failure_code` |
+| Colas `generate-campaign-copy` y `generate-campaign-image` | Trabajos pendientes en el schema de `pg-boss` |
 
 Además **escribe** en `campaign_assets` (imagen base y flyer final) y lee de vuelta la imagen base que su propia operación guardó. No lee ni escribe `campaigns` ni `generated_contents`: al confirmar la imagen pide a `campaigns` que lo haga dentro de la misma transacción.
 
@@ -21,33 +22,65 @@ Además **escribe** en `campaign_assets` (imagen base y flyer final) y lee de vu
 
 | Método y ruta | Descripción | Respuesta |
 | --- | --- | --- |
-| `POST /campaigns/:id/copy` | Generar el copy. Desde `DRAFT` captura el snapshot y pasa a `GENERATING` | `200` |
-| `GET /campaigns/:id/copy` | Consultar el copy de la generación vigente | `200` |
-| `POST /campaigns/:id/image` | Generar el flyer final. Cuerpo: `generationId` | `200` |
+| `POST /campaigns/:id/copy` | Solicitar el copy. Desde `DRAFT` captura el snapshot y pasa a `GENERATING` | `202` |
+| `GET /campaigns/:id/copy` | Estado del trabajo y copy de la generación vigente | `200` |
+| `POST /campaigns/:id/image` | Solicitar el flyer final. Cuerpo: `generationId` | `202` |
+| `GET /campaigns/:id/image` | Estado del trabajo y flyer de la generación vigente | `200` |
 
-Hoy son síncronos: responden cuando el proveedor termina. Pasarán a `202` con [ADR-0008](../../adr/0008-cola-de-trabajos-y-worker.md).
+La generación se ejecuta en segundo plano ([ADR-0008](../../adr/0008-cola-de-trabajos-y-worker.md)). Un `202` significa que el trabajo quedó registrado de forma durable, no que terminó. Pedir de nuevo mientras está pendiente no crea otro trabajo; si ya terminó, responde el resultado.
+
+Respuesta de copy:
+
+```json
+{ "data": { "generationId": "…", "status": "READY", "failureCode": null,
+            "copy": { "headline": "…", "caption": "…", "cta": "…", "hashtags": [], "imagePrompt": "…" } } }
+```
+
+Respuesta de imagen:
+
+```json
+{ "data": { "generationId": "…", "status": "READY", "failureCode": null,
+            "contentId": "…", "finalAssetUrl": "/campaigns/…/assets/…" } }
+```
+
+| `status` | Significado | Campos con valor |
+| --- | --- | --- |
+| `PENDING` | Registrado, esperando al worker | — |
+| `RUNNING` | El worker lo está ejecutando | — |
+| `READY` | Terminado | `copy`, o `contentId` y `finalAssetUrl` |
+| `FAILED` | Falló; se puede volver a solicitar | `failureCode` (`TIMEOUT`, `UNAVAILABLE`, `RATE_LIMITED`, `INVALID_OUTPUT`, `REFUSED`, `LOGO_UNAVAILABLE`, `FAILED`…) |
+
+`data: null` indica que todavía no se solicitó nada para la generación vigente. Una reserva que venció sin terminar se informa como `FAILED` con `TIMEOUT`.
+
+**Cambio respecto a la versión síncrona:** `POST` respondía `200` con el resultado y `GET /copy` devolvía los campos del copy en la raíz de `data`. El CMS se actualizó en el mismo cambio.
 
 ### Códigos de error propios
 
+Al solicitar, solo pueden ocurrir los errores que se comprueban antes de encolar. Los del proveedor (`TIMEOUT`, `INVALID_OUTPUT`, `REFUSED`, `RATE_LIMITED`) llegan después como `failureCode` del estado.
+
 | Código | Estado | Cuándo |
 | --- | --- | --- |
-| `COPY_BUSY` | 409 | Ya hay una generación de copy en curso |
-| `COPY_TIMEOUT` | 504 | El proveedor no respondió a tiempo |
 | `COPY_UNAVAILABLE` | 503 | Proveedor de copy no configurado |
-| `COPY_INVALID_OUTPUT`, `COPY_REFUSED` | 502 | Respuesta inválida o rechazada por el proveedor |
-| `IMAGE_COPY_REQUIRED`, `IMAGE_PRODUCT_IMAGE_REQUIRED`, `IMAGE_BUSY`, `IMAGE_STALE_RESULT` | 409 | Falta un requisito, hay otra generación en curso o el resultado llegó tarde |
+| `IMAGE_COPY_REQUIRED`, `IMAGE_PRODUCT_IMAGE_REQUIRED` | 409 | Falta el copy o la foto del producto |
+| `IMAGE_INVALID_OUTPUT` | 502 | El copy guardado no coincide con el snapshot |
 | `IMAGE_UNSUPPORTED_DIMENSIONS` | 400 | La plantilla no es 1080×1080 |
-| `IMAGE_TIMEOUT` | 504 | Se agotó el tiempo |
-| `IMAGE_UNAVAILABLE`, `IMAGE_LOGO_UNAVAILABLE` | 503 | Proveedor, storage o logo no disponibles |
-| `IMAGE_RATE_LIMITED` | 429 | El proveedor limitó las solicitudes |
-| `IMAGE_INVALID_OUTPUT`, `IMAGE_REFUSED` | 502 | Resultado inválido o rechazado por el proveedor |
-| `STALE_GENERATION` | 409 | Resultado de una generación que ya no es la vigente |
+| `IMAGE_UNAVAILABLE` | 503 | Proveedor, renderer o storage no configurados |
+| `INVALID_CAMPAIGN_STATE` | 409 | La campaña no está en un estado que admita la solicitud |
+| `STALE_GENERATION` | 409 | El `generationId` enviado no es el vigente |
+| `INVALID_INPUT` | 400 | Promoción vencida |
 
 `CampaignImageError` está definido en `campaigns` porque la aprobación también lo usa. Formato de respuestas y errores: [ADR-0004](../../adr/0004-contrato-http-y-errores.md).
 
 ## Casos de uso
 
-`GenerateCampaignCopy`, `GetCampaignCopy`, `GenerateCampaignImage`.
+| Caso de uso | Lo usa |
+| --- | --- |
+| `RequestCampaignCopy`, `RequestCampaignImage` | Los `POST`: comprueban y encolan en una transacción |
+| `GetCampaignCopy`, `GetCampaignImage` | Los `GET`: estado del trabajo y resultado |
+| `GenerateCampaignCopy`, `GenerateCampaignImage` | El worker: hacen el trabajo, igual que antes |
+| `GenerationJobs` | El worker: ejecuta cada trabajo y guarda el `failure_code` si falla |
+
+`checkImagePreconditions` reúne las comprobaciones de imagen que hacen tanto la solicitud (para responder al momento) como el trabajo (porque la campaña pudo cambiar mientras esperaba).
 
 ## Lo que expone a otros módulos
 
@@ -62,7 +95,7 @@ Nada. Ningún módulo puede importar de `content-generation`; para `campaigns` l
 | Del contrato | Para qué |
 | --- | --- |
 | `CampaignGenerations.view` | Conocer estado, versión, generación vigente y su snapshot, como datos planos |
-| `CampaignGenerations.begin` | Iniciar la generación de una campaña en `DRAFT` |
+| `CampaignGenerations.begin` | Iniciar la generación de una campaña en `DRAFT`, opcionalmente dentro de su transacción |
 | `CampaignGenerations.assertPromotionActive` | No generar para una promoción vencida |
 | `CampaignGenerations.lock` | Serializar el trabajo y confirmar que la generación sigue vigente, dentro de su transacción |
 | `CampaignGenerations.recordContent` | Registrar el contenido y pasar a `PENDING_APPROVAL`, dentro de su transacción |
@@ -86,6 +119,8 @@ Nada. Ningún módulo puede importar de `content-generation`; para `campaigns` l
 | Composición | `TemplateRenderer` | `PlaywrightTemplateRenderer` con `campaign-flyer-html.ts` |
 | Persistencia propia | `CampaignCopyRepository`, `CampaignImageRepository` | Repositorios Prisma |
 | Archivos temporales | — | `LocalImageArtifacts` en `.local/image-artifacts` |
+| Cola de trabajos | `JobQueue` | `PgBossJobQueue` ([ADR-0008](../../adr/0008-cola-de-trabajos-y-worker.md)) |
+| Transacción compartida | `UnitOfWork` | `PrismaUnitOfWork` |
 
 Configuración: `COPY_PROVIDER`, `IMAGE_PROVIDER` y las variables de cada proveedor ([ADR-0006](../../adr/0006-proveedores-de-ia-por-despliegue.md)); `RENDER_TIMEOUT_MS`.
 
@@ -106,7 +141,6 @@ Configuración: `COPY_PROVIDER`, `IMAGE_PROVIDER` y las variables de cada provee
 
 ## Pendiente
 
-- Ejecutar la generación como trabajos de la cola ([ADR-0008](../../adr/0008-cola-de-trabajos-y-worker.md)).
 - Modo de IA completa con verificación ([ADR-0009](../../adr/0009-estrategia-de-generacion-del-flyer.md)).
 - Regeneración de imagen e historial de versiones.
 - Formatos distintos de 1080×1080; región e idioma del flyer, hoy fijos.

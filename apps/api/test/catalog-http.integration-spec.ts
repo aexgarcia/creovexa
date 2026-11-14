@@ -5,6 +5,9 @@ import { copyChoices } from '#app/modules/content-generation/application/copy-po
 import type { GenerationSnapshotData } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
 import { PrismaCampaignCopyRepository } from '#app/modules/content-generation/infrastructure/persistence/prisma/prisma-campaign-copy.repository';
 import { CAMPAIGN_GENERATIONS } from '#app/modules/campaigns/contract';
+import { JOB_QUEUE } from '#app/application/ports/job-queue';
+import { JOBS_CONFIG } from '#app/config/jobs.config';
+import { JobQueueFake } from './support/job-queue-fake.js';
 import { randomUUID } from 'node:crypto';
 import { FlyerDesign } from '#app/domain/value-objects/flyer-design';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -52,6 +55,7 @@ describe('Catalog HTTP with PostgreSQL', () => {
   let database: PrismaService;
   const context: CatalogHttpConfig = { organizationId: null };
   const clock = { value: NOW, now: () => new Date(clock.value) };
+  const queue = new JobQueueFake();
   const copyGenerator = {
     assertAvailable() {},
     generate: vi.fn(async (snapshot: GenerationSnapshotData) => {
@@ -83,6 +87,10 @@ describe('Catalog HTTP with PostgreSQL', () => {
       .useValue(clock)
       .overrideProvider(HTTP_LOGGER)
       .useValue({ log() {}, error() {} })
+      .overrideProvider(JOB_QUEUE)
+      .useValue(queue)
+      .overrideProvider(JOBS_CONFIG)
+      .useValue({ worker: true })
       .compile();
     app = module.createNestApplication({ logger: false });
     configureHttp(app);
@@ -280,10 +288,21 @@ describe('Catalog HTTP with PostgreSQL', () => {
     const created = await request(app.getHttpServer()).post('/campaigns').send(input).expect(201);
     const path = '/campaigns/' + created.body.data.id + '/copy';
     expect((await request(app.getHttpServer()).get(path).expect(200)).body.data).toBeNull();
-    const result = await request(app.getHttpServer()).post(path).expect(200);
-    expect(result.body.data.caption).toContain('PEN 10.00');
-    const again = await request(app.getHttpServer()).post(path).expect(200);
+    const accepted = await request(app.getHttpServer()).post(path).expect(202);
+    expect(accepted.body.data).toMatchObject({ status: 'PENDING', copy: null });
+    expect(copyGenerator.generate).not.toHaveBeenCalled();
+    const pending = await request(app.getHttpServer()).get(path).expect(200);
+    expect(pending.body.data).toMatchObject({
+      generationId: accepted.body.data.generationId,
+      status: 'PENDING',
+    });
+    await queue.drain();
+    const result = await request(app.getHttpServer()).get(path).expect(200);
+    expect(result.body.data.status).toBe('READY');
+    expect(result.body.data.copy.caption).toContain('PEN 10.00');
+    const again = await request(app.getHttpServer()).post(path).expect(202);
     expect(again.body.data).toEqual(result.body.data);
+    await queue.drain();
     expect(copyGenerator.generate).toHaveBeenCalledTimes(1);
     const campaign = await database.campaign.findUniqueOrThrow({
       where: { id: created.body.data.id },

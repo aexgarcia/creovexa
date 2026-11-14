@@ -276,6 +276,7 @@ model PublicationAttemptResult {
 }
 
 enum CampaignCopyStatus {
+  QUEUED
   RUNNING
   READY
   FAILED
@@ -289,6 +290,7 @@ model CampaignCopy {
   status         CampaignCopyStatus
   expiresAt      DateTime           @map("expires_at") @db.Timestamptz(3)
   content        Json?
+  failureCode    String?            @map("failure_code")
   generation     CampaignGeneration @relation(fields: [organizationId, campaignId, generationId], references: [organizationId, campaignId, id], onDelete: Restrict, onUpdate: Restrict, map: "campaign_copies_generation_fkey")
 
   @@unique([organizationId, campaignId, generationId], map: "campaign_copies_owner_generation_key")
@@ -297,6 +299,7 @@ model CampaignCopy {
 }
 
 enum CampaignImageJobStatus {
+  QUEUED
   RUNNING
   READY
   FAILED
@@ -315,6 +318,7 @@ model CampaignImageJob {
   expectedVersion BigInt                 @map("expected_version")
   status          CampaignImageJobStatus
   expiresAt       DateTime               @map("expires_at") @db.Timestamptz(3)
+  failureCode     String?                @map("failure_code")
   generation      CampaignGeneration     @relation(fields: [organizationId, campaignId, generationId], references: [organizationId, campaignId, id], onDelete: Restrict, onUpdate: Restrict, map: "campaign_image_jobs_generation_fkey")
 
   @@unique([organizationId, campaignId, generationId], map: "campaign_image_jobs_owner_generation_key")

@@ -13,7 +13,7 @@ Actualizado el 14 de noviembre de 2026. Las guías originales son [fases 1 a 4.5
 | 4.5 | CMS | Hecha | [fase 4.5](../historial/fase-4.5.md) |
 | 5 | Copy con IA (OpenAI y Gemini) | Hecha | [fase 5](../historial/fase-5.md) |
 | 6 | Imagen y composición | **A medias** (commiteada en `feat/campaign-image-generation`) | [fase 6](../historial/fase-6.md) |
-| 7 | Orquestación | Replanificada (ver abajo) | — |
+| 7 | Orquestación | Hecha con cola propia en lugar de n8n ([ADR-0008](../adr/0008-cola-de-trabajos-y-worker.md)) | — |
 | 8 | Redes sociales | Pendiente | — |
 | 9 | Autenticación, seguridad y auditoría | Pendiente; se propone adelantar parte | — |
 | 10 | Resiliencia y producción | Pendiente | — |
@@ -45,7 +45,7 @@ Cada paso es un cambio pequeño y verificable con la suite de tests existente.
 3. ~~Extraer el módulo `assets` y unificar los tres adapters de storage ([ADR-0010](../adr/0010-dividir-campaigns.md)).~~ Hecho: un solo cliente S3 detrás del port `ObjectStorage`. Las tres tablas de assets siguen separadas.
 4. ~~Extraer `content-generation` desde `campaigns` ([ADR-0010](../adr/0010-dividir-campaigns.md)).~~ Hecho.
    - Aislamiento estricto: `content-generation` solo usa el contrato publicado de `campaigns` ([ADR-0021](../adr/0021-contrato-publicado-entre-modulos.md)). Hecho.
-5. Cola de trabajos y worker; los endpoints de generación pasan a responder `202` ([ADR-0008](../adr/0008-cola-de-trabajos-y-worker.md)).
+5. ~~Cola de trabajos y worker; los endpoints de generación pasan a responder `202` ([ADR-0008](../adr/0008-cola-de-trabajos-y-worker.md)).~~ Hecho, con el CMS consultando el estado. Con esto termina la etapa B.
 
 ### Etapa C · Cerrar la generación
 

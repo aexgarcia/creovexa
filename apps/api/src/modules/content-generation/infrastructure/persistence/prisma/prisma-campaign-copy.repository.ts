@@ -1,4 +1,8 @@
+import { randomUUID } from 'node:crypto';
+import type { TransactionContext } from '#app/application/ports/transaction-context';
 import type { PrismaClient } from '#app/infrastructure/persistence/prisma/generated/client';
+import { prismaTransaction } from '#app/infrastructure/persistence/prisma/transaction-context';
+import type { GenerationJobState } from '../../../application/generation-job.js';
 import type {
   CampaignCopyRepository,
   CopyLease,
@@ -50,6 +54,7 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
         token: lease.token,
         status: 'RUNNING' as const,
         expiresAt: lease.expiresAt,
+        failureCode: null,
       };
       if (existing)
         await tx.campaignCopy.update({ where: { generationId: lease.generationId }, data });
@@ -73,6 +78,59 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
         data: { status: 'READY', content: { ...content } },
       });
       if (result.count !== 1) throw new CopyGenerationError('BUSY');
+    });
+  }
+  async state(selection: CopySelection, now: Date): Promise<GenerationJobState | null> {
+    const row = await this.client.campaignCopy.findFirst({ where: selectionOf(selection) });
+    if (!row) return null;
+    if (row.status === 'RUNNING' && row.expiresAt <= now)
+      return { status: 'FAILED', failureCode: 'TIMEOUT' };
+    if (row.status === 'FAILED')
+      return { status: 'FAILED', failureCode: row.failureCode ?? 'FAILED' };
+    return { status: row.status };
+  }
+  async queue(selection: CopySelection, at: Date, transaction: TransactionContext) {
+    const tx = prismaTransaction(transaction);
+    const existing = await tx.campaignCopy.findUnique({
+      where: { generationId: selection.generationId },
+    });
+    // Finished copy and work in progress stay as they are.
+    if (
+      existing &&
+      (existing.status === 'READY' || (existing.status === 'RUNNING' && existing.expiresAt > at))
+    )
+      return;
+    const data = {
+      ...selectionOf(selection),
+      token: randomUUID(),
+      status: 'QUEUED' as const,
+      expiresAt: at,
+      failureCode: null,
+    };
+    await tx.campaignCopy.upsert({
+      where: { generationId: selection.generationId },
+      create: data,
+      update: data,
+    });
+  }
+  async fail(selection: CopySelection, failureCode: string, at: Date) {
+    const data = {
+      ...selectionOf(selection),
+      token: randomUUID(),
+      status: 'FAILED' as const,
+      expiresAt: at,
+      failureCode,
+    };
+    await this.client.$transaction(async (tx) => {
+      const existing = await tx.campaignCopy.findUnique({
+        where: { generationId: selection.generationId },
+      });
+      if (existing?.status === 'READY') return;
+      await tx.campaignCopy.upsert({
+        where: { generationId: selection.generationId },
+        create: data,
+        update: data,
+      });
     });
   }
   async release(lease: CopyLease) {

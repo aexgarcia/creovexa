@@ -35,6 +35,7 @@ import type { StorageProvider } from '#app/modules/content-generation/applicatio
 import type { TemplateRenderer } from '#app/modules/content-generation/application/ports/template-renderer';
 import { GenerateCampaignImage } from '#app/modules/content-generation/application/use-cases/generate-campaign-image';
 import type { CampaignGenerations } from '#app/modules/campaigns/contract';
+import type { GenerationJobState } from '#app/modules/content-generation/application/generation-job';
 
 // Test-only adapters: no provider requests, rendering browser, storage service or production binding.
 class ImageRepositoryFake implements CampaignImageRepository {
@@ -95,6 +96,23 @@ class ImageRepositoryFake implements CampaignImageRepository {
     if (this.active?.token === lease.token) this.active = null;
     return Promise.resolve();
   }
+
+  queued = 0;
+  failure: string | null = null;
+  state(): Promise<GenerationJobState | null> {
+    if (this.results.length > 0) return Promise.resolve({ status: 'READY' });
+    if (this.failure) return Promise.resolve({ status: 'FAILED', failureCode: this.failure });
+    if (this.active) return Promise.resolve({ status: 'RUNNING' });
+    return Promise.resolve(this.queued > 0 ? { status: 'QUEUED' } : null);
+  }
+  queue(): Promise<void> {
+    this.queued++;
+    return Promise.resolve();
+  }
+  fail(_selection: unknown, failureCode: string): Promise<void> {
+    if (this.results.length === 0) this.failure = failureCode;
+    return Promise.resolve();
+  }
 }
 
 function fixture() {
@@ -114,6 +132,9 @@ function fixture() {
     claim: vi.fn<CampaignCopyRepository['claim']>(),
     complete: vi.fn<CampaignCopyRepository['complete']>(),
     release: vi.fn<CampaignCopyRepository['release']>(),
+    state: vi.fn<CampaignCopyRepository['state']>(),
+    queue: vi.fn<CampaignCopyRepository['queue']>(),
+    fail: vi.fn<CampaignCopyRepository['fail']>(),
   } satisfies CampaignCopyRepository;
   const referenceImage: ImageArtifact = {
     reference: 'test:product-photo',

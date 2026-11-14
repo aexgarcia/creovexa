@@ -33,7 +33,7 @@ Tres adapters S3 independientes: `minio-storage-provider.ts` (campañas), `minio
 
 Todos los módulos NestJS están en `src/infrastructure/*.module.ts`. `CatalogHttpModule` registra los controllers de los seis módulos y los repositorios se crean con `new` dentro de cada factory, repetidos entre módulos. Decisión: [ADR-0011](../adr/0011-cableado-nestjs-por-modulo.md).
 
-### H4 · Generación síncrona dentro del request (alto)
+### H4 · Generación síncrona dentro del request (alto) · resuelto el 2026-11-14
 
 `POST /campaigns/:id/copy` y `POST /campaigns/:id/image` esperan a la IA (y a Chromium) antes de responder; la reserva de imagen dura hasta 5 minutos. Un corte de conexión o un reinicio deja el trabajo a medias y el CMS no ve progreso. Decisión: [ADR-0008](../adr/0008-cola-de-trabajos-y-worker.md).
 

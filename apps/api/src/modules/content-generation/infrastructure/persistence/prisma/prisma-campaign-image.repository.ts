@@ -1,4 +1,8 @@
+import { randomUUID } from 'node:crypto';
+import type { TransactionContext } from '#app/application/ports/transaction-context';
 import type { PrismaClient, Prisma } from '#app/infrastructure/persistence/prisma/generated/client';
+import { prismaTransaction } from '#app/infrastructure/persistence/prisma/transaction-context';
+import type { GenerationJobState } from '../../../application/generation-job.js';
 import type {
   CampaignImageRepository,
   CampaignImageLease,
@@ -76,6 +80,7 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
         expectedVersion: lease.expectedVersion,
         expiresAt: lease.expiresAt,
         status: 'RUNNING' as const,
+        failureCode: null,
       };
       await tx.campaignImageJob.upsert({
         where: { generationId: lease.generationId },
@@ -141,6 +146,69 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
       });
       if (completed.count !== 1) throw new CampaignImageError('STALE_RESULT');
       return recorded;
+    });
+  }
+
+  async state(selection: CampaignImageSelection, now: Date): Promise<GenerationJobState | null> {
+    const row = await this.client.campaignImageJob.findFirst({ where: selectionOf(selection) });
+    if (!row) return null;
+    if (row.status === 'RUNNING' && row.expiresAt <= now)
+      return { status: 'FAILED', failureCode: 'TIMEOUT' };
+    if (row.status === 'FAILED')
+      return { status: 'FAILED', failureCode: row.failureCode ?? 'FAILED' };
+    return { status: row.status };
+  }
+
+  async queue(
+    selection: CampaignImageSelection,
+    expectedVersion: number,
+    at: Date,
+    transaction: TransactionContext,
+  ): Promise<void> {
+    const tx = prismaTransaction(transaction);
+    const existing = await tx.campaignImageJob.findUnique({
+      where: { generationId: selection.generationId },
+    });
+    // Finished work and work in progress stay as they are.
+    if (
+      existing &&
+      (existing.status === 'READY' || (existing.status === 'RUNNING' && existing.expiresAt > at))
+    )
+      return;
+    const data = {
+      ...selectionOf(selection),
+      token: randomUUID(),
+      expectedVersion,
+      expiresAt: at,
+      status: 'QUEUED' as const,
+      failureCode: null,
+    };
+    await tx.campaignImageJob.upsert({
+      where: { generationId: selection.generationId },
+      create: data,
+      update: data,
+    });
+  }
+
+  async fail(selection: CampaignImageSelection, failureCode: string, at: Date): Promise<void> {
+    await this.client.$transaction(async (tx) => {
+      const existing = await tx.campaignImageJob.findUnique({
+        where: { generationId: selection.generationId },
+      });
+      if (existing?.status === 'READY') return;
+      const data = {
+        ...selectionOf(selection),
+        token: randomUUID(),
+        expectedVersion: existing?.expectedVersion ?? 0,
+        expiresAt: at,
+        status: 'FAILED' as const,
+        failureCode,
+      };
+      await tx.campaignImageJob.upsert({
+        where: { generationId: selection.generationId },
+        create: data,
+        update: data,
+      });
     });
   }
 

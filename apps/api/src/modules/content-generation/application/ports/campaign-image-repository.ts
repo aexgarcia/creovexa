@@ -1,4 +1,6 @@
 import type { EntityId } from '#app/domain/entity-id';
+import type { TransactionContext } from '#app/application/ports/transaction-context';
+import type { GenerationJobState } from '../generation-job.js';
 import type { GeneratedCampaignContent } from '#app/modules/campaigns/contract';
 import type { CampaignImageSelection } from './image-artifact.js';
 import type { StoredCampaignAsset } from './storage-provider.js';
@@ -31,4 +33,15 @@ export interface CampaignImageRepository {
   ): Promise<GeneratedCampaignContent>;
   // Only release this token's active reservation. Already-completed work is a no-op.
   release(lease: CampaignImageLease): Promise<void>;
+  // Job state for the CMS; a reservation that expired without finishing counts as failed.
+  state(selection: CampaignImageSelection, now: Date): Promise<GenerationJobState | null>;
+  // Marks the image as requested, inside the transaction that queues its job.
+  queue(
+    selection: CampaignImageSelection,
+    expectedVersion: number,
+    at: Date,
+    transaction: TransactionContext,
+  ): Promise<void>;
+  // Records why the job failed. Never overwrites completed work.
+  fail(selection: CampaignImageSelection, failureCode: string, at: Date): Promise<void>;
 }

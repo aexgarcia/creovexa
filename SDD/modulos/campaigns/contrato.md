@@ -32,7 +32,7 @@ No llama a proveedores de IA, no renderiza ni escribe archivos: eso es de [conte
 | `GET /campaigns/:id/assets/:assetId` | Leer el flyer final de la revisión candidata (PNG) | `200` imagen |
 | `POST /campaigns/:id/approve` | Aprobar la revisión candidata. Cuerpo: `contentId` | `200` |
 
-Los endpoints de generación (`…/copy`, `…/image`) están en [content-generation](../content-generation/contrato.md).
+Los endpoints de generación (`…/copy`, `…/image`) están en [content-generation](../content-generation/contrato.md) y se ejecutan en segundo plano.
 
 ### Códigos de error propios
 
@@ -62,7 +62,7 @@ La regeneración existe en dominio y aplicación, pero todavía no tiene endpoin
 
 | Contrato | Consumidor | Uso |
 | --- | --- | --- |
-| **Contrato publicado** `contract.ts`: port `CampaignGenerations` (`view`, `begin`, `assertPromotionActive`, `lock`, `recordContent`), datos planos y errores compartidos | `content-generation` | Ejecutar la generación sin conocer la entidad `Campaign` ([ADR-0021](../../adr/0021-contrato-publicado-entre-modulos.md)) |
+| **Contrato publicado** `contract.ts`: port `CampaignGenerations` (`view`, `begin` —opcionalmente dentro de la transacción de quien llama—, `assertPromotionActive`, `lock`, `recordContent`), datos planos y errores compartidos | `content-generation` | Ejecutar la generación sin conocer la entidad `Campaign` ([ADR-0021](../../adr/0021-contrato-publicado-entre-modulos.md)) |
 | Existencia de la campaña | `publications`, mediante su port `PublicationCampaignLookup` | Validar pertenencia al listar publicaciones |
 | `CampaignNotFoundError` | `publications` | Import directo de una clase de error; debería sustituirse por un resultado del port |
 

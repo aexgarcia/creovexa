@@ -11,6 +11,9 @@ import {
 import { CATALOG_HTTP_CONFIG, type CatalogHttpConfig } from '#app/config/catalog-http.config';
 import { LocalImageArtifacts } from '#app/modules/content-generation/infrastructure/local-image-artifacts';
 import { HTTP_LOGGER } from '#app/presentation/http/http-logging';
+import { JOB_QUEUE } from '#app/application/ports/job-queue';
+import { JOBS_CONFIG } from '#app/config/jobs.config';
+import { JobQueueFake } from './job-queue-fake.js';
 import { PrismaService } from '#app/infrastructure/persistence/prisma/prisma.service';
 import { entityId } from '#app/domain/entity-id';
 import { CreateOrganization } from '#app/modules/organizations/application/use-cases/create-organization';
@@ -32,6 +35,7 @@ export class ImagePersistenceContext {
   campaigns!: PrismaCampaignRepository;
   images!: PrismaCampaignImageRepository;
   generations!: CampaignGenerations;
+  readonly queue = new JobQueueFake();
 
   async init(options?: {
     storage: StorageConfig;
@@ -47,7 +51,11 @@ export class ImagePersistenceContext {
       .overrideProvider(DATABASE_CONFIG)
       .useValue(config)
       .overrideProvider(IMAGE_GENERATION_CONFIG)
-      .useValue({ provider: 'disabled' });
+      .useValue({ provider: 'disabled' })
+      .overrideProvider(JOB_QUEUE)
+      .useValue(this.queue)
+      .overrideProvider(JOBS_CONFIG)
+      .useValue({ worker: true });
     if (options) {
       if (options.imageGenerator)
         builder.overrideProvider(IMAGE_GENERATOR).useValue(options.imageGenerator);

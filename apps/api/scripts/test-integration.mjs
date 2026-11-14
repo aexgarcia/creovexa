@@ -16,6 +16,7 @@ if (!connection)
   );
 
 const schema = 'creovexa_test_' + randomUUID().replaceAll('-', '');
+const jobSchema = 'jobs_' + schema.slice('creovexa_test_'.length);
 let url;
 try {
   url = new URL(connection);
@@ -29,6 +30,8 @@ const environment = {
   DATABASE_URL: url.toString(),
   TEST_DATABASE_URL: url.toString(),
   CREOVEXA_TEST_SCHEMA: schema,
+  // pg-boss limits schema names to 50 characters; the test schema alone is 46.
+  JOB_SCHEMA: jobSchema,
 };
 const storageTests = process.argv.includes('--storage');
 if (storageTests && !environment.TEST_STORAGE_ENDPOINT) {
@@ -71,6 +74,8 @@ try {
   try {
     if (created && /^creovexa_test_[0-9a-f]{32}$/.test(schema)) {
       await administrator.query('DROP SCHEMA "' + schema + '" CASCADE');
+      // Background jobs keep their tables next to the test schema.
+      await administrator.query('DROP SCHEMA IF EXISTS "' + jobSchema + '" CASCADE');
     }
   } finally {
     await administrator.end();

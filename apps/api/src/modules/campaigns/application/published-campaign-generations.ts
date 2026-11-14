@@ -39,8 +39,9 @@ export class PublishedCampaignGenerations implements CampaignGenerations {
     return generationView(campaign);
   }
 
-  async begin(reference: CampaignReference) {
-    const campaign = await loadCampaign(reference, this.campaigns);
+  async begin(reference: CampaignReference, transaction?: TransactionContext) {
+    const campaigns = transaction ? this.workspace.repositoryIn(transaction) : this.campaigns;
+    const campaign = await loadCampaign(reference, campaigns);
     const resources = await loadCampaignResources(campaign, this.lookups);
     const snapshot = GenerationSnapshot.capture(
       resources,
@@ -49,7 +50,7 @@ export class PublishedCampaignGenerations implements CampaignGenerations {
       campaign.promotion,
     );
     const updated = campaign.requestGeneration(this.ids.next(), snapshot, this.clock.now());
-    await this.campaigns.save(campaign.organizationId, updated, campaign.version);
+    await campaigns.save(campaign.organizationId, updated, campaign.version);
     return generationView(updated);
   }
 

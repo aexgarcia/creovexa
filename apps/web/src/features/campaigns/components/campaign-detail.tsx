@@ -27,6 +27,7 @@ import { CampaignCopyCard } from './campaign-copy-card';
 import { CampaignPublications } from './campaign-publications';
 import { CampaignImage } from './campaign-image';
 import { useCampaignImage } from '../hooks/use-campaign-image';
+import { failureMessage, isInProgress } from '../types/generation-job';
 
 function dateLabel(value: string) {
   return new Date(value).toLocaleDateString('es-PE', {
@@ -41,8 +42,8 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
   const product = useProduct(campaign?.productId ?? '');
   const template = useTemplate(campaign?.templateId ?? '');
   const approve = useApproveStoredCampaign(campaignId);
-  const flyer = useCampaignImage(campaignId);
-  const flyerBusy = useRef(false);
+  const flyer = useCampaignImage(campaignId, Boolean(campaign && !campaign.candidateContent));
+  const flyerRequesting = useRef(false);
   const [loadedFlyer, setLoadedFlyer] = useState<string | null>(null);
   const [failedFlyer, setFailedFlyer] = useState<string | null>(null);
   const [previewAttempt, setPreviewAttempt] = useState(0);
@@ -77,6 +78,12 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
   const previewKey = content && finalAssetUrl ? `${content.id}:${finalAssetUrl}` : null;
   const canReview = Boolean(previewKey && loadedFlyer === previewKey && failedFlyer !== previewKey);
   const isApproved = Boolean(content && campaign.approvedContentId === content.id);
+  // Generation runs in the background; these follow its jobs instead of a pending request.
+  const copyJob = copy.data;
+  const copyReady = copyJob?.status === 'READY' ? copyJob : null;
+  const copyBusy = generate.isPending || isInProgress(copyJob);
+  const flyerJob = flyer.status.data;
+  const flyerBusy = flyer.request.isPending || isInProgress(flyerJob);
   async function handleApprove() {
     if (!content || !canReview || approve.isPending) return;
     setApprovedMessage('');
@@ -88,14 +95,14 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
     }
   }
   async function handleGenerateFlyer() {
-    if (!copy.data || content || flyerBusy.current || flyer.isPending) return;
-    flyerBusy.current = true;
+    if (!copyReady || content || flyerRequesting.current || flyerBusy) return;
+    flyerRequesting.current = true;
     try {
-      await flyer.mutateAsync(copy.data.generationId);
+      await flyer.request.mutateAsync(copyReady.generationId);
     } catch {
       /* Safe error displayed below. */
     } finally {
-      flyerBusy.current = false;
+      flyerRequesting.current = false;
     }
   }
   return (
@@ -134,36 +141,38 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
             aria-label="Acciones de campaña"
             className="flex flex-wrap items-center gap-2 xl:justify-end"
           >
-            {!content && ['DRAFT', 'GENERATING'].includes(campaign.status) && !copy.data && (
+            {!content && ['DRAFT', 'GENERATING'].includes(campaign.status) && !copyReady && (
               <Button
-                disabled={
-                  generate.isPending ||
-                  copy.isPending ||
-                  copy.isFetching ||
-                  Boolean(copy.error) ||
-                  isFetching
-                }
+                disabled={copyBusy || copy.isPending || Boolean(copy.error) || isFetching}
                 onClick={() => generate.mutate()}
               >
-                {generate.isPending ? (
+                {copyBusy ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <Sparkles className="size-4" />
                 )}
-                {generate.isPending ? 'Preparando texto…' : 'Generar texto'}
+                {copyBusy
+                  ? 'Preparando texto…'
+                  : copyJob?.status === 'FAILED'
+                    ? 'Reintentar texto'
+                    : 'Generar texto'}
               </Button>
             )}
-            {!content && copy.data && campaign.status === 'GENERATING' && (
+            {!content && copyReady && campaign.status === 'GENERATING' && (
               <Button
-                disabled={flyer.isPending || isFetching || copy.isFetching || Boolean(copy.error)}
+                disabled={flyerBusy || isFetching || Boolean(copy.error)}
                 onClick={() => void handleGenerateFlyer()}
               >
-                {flyer.isPending ? (
+                {flyerBusy ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (
                   <ImageIcon className="size-4" />
                 )}
-                {flyer.isPending ? 'Generando flyer…' : 'Generar flyer'}
+                {flyerBusy
+                  ? 'Generando flyer…'
+                  : flyerJob?.status === 'FAILED'
+                    ? 'Reintentar flyer'
+                    : 'Generar flyer'}
               </Button>
             )}
             {campaign.status === 'PENDING_APPROVAL' && (
@@ -194,30 +203,30 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
                 : 'La aprobación estará disponible cuando puedas previsualizar el flyer final.'}
             </p>
           )}
-          {flyer.isPending && (
+          {!content && flyerBusy && (
             <p role="status" className="text-sm text-muted-foreground">
               Creando la publicidad con la imagen y los datos de tu producto. Puede tardar unos
-              minutos.
+              minutos; puedes salir de esta página y volver después.
             </p>
           )}
-          {flyer.error && (
+          {!content && !flyerBusy && flyerJob?.status === 'FAILED' && (
+            <p role="alert" className="text-sm text-destructive">
+              {failureMessage(flyerJob)}
+            </p>
+          )}
+          {flyer.request.error && (
             <div role="alert" className="space-y-2">
-              <p className="text-sm text-destructive">{flyer.error.message}</p>
+              <p className="text-sm text-destructive">{flyer.request.error.message}</p>
               <Button
                 variant="outline"
                 onClick={() => {
-                  flyer.reset();
+                  flyer.request.reset();
                   void refetch();
                 }}
               >
                 Actualizar campaña
               </Button>
             </div>
-          )}
-          {generate.isPending && (
-            <p role="status" className="text-sm text-muted-foreground">
-              Preparando el texto de tu campaña…
-            </p>
           )}
           {generate.error && (
             <div role="alert" className="space-y-2">
@@ -267,7 +276,7 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
                 url={finalAssetUrl}
                 alt={`Flyer final de ${campaign.title}`}
                 emptyLabel={
-                  flyer.isPending
+                  flyerBusy
                     ? 'Generando el flyer final de tu campaña…'
                     : 'El flyer final aparecerá aquí cuando se complete la composición de la campaña.'
                 }

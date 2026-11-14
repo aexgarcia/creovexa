@@ -9,6 +9,7 @@ import {
   HttpCode,
 } from '@nestjs/common';
 import {
+  ApiAcceptedResponse,
   ApiTags,
   ApiOperation,
   ApiOkResponse,
@@ -22,17 +23,25 @@ import {
   OrganizationId,
 } from '#app/presentation/http/request-context';
 import { ApiErrors } from '#app/presentation/http/api-errors.decorator';
-import {
-  GenerateCampaignCopy,
-  GetCampaignCopy,
-} from '../application/use-cases/generate-campaign-copy.js';
-class CampaignCopyResponse {
-  @ApiProperty({ format: 'uuid' }) generationId!: string;
+import { GetCampaignCopy } from '../application/use-cases/generate-campaign-copy.js';
+import { RequestCampaignCopy } from '../application/use-cases/request-campaign-copy.js';
+
+const STATUSES = ['PENDING', 'RUNNING', 'READY', 'FAILED'];
+
+class CampaignCopyContent {
   @ApiProperty() headline!: string;
   @ApiProperty() caption!: string;
   @ApiProperty() cta!: string;
   @ApiProperty({ type: [String] }) hashtags!: string[];
   @ApiProperty() imagePrompt!: string;
+}
+class CampaignCopyResponse {
+  @ApiProperty({ format: 'uuid' }) generationId!: string;
+  @ApiProperty({ enum: STATUSES }) status!: string;
+  @ApiProperty({ type: String, nullable: true, description: 'Motivo cuando status es FAILED' })
+  failureCode!: string | null;
+  @ApiProperty({ type: CampaignCopyContent, nullable: true, description: 'Presente si READY' })
+  copy!: CampaignCopyContent | null;
 }
 class CampaignCopyEnvelope {
   @ApiProperty({ type: CampaignCopyResponse, nullable: true }) data!: CampaignCopyResponse | null;
@@ -42,25 +51,26 @@ class CampaignCopyEnvelope {
 @UseGuards(DevelopmentOrganizationGuard)
 @ApiParam({ name: 'id', type: String, format: 'uuid' })
 @ApiErrors()
-@ApiResponse({ status: 502, type: ErrorResponse, description: 'Salida rechazada o inválida' })
-@ApiResponse({ status: 504, type: ErrorResponse, description: 'Tiempo de generación agotado' })
 export class CampaignCopyController {
   constructor(
-    @Inject(GenerateCampaignCopy) private readonly generateCopy: GenerateCampaignCopy,
+    @Inject(RequestCampaignCopy) private readonly requestCopy: RequestCampaignCopy,
     @Inject(GetCampaignCopy) private readonly getCopy: GetCampaignCopy,
   ) {}
   @Post()
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Generar copy intermedio; no aprueba ni publica la campaña' })
-  @ApiOkResponse({ type: CampaignCopyEnvelope })
-  async generate(
+  @HttpCode(202)
+  @ApiOperation({
+    summary: 'Solicitar el copy; se genera en segundo plano y se consulta con GET',
+  })
+  @ApiAcceptedResponse({ type: CampaignCopyEnvelope })
+  @ApiResponse({ status: 503, type: ErrorResponse, description: 'Proveedor no configurado' })
+  async request(
     @OrganizationId() organizationId: string,
     @Param('id', new ParseUUIDPipe()) campaignId: string,
   ): Promise<CampaignCopyEnvelope> {
-    return { data: await this.generateCopy.execute({ organizationId, campaignId }) };
+    return { data: await this.requestCopy.execute({ organizationId, campaignId }) };
   }
   @Get()
-  @ApiOperation({ summary: 'Consultar el copy de la generación vigente' })
+  @ApiOperation({ summary: 'Consultar el estado y el copy de la generación vigente' })
   @ApiOkResponse({ type: CampaignCopyEnvelope })
   async get(
     @OrganizationId() organizationId: string,

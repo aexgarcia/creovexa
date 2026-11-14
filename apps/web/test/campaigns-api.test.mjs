@@ -23,25 +23,58 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
-test('flyer generation pins the reviewed copy generation and resolves only the final URL', async () => {
+test('requesting the flyer pins the reviewed copy generation and returns at once', async () => {
   let calls = 0;
   globalThis.fetch = async (url, options) => {
     calls++;
     assert.ok(url.endsWith('/campaigns/campaign%2F1/image'));
     assert.equal(options.method, 'POST');
     assert.deepEqual(JSON.parse(options.body), { generationId: 'generation-1' });
+    return Response.json(
+      {
+        data: {
+          generationId: 'generation-1',
+          status: 'PENDING',
+          failureCode: null,
+          contentId: null,
+          finalAssetUrl: null,
+        },
+      },
+      { status: 202 },
+    );
+  };
+  const result = await campaignApi.generateImage('campaign/1', 'generation-1');
+  assert.equal(result.status, 'PENDING');
+  assert.equal(result.finalAssetUrl, null);
+  assert.equal(calls, 1);
+});
+
+test('flyer status resolves only the final URL once the job is ready', async () => {
+  let calls = 0;
+  globalThis.fetch = async (url, options) => {
+    calls++;
+    assert.ok(url.endsWith('/campaigns/campaign%2F1/image'));
+    assert.equal(options.method ?? 'GET', 'GET');
     return Response.json({
       data: {
-        contentId: 'content-1',
         generationId: 'generation-1',
+        status: 'READY',
+        failureCode: null,
+        contentId: 'content-1',
         finalAssetUrl: '/campaigns/campaign-1/assets/final-1',
       },
     });
   };
-  const result = await campaignApi.generateImage('campaign/1', 'generation-1');
+  const result = await campaignApi.imageStatus('campaign/1');
+  assert.equal(result.status, 'READY');
   assert.ok(result.finalAssetUrl.startsWith('http'));
   assert.ok(result.finalAssetUrl.endsWith('/campaigns/campaign-1/assets/final-1'));
   assert.equal(calls, 1);
+});
+
+test('flyer status is empty before the first request', async () => {
+  globalThis.fetch = async () => Response.json({ data: null });
+  assert.equal(await campaignApi.imageStatus('campaign-1'), null);
 });
 
 test('detail and list resolve the final asset separately from the product photo', async () => {

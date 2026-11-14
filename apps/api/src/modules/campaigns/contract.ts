@@ -64,7 +64,11 @@ export interface CampaignGenerations {
   // Reads the campaign. With generationId, fails unless it is the current generation.
   view(campaign: CampaignReference, generationId?: string): Promise<CampaignGenerationView>;
   // Captures the snapshot and moves a campaign that allows it to GENERATING.
-  begin(campaign: CampaignReference): Promise<CampaignGenerationView>;
+  // With a transaction, the change commits together with the caller's work.
+  begin(
+    campaign: CampaignReference,
+    transaction?: TransactionContext,
+  ): Promise<CampaignGenerationView>;
   // Fails when the campaign promotion has ended at the given instant.
   assertPromotionActive(campaign: CampaignReference, at: Date): Promise<void>;
   // Inside the caller's transaction: serializes work on the campaign and reports whether

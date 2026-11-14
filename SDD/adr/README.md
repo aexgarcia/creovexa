@@ -24,7 +24,7 @@
 | [0005](0005-dinero-en-unidades-menores.md) | Dinero en unidades menores con moneda explícita | Aceptado (retroactivo) |
 | [0006](0006-proveedores-de-ia-por-despliegue.md) | Proveedores de IA detrás de ports, elegidos por despliegue | Aceptado (retroactivo) |
 | [0007](0007-almacenamiento-privado-s3.md) | Almacenamiento privado S3-compatible con assets inmutables | Aceptado (retroactivo) |
-| [0008](0008-cola-de-trabajos-y-worker.md) | Cola de trabajos en PostgreSQL y worker propio; n8n opcional | Aceptado, pendiente de implementar |
+| [0008](0008-cola-de-trabajos-y-worker.md) | Cola de trabajos en PostgreSQL y worker propio; n8n opcional | Aceptado, implementado |
 | [0009](0009-estrategia-de-generacion-del-flyer.md) | Estrategia de generación del flyer: IA completa con verificación o composición | **Propuesto** |
 | [0010](0010-dividir-campaigns.md) | Dividir `campaigns` en `campaigns`, `content-generation` y `assets` | Aceptado, implementado |
 | [0011](0011-cableado-nestjs-por-modulo.md) | Un módulo NestJS por módulo de negocio | Aceptado, implementado |

@@ -6,9 +6,23 @@ import {
   type CampaignGenerations,
   type CampaignReference,
 } from '#app/modules/campaigns/contract';
+import { publicStatus, type GenerationJobStatus } from '../generation-job.js';
 import type { CampaignCopyRepository } from '../ports/campaign-copy-repository.js';
-import { CopyGenerationError, type CopyGenerator } from '../ports/copy-generator.js';
+import {
+  CopyGenerationError,
+  type CampaignCopy,
+  type CopyGenerator,
+} from '../ports/copy-generator.js';
 import { validateCopy } from '../copy-policy.js';
+
+export interface CampaignCopyStatus {
+  generationId: string;
+  status: GenerationJobStatus;
+  failureCode: string | null;
+  copy: CampaignCopy | null;
+}
+
+// Executes the copy job. Safe to run again: finished copy is returned, not regenerated.
 export class GenerateCampaignCopy {
   constructor(
     private readonly generations: CampaignGenerations,
@@ -17,8 +31,9 @@ export class GenerateCampaignCopy {
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
   ) {}
-  async execute(input: CampaignReference) {
-    let campaign = await this.generations.view(input);
+  // With generationId, a job left behind by an older generation fails instead of running.
+  async execute(input: CampaignReference & { generationId?: string }) {
+    let campaign = await this.generations.view(input, input.generationId);
     if (campaign.status !== 'DRAFT' && campaign.status !== 'GENERATING')
       throw new InvalidCampaignTransitionError();
     if (campaign.generation) {
@@ -55,19 +70,27 @@ export class GenerateCampaignCopy {
     }
   }
 }
+
 export class GetCampaignCopy {
   constructor(
     private readonly generations: CampaignGenerations,
     private readonly copies: CampaignCopyRepository,
+    private readonly clock: Clock,
   ) {}
-  async execute(input: CampaignReference) {
+  async execute(input: CampaignReference): Promise<CampaignCopyStatus | null> {
     const campaign = await this.generations.view(input);
     if (!campaign.generation) return null;
-    const content = await this.copies.find({
+    const selection = {
       organizationId: campaign.organizationId,
       campaignId: campaign.campaignId,
       generationId: campaign.generation.id,
-    });
-    return content ? { generationId: campaign.generation.id, ...content } : null;
+    };
+    const state = await this.copies.state(selection, this.clock.now());
+    if (!state) return null;
+    return {
+      generationId: selection.generationId,
+      ...publicStatus(state),
+      copy: state.status === 'READY' ? await this.copies.find(selection) : null,
+    };
   }
 }

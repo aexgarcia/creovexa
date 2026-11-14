@@ -142,11 +142,18 @@ describe('Final flyer HTTP (real database, storage and composition)', () => {
       .post(`/campaigns/${input.campaignId}/image`)
       .send({ generationId: input.generationId });
   }
+  // Requests the flyer, lets the worker run and returns the finished status.
+  async function generated(input: Awaited<ReturnType<typeof fixture>>) {
+    const accepted = await post(input).expect(202);
+    expect(accepted.body.data).toMatchObject({ status: 'PENDING', finalAssetUrl: null });
+    await context.queue.drain();
+    return request(app.getHttpServer()).get(`/campaigns/${input.campaignId}/image`).expect(200);
+  }
   it('generates, reads, replays and approves exactly the final PNG', async () => {
     const f = await fixture();
     const before = generate.mock.calls.length;
-    const response = await post(f).expect(200);
-    expect(response.body.data.generationId).toBe(f.generationId);
+    const response = await generated(f);
+    expect(response.body.data).toMatchObject({ generationId: f.generationId, status: 'READY' });
     const url = response.body.data.finalAssetUrl;
     const read = await request(app.getHttpServer()).get(url).expect(200);
     expect(read.headers['content-type']).toMatch(/^image\/png/);
@@ -159,8 +166,9 @@ describe('Final flyer HTTP (real database, storage and composition)', () => {
     expect(detail.body.data.status).toBe('PENDING_APPROVAL');
     expect(detail.body.data.candidateContent.finalAssetUrl).toBe(url);
     expect(detail.body.data.productImageUrl).not.toBe(url);
-    const replay = await post(f).expect(200);
+    const replay = await post(f).expect(202);
     expect(replay.body).toEqual(response.body);
+    await context.queue.drain();
     expect(generate.mock.calls.length).toBe(before + 1);
     const assets = await context.database.campaignAsset.findMany({
       where: { campaignId: f.campaignId },
@@ -216,8 +224,8 @@ describe('Final flyer HTTP (real database, storage and composition)', () => {
   });
   it('prevents reading another campaign asset even within the same organization', async () => {
     const f = await fixture();
-    const generated = await post(f).expect(200);
-    const url = generated.body.data.finalAssetUrl;
+    const result = await generated(f);
+    const url = result.body.data.finalAssetUrl;
     const original = (await context.campaigns.findById(f.organizationId, f.campaignId))!;
     const sameOwner = await context.module.get(CreateCampaign).execute({
       organizationId: f.organizationId,
@@ -235,15 +243,15 @@ describe('Final flyer HTTP (real database, storage and composition)', () => {
   });
   it('blocks preview and approval if the stored final bytes have changed', async () => {
     const f = await fixture();
-    const generated = await post(f).expect(200);
+    const result = await generated(f);
     const row = await context.database.campaignAsset.findFirstOrThrow({
       where: { campaignId: f.campaignId, purpose: 'FINAL_PIECE' },
     });
     await client.send(new PutObjectCommand({ Bucket: bucket, Key: row.objectKey, Body: creative }));
-    await request(app.getHttpServer()).get(generated.body.data.finalAssetUrl).expect(502);
+    await request(app.getHttpServer()).get(result.body.data.finalAssetUrl).expect(502);
     await request(app.getHttpServer())
       .post(`/campaigns/${f.campaignId}/approve`)
-      .send({ contentId: generated.body.data.contentId })
+      .send({ contentId: result.body.data.contentId })
       .expect(502);
     expect(
       (await context.campaigns.findById(f.organizationId, f.campaignId))?.approvedContentId,

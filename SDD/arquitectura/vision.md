@@ -23,7 +23,7 @@ flowchart LR
     Worker --> Redes[Meta · TikTok]
 ```
 
-La línea punteada y el worker son arquitectura objetivo ([ADR-0008](../adr/0008-cola-de-trabajos-y-worker.md)). Hoy la API llama a la IA dentro del request HTTP y todavía no existe integración con redes sociales.
+La generación con IA ya se ejecuta en segundo plano mediante la cola ([ADR-0008](../adr/0008-cola-de-trabajos-y-worker.md)). Por defecto la propia API ejecuta los trabajos; `start:worker` los lleva a un proceso aparte. Todavía no existe integración con redes sociales.
 
 ## Estilo
 
@@ -121,4 +121,4 @@ Los estados son los del enum `CampaignStatus`. Las transiciones exactas las prot
 
 ## Despliegue
 
-Decisión pendiente. Con el presupuesto actual, el objetivo es que todo corra en un solo VPS con Docker Compose: `web`, `api`, `worker`, `postgres` y storage S3-compatible. La cola usa PostgreSQL, por lo que no hace falta Redis. Chromium (Playwright) solo sería necesario si se mantiene el modo de composición ([ADR-0009](../adr/0009-estrategia-de-generacion-del-flyer.md)).
+Decisión pendiente. Con el presupuesto actual, el objetivo es que todo corra en un solo VPS con Docker Compose: `web`, `api` (que también ejecuta trabajos), `postgres` y storage S3-compatible; un `worker` aparte solo cuando la carga lo pida. La cola usa PostgreSQL, por lo que no hace falta Redis. Chromium (Playwright) solo sería necesario si se mantiene el modo de composición ([ADR-0009](../adr/0009-estrategia-de-generacion-del-flyer.md)).

@@ -6,51 +6,14 @@ import {
   domainFixture,
   CAMPAIGN,
 } from '../../../../support/campaign-fakes.js';
-import type {
-  CampaignCopyRepository,
-  CopySelection,
-  CopyLease,
-} from '#app/modules/content-generation/application/ports/campaign-copy-repository';
 import {
   CopyGenerationError,
   type CopyGenerator,
-  type CampaignCopy,
 } from '#app/modules/content-generation/application/ports/copy-generator';
-import { copyChoices, validateCopy } from '#app/modules/content-generation/application/copy-policy';
+import { CopyRepositoryFake, validCopy } from '../../../../support/generation-fakes.js';
+import { validateCopy } from '#app/modules/content-generation/application/copy-policy';
 import { GenerateCampaignCopy } from '#app/modules/content-generation/application/use-cases/generate-campaign-copy';
 import { CampaignStatus } from '#app/modules/campaigns/domain/campaign-status';
-function validCopy(input = domainFixture().snapshot.data) {
-  const options = copyChoices(input);
-  return {
-    headline: options.headline[0]!,
-    caption: options.caption[0]!,
-    cta: options.cta[0]!,
-    hashtags: [],
-    imagePrompt: options.imagePrompt[0]!,
-  };
-}
-class CopyRepositoryFake implements CampaignCopyRepository {
-  saved: CampaignCopy | null = null;
-  busy = false;
-  releases = 0;
-  find(_selection: CopySelection) {
-    return Promise.resolve(this.saved);
-  }
-  claim(_lease: CopyLease) {
-    if (this.busy) return Promise.resolve(false);
-    this.busy = true;
-    return Promise.resolve(true);
-  }
-  complete(_lease: CopyLease, content: CampaignCopy) {
-    this.saved = content;
-    return Promise.resolve();
-  }
-  release(_lease: CopyLease) {
-    this.busy = false;
-    this.releases++;
-    return Promise.resolve();
-  }
-}
 async function fixture() {
   const f = campaignUseCases();
   await f.create.execute(createInput());

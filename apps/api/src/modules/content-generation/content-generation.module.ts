@@ -2,6 +2,10 @@ import { resolve } from 'node:path';
 import { ConsoleLogger, Module } from '@nestjs/common';
 import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
+import { JOB_QUEUE, type JobQueue } from '#app/application/ports/job-queue';
+import { UNIT_OF_WORK, type UnitOfWork } from '#app/application/ports/unit-of-work';
+import { JOBS_CONFIG, type JobsConfig } from '#app/config/jobs.config';
+import { JobsModule } from '#app/infrastructure/jobs/jobs.module';
 import {
   COPY_GENERATION_CONFIG,
   copyGenerationConfigProvider,
@@ -50,6 +54,13 @@ import {
   GetCampaignCopy,
 } from './application/use-cases/generate-campaign-copy.js';
 import { GenerateCampaignImage } from './application/use-cases/generate-campaign-image.js';
+import { RequestCampaignCopy } from './application/use-cases/request-campaign-copy.js';
+import {
+  GetCampaignImage,
+  RequestCampaignImage,
+} from './application/use-cases/request-campaign-image.js';
+import { GenerationJobs } from './application/generation-jobs.js';
+import { GenerationJobRunner } from './infrastructure/generation-job-runner.js';
 import { GeminiCopyGenerator } from './infrastructure/gemini-copy-generator.js';
 import { GeminiImageGenerator } from './infrastructure/gemini-image-generator.js';
 import { LocalImageArtifacts } from './infrastructure/local-image-artifacts.js';
@@ -70,6 +81,7 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
     RuntimeModule,
     AssetsModule,
     HttpCommonModule,
+    JobsModule,
     OrganizationsModule,
     ProductsModule,
     CampaignsModule,
@@ -106,9 +118,31 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
     },
     {
       provide: GetCampaignCopy,
-      inject: [CAMPAIGN_GENERATIONS, PrismaCampaignCopyRepository],
-      useFactory: (generations: CampaignGenerations, copies: PrismaCampaignCopyRepository) =>
-        new GetCampaignCopy(generations, copies),
+      inject: [CAMPAIGN_GENERATIONS, PrismaCampaignCopyRepository, CLOCK],
+      useFactory: (
+        generations: CampaignGenerations,
+        copies: PrismaCampaignCopyRepository,
+        clock: Clock,
+      ) => new GetCampaignCopy(generations, copies, clock),
+    },
+    {
+      provide: RequestCampaignCopy,
+      inject: [
+        CAMPAIGN_GENERATIONS,
+        PrismaCampaignCopyRepository,
+        COPY_GENERATOR,
+        JOB_QUEUE,
+        UNIT_OF_WORK,
+        CLOCK,
+      ],
+      useFactory: (
+        generations: CampaignGenerations,
+        copies: PrismaCampaignCopyRepository,
+        generator: CopyGenerator,
+        queue: JobQueue,
+        transactions: UnitOfWork,
+        clock: Clock,
+      ) => new RequestCampaignCopy(generations, copies, generator, queue, transactions, clock),
     },
     {
       provide: GenerateCampaignCopy,
@@ -217,6 +251,51 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
           ids,
           clock,
         ),
+    },
+    {
+      // The image use case already holds every port the request has to check.
+      provide: RequestCampaignImage,
+      inject: [GenerateCampaignImage, PrismaCampaignImageRepository, JOB_QUEUE, UNIT_OF_WORK],
+      useFactory: (
+        generate: GenerateCampaignImage,
+        images: PrismaCampaignImageRepository,
+        queue: JobQueue,
+        transactions: UnitOfWork,
+      ) => new RequestCampaignImage(generate, images, queue, transactions),
+    },
+    {
+      provide: GetCampaignImage,
+      inject: [CAMPAIGN_GENERATIONS, PrismaCampaignImageRepository, CLOCK],
+      useFactory: (
+        generations: CampaignGenerations,
+        images: PrismaCampaignImageRepository,
+        clock: Clock,
+      ) => new GetCampaignImage(generations, images, clock),
+    },
+
+    // Background execution
+    {
+      provide: GenerationJobs,
+      inject: [
+        GenerateCampaignCopy,
+        GenerateCampaignImage,
+        PrismaCampaignCopyRepository,
+        PrismaCampaignImageRepository,
+        CLOCK,
+      ],
+      useFactory: (
+        copy: GenerateCampaignCopy,
+        image: GenerateCampaignImage,
+        copies: PrismaCampaignCopyRepository,
+        images: PrismaCampaignImageRepository,
+        clock: Clock,
+      ) => new GenerationJobs(copy, image, copies, images, clock),
+    },
+    {
+      provide: GenerationJobRunner,
+      inject: [JOB_QUEUE, GenerationJobs, JOBS_CONFIG],
+      useFactory: (queue: JobQueue, jobs: GenerationJobs, config: JobsConfig) =>
+        new GenerationJobRunner(queue, jobs, config),
     },
   ],
 })
