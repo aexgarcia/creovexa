@@ -5,7 +5,7 @@ import {
   InvalidImageFileError,
 } from '#app/infrastructure/image-files';
 import type { ImageGenerator, GenerateImageInput } from '../application/ports/image-generator.js';
-import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
+import { CampaignImageError } from '#app/modules/campaigns/contract';
 import { LocalImageArtifacts } from './local-image-artifacts.js';
 
 const MAX_BASE64 = 4 * Math.ceil(MAX_IMAGE_BYTES / 3);

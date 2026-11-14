@@ -1,15 +1,13 @@
 import { entityId } from '#app/domain/entity-id';
 import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
-import { CampaignStatus } from '#app/modules/campaigns/domain/campaign-status';
-import { GeneratedContent } from '#app/modules/campaigns/domain/entities/generated-content';
-import { InvalidCampaignTransitionError } from '#app/modules/campaigns/domain/errors/campaign.errors';
-import type { CampaignRepository } from '#app/modules/campaigns/domain/repositories/campaign.repository';
 import {
-  loadCampaign,
-  type CampaignSelection,
-} from '#app/modules/campaigns/application/load-campaign';
-import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
+  CampaignImageError,
+  InvalidCampaignTransitionError,
+  type CampaignGenerations,
+  type CampaignReference,
+  type GeneratedCampaignContent,
+} from '#app/modules/campaigns/contract';
 import type { CampaignCopyRepository } from '../ports/campaign-copy-repository.js';
 import type {
   CampaignImageLease,
@@ -25,7 +23,7 @@ import type {
 } from '../ports/storage-provider.js';
 import type { TemplateRenderer } from '../ports/template-renderer.js';
 
-export interface GenerateCampaignImageInput extends CampaignSelection {
+export interface GenerateCampaignImageInput extends CampaignReference {
   // Pin the reviewed copy's generation; never silently generate a newer revision.
   generationId: string;
 }
@@ -67,7 +65,7 @@ function assertStoredAsset(
 
 export class GenerateCampaignImage {
   constructor(
-    private readonly campaigns: CampaignRepository,
+    private readonly generations: CampaignGenerations,
     private readonly copies: CampaignCopyRepository,
     private readonly images: CampaignImageRepository,
     private readonly productImages: ProductImageSource,
@@ -78,23 +76,23 @@ export class GenerateCampaignImage {
     private readonly clock: Clock,
   ) {}
 
-  async execute(input: GenerateCampaignImageInput): Promise<GeneratedContent> {
-    const campaign = await loadCampaign(input, this.campaigns);
-    const generation = campaign.requireGeneration(input.generationId);
+  async execute(input: GenerateCampaignImageInput): Promise<GeneratedCampaignContent> {
+    const campaign = await this.generations.view(input, input.generationId);
+    const generation = campaign.generation!;
     if (campaign.candidateContent) return campaign.candidateContent;
-    if (campaign.status !== CampaignStatus.GENERATING) throw new InvalidCampaignTransitionError();
+    if (campaign.status !== 'GENERATING') throw new InvalidCampaignTransitionError();
     const selection = {
       organizationId: campaign.organizationId,
-      campaignId: campaign.id,
+      campaignId: campaign.campaignId,
       generationId: generation.id,
     };
     const copy = await this.copies.find(selection);
     if (!copy) throw new CampaignImageError('COPY_REQUIRED');
     // Copy was validated and frozen in phase 5. Do not reinterpret it using a newer copy policy.
-    if (copy.cta !== generation.snapshot.data.cta) throw new CampaignImageError('INVALID_OUTPUT');
+    if (copy.cta !== generation.snapshot.cta) throw new CampaignImageError('INVALID_OUTPUT');
     if (typeof copy.imagePrompt !== 'string' || !copy.imagePrompt.trim())
       throw new CampaignImageError('INVALID_OUTPUT');
-    const snapshot = generation.snapshot.data;
+    const snapshot = generation.snapshot;
     if (snapshot.product.imageAssetIds.length === 0)
       throw new CampaignImageError('PRODUCT_IMAGE_REQUIRED');
     if (snapshot.product.imageAssetIds.length !== 1) throw new CampaignImageError('INVALID_OUTPUT');
@@ -105,7 +103,7 @@ export class GenerateCampaignImage {
     this.renderer.assertAvailable();
     this.storage.assertAvailable();
     const now = this.clock.now();
-    campaign.promotion?.assertNotExpired(now);
+    await this.generations.assertPromotionActive(input, now);
     const lease: CampaignImageLease = {
       ...selection,
       token: entityId(this.ids.next()),
@@ -173,26 +171,8 @@ export class GenerateCampaignImage {
       if (baseAsset.id === finalAsset.id) throw new CampaignImageError('INVALID_OUTPUT');
       this.assertLeaseTime(lease);
       const at = this.clock.now();
-      campaign.promotion?.assertNotExpired(at);
-      const content = GeneratedContent.create(
-        {
-          ...selection,
-          id: this.ids.next(),
-          revision: generation.number,
-        },
-        generation.snapshot,
-        {
-          headline: copy.headline,
-          caption: copy.caption,
-          cta: copy.cta,
-          hashtags: copy.hashtags,
-          assetIds: [finalAsset.id],
-        },
-        at,
-      );
-      const updated = campaign.recordGeneratedContent(content, at);
-      await this.images.complete(lease, { campaign: updated, baseAsset, finalAsset }, at);
-      return content;
+      // Campaigns records the content inside the same transaction that closes the reservation.
+      return await this.images.complete(lease, { copy: visualCopy, baseAsset, finalAsset }, at);
     } catch (error) {
       // Never delete assets here: a commit may have succeeded before a transport failure.
       // Expiry recovers the reservation if the repository is temporarily unreachable.

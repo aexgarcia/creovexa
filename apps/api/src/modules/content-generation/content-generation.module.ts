@@ -27,8 +27,7 @@ import {
   type ObjectStorage,
 } from '#app/modules/assets/application/ports/object-storage';
 import { CampaignsModule } from '#app/modules/campaigns/campaigns.module';
-import { PrismaCampaignLookups } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign-lookups';
-import { PrismaCampaignRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign.repository';
+import { CAMPAIGN_GENERATIONS, type CampaignGenerations } from '#app/modules/campaigns/contract';
 import {
   ORGANIZATION_LOGOS,
   type OrganizationLogos,
@@ -83,8 +82,9 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
 
     ...[PrismaCampaignCopyRepository, PrismaCampaignImageRepository].map((Repository) => ({
       provide: Repository,
-      inject: [PrismaService],
-      useFactory: (db: PrismaService) => new Repository(db),
+      inject: [PrismaService, CAMPAIGN_GENERATIONS],
+      useFactory: (db: PrismaService, generations: CampaignGenerations) =>
+        new Repository(db, generations),
     })),
 
     // Copy
@@ -106,28 +106,26 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
     },
     {
       provide: GetCampaignCopy,
-      inject: [PrismaCampaignRepository, PrismaCampaignCopyRepository],
-      useFactory: (campaigns: PrismaCampaignRepository, copies: PrismaCampaignCopyRepository) =>
-        new GetCampaignCopy(campaigns, copies),
+      inject: [CAMPAIGN_GENERATIONS, PrismaCampaignCopyRepository],
+      useFactory: (generations: CampaignGenerations, copies: PrismaCampaignCopyRepository) =>
+        new GetCampaignCopy(generations, copies),
     },
     {
       provide: GenerateCampaignCopy,
       inject: [
-        PrismaCampaignRepository,
-        PrismaCampaignLookups,
+        CAMPAIGN_GENERATIONS,
         PrismaCampaignCopyRepository,
         COPY_GENERATOR,
         ID_GENERATOR,
         CLOCK,
       ],
       useFactory: (
-        campaigns: PrismaCampaignRepository,
-        lookups: PrismaCampaignLookups,
+        generations: CampaignGenerations,
         copies: PrismaCampaignCopyRepository,
         generator: CopyGenerator,
         ids: IdGenerator,
         clock: Clock,
-      ) => new GenerateCampaignCopy(campaigns, lookups, copies, generator, ids, clock),
+      ) => new GenerateCampaignCopy(generations, copies, generator, ids, clock),
     },
 
     // Image and composition
@@ -143,9 +141,13 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
     },
     {
       provide: MinioStorageProvider,
-      inject: [PrismaService, LocalImageArtifacts, OBJECT_STORAGE],
-      useFactory: (db: PrismaService, artifacts: LocalImageArtifacts, storage: ObjectStorage) =>
-        new MinioStorageProvider(db, artifacts, storage),
+      inject: [PrismaService, LocalImageArtifacts, OBJECT_STORAGE, CAMPAIGN_GENERATIONS],
+      useFactory: (
+        db: PrismaService,
+        artifacts: LocalImageArtifacts,
+        storage: ObjectStorage,
+        generations: CampaignGenerations,
+      ) => new MinioStorageProvider(db, artifacts, storage, generations),
     },
     {
       provide: CAMPAIGN_RENDER_RESOURCES,
@@ -183,7 +185,7 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
     {
       provide: GenerateCampaignImage,
       inject: [
-        PrismaCampaignRepository,
+        CAMPAIGN_GENERATIONS,
         PrismaCampaignCopyRepository,
         PrismaCampaignImageRepository,
         StoredProductImageSource,
@@ -194,7 +196,7 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
         CLOCK,
       ],
       useFactory: (
-        campaigns: PrismaCampaignRepository,
+        generations: CampaignGenerations,
         copies: PrismaCampaignCopyRepository,
         images: PrismaCampaignImageRepository,
         source: StoredProductImageSource,
@@ -205,7 +207,7 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
         clock: Clock,
       ) =>
         new GenerateCampaignImage(
-          campaigns,
+          generations,
           copies,
           images,
           source,

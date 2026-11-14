@@ -90,7 +90,7 @@ Ya hecho: `campaigns` dividido en tres ([ADR-0010](../adr/0010-dividir-campaigns
 
 ## Reglas entre módulos
 
-1. Un módulo nunca importa entidades ni repositorios de otro. Se comunica mediante **ports de consulta** definidos por el consumidor (por ejemplo `ProductLookup` en `campaigns`) e identificadores. Única excepción: `content-generation` usa el dominio de `campaigns`, en un solo sentido ([ADR-0010](../adr/0010-dividir-campaigns.md)).
+1. Un módulo nunca importa entidades ni repositorios de otro. Se comunica mediante **ports de consulta** definidos por el consumidor (por ejemplo `ProductLookup` en `campaigns`) e identificadores. Cuando hace falta algo más que una consulta, el módulo proveedor publica un `contract.ts` con datos planos, y es lo único que el otro puede importar ([ADR-0021](../adr/0021-contrato-publicado-entre-modulos.md)).
 2. Toda consulta y escritura lleva `organizationId` ([ADR-0003](../adr/0003-aislamiento-por-organizacion.md)).
 3. Los datos que una campaña necesita de otros módulos se copian en un snapshot inmutable al solicitar la generación ([ADR-0016](../modulos/campaigns/adr/0016-snapshot-inmutable-por-generacion.md)); lo que cambie después en el catálogo no altera una generación en curso ni una ya aprobada.
 4. El trabajo lento o que depende de terceros (IA, render, publicación) se ejecuta en el worker, no en el request ([ADR-0008](../adr/0008-cola-de-trabajos-y-worker.md)).

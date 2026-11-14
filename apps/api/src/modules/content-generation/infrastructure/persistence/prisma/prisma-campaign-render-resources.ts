@@ -1,5 +1,5 @@
 import type { PrismaClient } from '#app/infrastructure/persistence/prisma/generated/client';
-import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
+import { CampaignImageError } from '#app/modules/campaigns/contract';
 import type { CampaignRenderResources } from '../../../application/ports/campaign-render-resources.js';
 import type { RenderCampaignTemplateInput } from '../../../application/ports/template-renderer.js';
 import type { MinioStorageProvider } from '../../minio-storage-provider.js';

@@ -25,6 +25,8 @@ import { RequestCampaignRegeneration } from '#app/modules/campaigns/application/
 import { RecordGeneratedCampaign } from '#app/modules/campaigns/application/use-cases/record-generated-campaign';
 import { ApproveCampaign } from '#app/modules/campaigns/application/use-cases/approve-campaign';
 import { finalAssetsFake } from './final-assets-fake.js';
+import type { TransactionContext } from '#app/application/ports/transaction-context';
+import { PublishedCampaignGenerations } from '#app/modules/campaigns/application/published-campaign-generations';
 import { RecordCampaignGenerationFailure } from '#app/modules/campaigns/application/use-cases/record-campaign-generation-failure';
 import { GenerationFailureCode } from '#app/modules/campaigns/domain/campaign-status';
 
@@ -265,4 +267,35 @@ export function campaignUseCases() {
     approve: new ApproveCampaign(repository, clock, finalAssetsFake),
     fail: new RecordCampaignGenerationFailure(repository, clock),
   };
+}
+
+// Unit suites have no database, so there is no transaction to take part in.
+export const NO_TRANSACTION = {} as TransactionContext;
+
+// The real published contract of campaigns over the in-memory repository.
+export function campaignGenerationsFake(
+  repository: CampaignRepositoryFake,
+  lookups: CampaignLookups = new CampaignLookupsFake(),
+  ids: IdGenerator = new CampaignIdsFake(),
+  clock: Clock = new CampaignClockFake(),
+) {
+  return new PublishedCampaignGenerations(
+    repository,
+    lookups,
+    {
+      repositoryIn: () => repository,
+      lock: (generation, _transaction, expectedVersion) => {
+        const campaign = repository.records.get(generation.campaignId);
+        return Promise.resolve(
+          campaign !== undefined &&
+            campaign.organizationId === generation.organizationId &&
+            campaign.generation?.id === generation.generationId &&
+            campaign.status === 'GENERATING' &&
+            (expectedVersion === undefined || campaign.version === expectedVersion),
+        );
+      },
+    },
+    ids,
+    clock,
+  );
 }

@@ -29,6 +29,7 @@
 | [0010](0010-dividir-campaigns.md) | Dividir `campaigns` en `campaigns`, `content-generation` y `assets` | Aceptado, implementado |
 | [0011](0011-cableado-nestjs-por-modulo.md) | Un módulo NestJS por módulo de negocio | Aceptado, implementado |
 | [0012](0012-autenticacion-antes-de-publicar.md) | Identidad y contexto de organización antes de publicar en redes | **Propuesto** |
+| [0021](0021-contrato-publicado-entre-modulos.md) | Contrato publicado y aislamiento estricto entre `content-generation` y `campaigns` | Aceptado, implementado |
 
 ## Por módulo
 
@@ -65,4 +66,4 @@ Qué otras opciones había y por qué no se eligieron.
 Qué mejora, qué cuesta y qué queda pendiente.
 ```
 
-El próximo número libre es **0021**.
+El próximo número libre es **0022**.

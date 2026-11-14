@@ -11,7 +11,7 @@ import type {
   RenderCampaignTemplateInput,
   TemplateRenderer,
 } from '../application/ports/template-renderer.js';
-import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
+import { CampaignImageError } from '#app/modules/campaigns/contract';
 import { campaignFlyerHtml } from './campaign-flyer-html.js';
 import { LocalImageArtifacts } from './local-image-artifacts.js';
 

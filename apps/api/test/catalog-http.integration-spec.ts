@@ -4,6 +4,7 @@ import { finalAssetsFake } from './support/final-assets-fake.js';
 import { copyChoices } from '#app/modules/content-generation/application/copy-policy';
 import type { GenerationSnapshotData } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
 import { PrismaCampaignCopyRepository } from '#app/modules/content-generation/infrastructure/persistence/prisma/prisma-campaign-copy.repository';
+import { CAMPAIGN_GENERATIONS } from '#app/modules/campaigns/contract';
 import { randomUUID } from 'node:crypto';
 import { FlyerDesign } from '#app/domain/value-objects/flyer-design';
 import { Test, type TestingModule } from '@nestjs/testing';
@@ -306,7 +307,7 @@ describe('Catalog HTTP with PostgreSQL', () => {
       campaignId: entityId(created.body.data.id as string),
     };
     const campaign = await module.get(RequestCampaignGeneration).execute(selection);
-    const repo = new PrismaCampaignCopyRepository(database);
+    const repo = new PrismaCampaignCopyRepository(database, module.get(CAMPAIGN_GENERATIONS));
     const first = {
       ...selection,
       generationId: entityId(campaign.generation!.id),

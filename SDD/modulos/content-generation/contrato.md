@@ -6,7 +6,7 @@ Creado el 14 de noviembre de 2026 al extraerlo de `campaigns` ([ADR-0010](../../
 
 Ejecutar la generación de una campaña: producir el copy y la imagen con IA, componer el flyer y guardar los archivos resultantes. Es el único módulo que conoce proveedores de IA y el renderer.
 
-No decide estados ni aprobación: usa la entidad `Campaign` para registrar el resultado y sus reglas siguen en `campaigns`.
+No decide estados ni aprobación, ni conoce la entidad `Campaign`: pide a `campaigns`, a través de su contrato publicado, que inicie la generación y que registre el resultado.
 
 ## Datos que posee
 
@@ -15,7 +15,7 @@ No decide estados ni aprobación: usa la entidad `Campaign` para registrar el re
 | `campaign_copies` | Copy validado de una generación, incluido `imagePrompt`, y su reserva |
 | `campaign_image_jobs` | Reserva temporal del trabajo de imagen |
 
-Además **escribe** en `campaign_assets` (imagen base y flyer final) y, al confirmar la imagen, en `campaigns` y `generated_contents`, en una sola transacción. La lectura de `campaign_assets` pertenece a `campaigns`.
+Además **escribe** en `campaign_assets` (imagen base y flyer final) y lee de vuelta la imagen base que su propia operación guardó. No lee ni escribe `campaigns` ni `generated_contents`: al confirmar la imagen pide a `campaigns` que lo haga dentro de la misma transacción.
 
 ## API HTTP
 
@@ -55,17 +55,19 @@ Nada. Ningún módulo puede importar de `content-generation`; para `campaigns` l
 
 ## Lo que consume
 
-### De `campaigns` (dependencia permitida, en un solo sentido)
+### De `campaigns`, solo su contrato publicado
 
-| Qué | Para qué |
+Único import permitido: `#app/modules/campaigns/contract` ([ADR-0021](../../adr/0021-contrato-publicado-entre-modulos.md)). Una regla de ESLint rechaza cualquier otro.
+
+| Del contrato | Para qué |
 | --- | --- |
-| `Campaign`, `GeneratedContent`, `GenerationSnapshot`, `CampaignStatus` y errores de dominio | Leer el snapshot y registrar el contenido generado con las reglas de la entidad |
-| `CampaignRepository`, `CampaignLookups`, `loadCampaign`, `loadCampaignResources` | Cargar la campaña y capturar el snapshot |
-| `PrismaCampaignRepository`, `PrismaCampaignLookups` (exportados por `CampaignsModule`) | Instancias compartidas |
-| `StoredCampaignAssets` y los tipos de `campaign-final-assets.ts` | Leer la imagen base que la misma operación guardó |
-| `CampaignImageError` | Errores de imagen |
-
-Esta es la única excepción a la regla de que un módulo no importa el dominio de otro. Se acepta porque generar es una operación **sobre** la campaña que debe confirmarse en la misma transacción que su cambio de estado.
+| `CampaignGenerations.view` | Conocer estado, versión, generación vigente y su snapshot, como datos planos |
+| `CampaignGenerations.begin` | Iniciar la generación de una campaña en `DRAFT` |
+| `CampaignGenerations.assertPromotionActive` | No generar para una promoción vencida |
+| `CampaignGenerations.lock` | Serializar el trabajo y confirmar que la generación sigue vigente, dentro de su transacción |
+| `CampaignGenerations.recordContent` | Registrar el contenido y pasar a `PENDING_APPROVAL`, dentro de su transacción |
+| `CampaignImageError`, `InvalidCampaignTransitionError`, `StaleGenerationResultError` | Errores del lenguaje compartido |
+| Tipos `GenerationSnapshotData`, `StoredCampaignAsset`, `CampaignImageSelection` | Datos planos |
 
 ### De otros módulos
 
@@ -91,7 +93,7 @@ Configuración: `COPY_PROVIDER`, `IMAGE_PROVIDER` y las variables de cada provee
 
 - **El copy no inventa datos comerciales:** `copy-policy.ts` valida la respuesta del modelo contra el snapshot antes de persistirla.
 - **Una generación de imagen a la vez por campaña:** reserva de 5 minutos con recuperación al vencer.
-- **Confirmación atómica:** contenido generado, cambio a `PENDING_APPROVAL` y cierre de la reserva se guardan juntos; un trabajo cuya reserva venció no puede confirmar.
+- **Confirmación atómica:** contenido generado, cambio a `PENDING_APPROVAL` y cierre de la reserva se guardan en una sola transacción, que este módulo abre y en la que `campaigns` participa; un trabajo cuya reserva venció no puede confirmar.
 - **Fallos visibles:** si la IA falla, no se sustituye el resultado por la foto original.
 - **Sin reintento automático de imagen:** una respuesta ambigua puede haberse cobrado.
 
@@ -100,6 +102,7 @@ Configuración: `COPY_PROVIDER`, `IMAGE_PROVIDER` y las variables de cada provee
 - [ADR-0006 · Proveedores de IA por despliegue](../../adr/0006-proveedores-de-ia-por-despliegue.md)
 - [ADR-0009 · Estrategia de generación del flyer](../../adr/0009-estrategia-de-generacion-del-flyer.md) (propuesto)
 - [ADR-0010 · Dividir `campaigns`](../../adr/0010-dividir-campaigns.md)
+- [ADR-0021 · Contrato publicado y aislamiento estricto](../../adr/0021-contrato-publicado-entre-modulos.md)
 
 ## Pendiente
 
@@ -108,3 +111,4 @@ Configuración: `COPY_PROVIDER`, `IMAGE_PROVIDER` y las variables de cada provee
 - Regeneración de imagen e historial de versiones.
 - Formatos distintos de 1080×1080; región e idioma del flyer, hoy fijos.
 - Limpieza de archivos temporales.
+- `PrismaCampaignRenderResources` lee `template_revisions` directamente; debe pasar por un contrato de `templates`.

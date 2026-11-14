@@ -1,5 +1,6 @@
 import {
   campaignUseCases,
+  campaignGenerationsFake,
   createInput,
   OTHER_ORG,
   domainFixture,
@@ -61,7 +62,13 @@ async function fixture() {
     copies,
     generate,
     generator,
-    useCase: new GenerateCampaignCopy(f.repository, f.lookups, copies, generator, f.ids, f.clock),
+    useCase: new GenerateCampaignCopy(
+      campaignGenerationsFake(f.repository, f.lookups, f.ids, f.clock),
+      copies,
+      generator,
+      f.ids,
+      f.clock,
+    ),
   };
 }
 describe('GenerateCampaignCopy', () => {

@@ -2,6 +2,9 @@ import {
   CampaignClockFake,
   CampaignIdsFake,
   CampaignRepositoryFake,
+  CampaignLookupsFake,
+  campaignGenerationsFake,
+  NO_TRANSACTION,
   domainFixture,
   resourcesFixture,
   testId,
@@ -31,13 +34,17 @@ import type { ProductImageSource } from '#app/modules/content-generation/applica
 import type { StorageProvider } from '#app/modules/content-generation/application/ports/storage-provider';
 import type { TemplateRenderer } from '#app/modules/content-generation/application/ports/template-renderer';
 import { GenerateCampaignImage } from '#app/modules/content-generation/application/use-cases/generate-campaign-image';
+import type { CampaignGenerations } from '#app/modules/campaigns/contract';
 
 // Test-only adapters: no provider requests, rendering browser, storage service or production binding.
 class ImageRepositoryFake implements CampaignImageRepository {
   active: CampaignImageLease | null = null;
   results: CampaignImageCompletion[] = [];
   releases = 0;
-  constructor(private readonly campaigns: CampaignRepositoryFake) {}
+  constructor(
+    private readonly campaigns: CampaignRepositoryFake,
+    private readonly generations: CampaignGenerations,
+  ) {}
 
   claim(lease: CampaignImageLease): Promise<boolean> {
     const current = this.campaigns.records.get(lease.campaignId);
@@ -66,9 +73,21 @@ class ImageRepositoryFake implements CampaignImageRepository {
       current.status !== CampaignStatus.GENERATING
     )
       throw new CampaignImageError('STALE_RESULT');
-    await this.campaigns.save(lease.organizationId, result.campaign, lease.expectedVersion);
+    const content = await this.generations.recordContent(
+      {
+        organizationId: lease.organizationId,
+        campaignId: lease.campaignId,
+        generationId: lease.generationId,
+        expectedVersion: lease.expectedVersion,
+        copy: result.copy,
+        finalAssetId: result.finalAsset.id,
+        at,
+      },
+      NO_TRANSACTION,
+    );
     this.results.push(result);
     this.active = null;
+    return content;
   }
 
   release(lease: CampaignImageLease): Promise<void> {
@@ -140,17 +159,19 @@ function fixture() {
       contentType: input.source.contentType,
     })),
   };
-  const images = new ImageRepositoryFake(campaigns);
   const clock = new CampaignClockFake();
+  const ids = new CampaignIdsFake();
+  const generations = campaignGenerationsFake(campaigns, new CampaignLookupsFake(), ids, clock);
+  const images = new ImageRepositoryFake(campaigns, generations);
   const useCase = new GenerateCampaignImage(
-    campaigns,
+    generations,
     copies,
     images,
     productImages,
     generator,
     renderer,
     storage,
-    new CampaignIdsFake(),
+    ids,
     clock,
   );
   const selection = { organizationId: ORG, campaignId: CAMPAIGN, generationId: GENERATION };
@@ -272,7 +293,7 @@ describe('GenerateCampaignImage', () => {
   it('replays completed work without generating, storing or rewriting content', async () => {
     const f = fixture();
     const first = await f.useCase.execute(f.selection);
-    expect(await f.useCase.execute(f.selection)).toBe(first);
+    expect(await f.useCase.execute(f.selection)).toEqual(first);
     expect(f.productImages.load).toHaveBeenCalledTimes(1);
     expect(f.generator.generate).toHaveBeenCalledTimes(1);
     expect(f.storage.store).toHaveBeenCalledTimes(2);
@@ -282,7 +303,10 @@ describe('GenerateCampaignImage', () => {
   it('also replays an approved generation without changing its approval', async () => {
     const f = fixture();
     f.campaigns.records.set(CAMPAIGN, f.approved);
-    expect(await f.useCase.execute(f.selection)).toBe(f.content);
+    expect(await f.useCase.execute(f.selection)).toMatchObject({
+      id: f.content.id,
+      generationId: f.content.generationId,
+    });
     expect(f.productImages.load).not.toHaveBeenCalled();
     expect(f.generator.generate).not.toHaveBeenCalled();
     expect(f.campaigns.records.get(CAMPAIGN)!.status).toBe(CampaignStatus.APPROVED);
@@ -602,7 +626,7 @@ describe('GenerateCampaignImage', () => {
     });
     await expect(f.useCase.execute(f.selection)).rejects.toThrow('Connection lost after commit');
     const content = await f.useCase.execute(f.selection);
-    expect(content).toBe(f.campaigns.records.get(CAMPAIGN)!.candidateContent);
+    expect(content.id).toBe(f.campaigns.records.get(CAMPAIGN)!.candidateContent!.id);
     expect(f.productImages.load).toHaveBeenCalledTimes(1);
   });
 });

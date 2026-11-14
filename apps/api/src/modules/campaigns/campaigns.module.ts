@@ -14,6 +14,7 @@ import {
   CAMPAIGN_FINAL_ASSETS,
   type CampaignFinalAssets,
 } from './application/ports/campaign-final-assets.js';
+import { PublishedCampaignGenerations } from './application/published-campaign-generations.js';
 import { ApproveCampaign } from './application/use-cases/approve-campaign.js';
 import { CreateCampaign } from './application/use-cases/create-campaign.js';
 import { GetCampaign } from './application/use-cases/get-campaign.js';
@@ -26,6 +27,8 @@ import { RequestCampaignRegeneration } from './application/use-cases/request-cam
 import { PrismaCampaignLookups } from './infrastructure/persistence/prisma/prisma-campaign-lookups.js';
 import { PrismaCampaignRepository } from './infrastructure/persistence/prisma/prisma-campaign.repository.js';
 import { StoredCampaignAssets } from './infrastructure/stored-campaign-assets.js';
+import { PrismaCampaignWorkspace } from './infrastructure/persistence/prisma/prisma-campaign-workspace.js';
+import { CAMPAIGN_GENERATIONS } from './contract.js';
 import { CampaignsController } from './presentation/campaigns.controller.js';
 
 @Module({
@@ -42,6 +45,17 @@ import { CampaignsController } from './presentation/campaigns.controller.js';
       inject: [PrismaService, OBJECT_STORAGE],
       useFactory: (db: PrismaService, storage: ObjectStorage) =>
         new StoredCampaignAssets(db, storage),
+    },
+    {
+      provide: CAMPAIGN_GENERATIONS,
+      inject: [PrismaCampaignRepository, PrismaCampaignLookups, ID_GENERATOR, CLOCK],
+      useFactory: (
+        repo: PrismaCampaignRepository,
+        lookups: PrismaCampaignLookups,
+        ids: IdGenerator,
+        clock: Clock,
+      ) =>
+        new PublishedCampaignGenerations(repo, lookups, new PrismaCampaignWorkspace(), ids, clock),
     },
     ...[GetCampaign, ListCampaigns].map((UseCase) => ({
       provide: UseCase,
@@ -83,7 +97,7 @@ import { CampaignsController } from './presentation/campaigns.controller.js';
         new GetCampaignFinalAsset(repo, assets),
     },
   ],
-  // Content generation executes a campaign's generation, so it shares these two.
-  exports: [PrismaCampaignRepository, PrismaCampaignLookups],
+  // The only thing other modules can inject: the published contract.
+  exports: [CAMPAIGN_GENERATIONS],
 })
 export class CampaignsModule {}

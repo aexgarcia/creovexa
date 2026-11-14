@@ -5,7 +5,7 @@ import {
   InvalidImageFileError,
   MAX_IMAGE_BYTES,
 } from '#app/infrastructure/image-files';
-import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
+import { CampaignImageError } from '#app/modules/campaigns/contract';
 import type { GenerateImageInput, ImageGenerator } from '../application/ports/image-generator.js';
 import type { ImageArtifact } from '../application/ports/image-artifact.js';
 import { LocalImageArtifacts } from './local-image-artifacts.js';

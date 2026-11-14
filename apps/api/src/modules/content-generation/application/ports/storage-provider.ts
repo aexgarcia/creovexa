@@ -1,8 +1,5 @@
 import type { EntityId } from '#app/domain/entity-id';
-import type {
-  CampaignAssetPurpose,
-  StoredCampaignAsset,
-} from '#app/modules/campaigns/application/ports/campaign-final-assets';
+import type { CampaignAssetPurpose, StoredCampaignAsset } from '#app/modules/campaigns/contract';
 import type { CampaignImageSelection, ImageArtifact } from './image-artifact.js';
 
 export type { CampaignAssetPurpose, StoredCampaignAsset };

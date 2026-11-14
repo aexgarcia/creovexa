@@ -21,7 +21,7 @@ import { CreateCampaign } from '#app/modules/campaigns/application/use-cases/cre
 import { RequestCampaignGeneration } from '#app/modules/campaigns/application/use-cases/request-campaign-generation';
 import { PrismaCampaignRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign.repository';
 import { PrismaCampaignImageRepository } from '#app/modules/content-generation/infrastructure/persistence/prisma/prisma-campaign-image.repository';
-import { GeneratedContent } from '#app/modules/campaigns/domain/entities/generated-content';
+import { CAMPAIGN_GENERATIONS, type CampaignGenerations } from '#app/modules/campaigns/contract';
 import type { CampaignImageLease } from '#app/modules/content-generation/application/ports/campaign-image-repository';
 import type { StoredCampaignAsset } from '#app/modules/content-generation/application/ports/storage-provider';
 
@@ -31,6 +31,7 @@ export class ImagePersistenceContext {
   database!: PrismaService;
   campaigns!: PrismaCampaignRepository;
   images!: PrismaCampaignImageRepository;
+  generations!: CampaignGenerations;
 
   async init(options?: {
     storage: StorageConfig;
@@ -60,7 +61,8 @@ export class ImagePersistenceContext {
     await this.module.init();
     this.database = this.module.get(PrismaService);
     this.campaigns = this.module.get(PrismaCampaignRepository);
-    this.images = new PrismaCampaignImageRepository(this.database);
+    this.generations = this.module.get<CampaignGenerations>(CAMPAIGN_GENERATIONS);
+    this.images = new PrismaCampaignImageRepository(this.database, this.generations);
   }
 
   async close() {
@@ -121,16 +123,16 @@ export class ImagePersistenceContext {
       now: new Date(),
       expiresAt: new Date(Date.now() + 300_000),
     };
-    const completion = (baseAsset: StoredCampaignAsset, finalAsset: StoredCampaignAsset) => {
-      const at = new Date();
-      const content = GeneratedContent.create(
-        { ...selection, generationId, id: uuid(), revision: campaign.generation!.number },
-        campaign.generation!.snapshot,
-        { ...copy, assetIds: [finalAsset.id] },
-        at,
-      );
-      return { campaign: campaign.recordGeneratedContent(content, at), baseAsset, finalAsset };
-    };
+    const completion = (baseAsset: StoredCampaignAsset, finalAsset: StoredCampaignAsset) => ({
+      copy: {
+        headline: copy.headline,
+        caption: copy.caption,
+        cta: copy.cta,
+        hashtags: copy.hashtags,
+      },
+      baseAsset,
+      finalAsset,
+    });
     return { lease, campaign, copy, selection, completion };
   }
 

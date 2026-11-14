@@ -1,5 +1,5 @@
 import type { EntityId } from '#app/domain/entity-id';
-import type { GenerationSnapshotData } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
+import type { GenerationSnapshotData } from '#app/modules/campaigns/contract';
 import type { CampaignImageSelection, ImageArtifact } from './image-artifact.js';
 
 export const TEMPLATE_RENDERER = Symbol('TEMPLATE_RENDERER');

@@ -1,4 +1,4 @@
-export type { CampaignImageSelection } from '#app/modules/campaigns/application/ports/campaign-final-assets';
+export type { CampaignImageSelection } from '#app/modules/campaigns/contract';
 
 export interface ImageDimensions {
   width: number;

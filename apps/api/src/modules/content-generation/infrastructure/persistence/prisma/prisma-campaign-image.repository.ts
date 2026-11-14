@@ -7,8 +7,12 @@ import type {
 import type { CampaignCopy } from '../../../application/ports/copy-generator.js';
 import type { CampaignImageSelection } from '../../../application/ports/image-artifact.js';
 import type { StoredCampaignAsset } from '../../../application/ports/storage-provider.js';
-import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
-import { PrismaCampaignRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign.repository';
+import { transactionContext } from '#app/infrastructure/persistence/prisma/transaction-context';
+import {
+  CampaignImageError,
+  type CampaignGenerations,
+  type GeneratedCampaignContent,
+} from '#app/modules/campaigns/contract';
 
 export async function databaseTime(tx: Prisma.TransactionClient): Promise<Date> {
   const [row] = await tx.$queryRaw<{ now: Date }[]>`SELECT clock_timestamp() AS now`;
@@ -17,21 +21,13 @@ export async function databaseTime(tx: Prisma.TransactionClient): Promise<Date> 
 
 // Serialize claims, asset registration and completion on the same campaign row.
 export async function lockImageCampaign(
+  generations: CampaignGenerations,
   tx: Prisma.TransactionClient,
   selection: CampaignImageSelection,
   expectedVersion?: number,
 ): Promise<void> {
-  const result = await tx.campaign.updateMany({
-    where: {
-      id: selection.campaignId,
-      organizationId: selection.organizationId,
-      currentGenerationId: selection.generationId,
-      status: 'GENERATING',
-      ...(expectedVersion === undefined ? {} : { version: expectedVersion }),
-    },
-    data: { version: { increment: 0 } },
-  });
-  if (result.count !== 1) throw new CampaignImageError('STALE_RESULT');
+  if (!(await generations.lock(selectionOf(selection), transactionContext(tx), expectedVersion)))
+    throw new CampaignImageError('STALE_RESULT');
 }
 
 export async function requireImageLease(
@@ -47,13 +43,16 @@ export async function requireImageLease(
 }
 
 export class PrismaCampaignImageRepository implements CampaignImageRepository {
-  constructor(private readonly client: PrismaClient) {}
+  constructor(
+    private readonly client: PrismaClient,
+    private readonly generations: CampaignGenerations,
+  ) {}
 
   async claim(lease: CampaignImageLease): Promise<boolean> {
     if (!Number.isSafeInteger(lease.expectedVersion) || lease.expectedVersion < 0)
       throw new CampaignImageError('STALE_RESULT');
     return this.client.$transaction(async (tx) => {
-      await lockImageCampaign(tx, lease, lease.expectedVersion);
+      await lockImageCampaign(this.generations, tx, lease, lease.expectedVersion);
       const now = await databaseTime(tx);
       if (!Number.isFinite(lease.expiresAt.getTime()) || lease.expiresAt <= now)
         throw new CampaignImageError('TIMEOUT');
@@ -91,22 +90,13 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
     lease: CampaignImageLease,
     result: CampaignImageCompletion,
     at: Date,
-  ): Promise<void> {
-    await this.client.$transaction(async (tx) => {
-      await lockImageCampaign(tx, lease, lease.expectedVersion);
+  ): Promise<GeneratedCampaignContent> {
+    return this.client.$transaction(async (tx) => {
+      await lockImageCampaign(this.generations, tx, lease, lease.expectedVersion);
       const selection = selectionOf(lease);
       await requireImageLease(tx, selection, lease.token);
-      const { campaign, baseAsset, finalAsset } = result;
-      const content = campaign.candidateContent;
+      const { copy: content, baseAsset, finalAsset } = result;
       if (
-        campaign.id !== lease.campaignId ||
-        campaign.organizationId !== lease.organizationId ||
-        campaign.generation?.id !== lease.generationId ||
-        campaign.status !== 'PENDING_APPROVAL' ||
-        campaign.version !== lease.expectedVersion + 1 ||
-        !content ||
-        content.assetIds.length !== 1 ||
-        content.assetIds[0] !== finalAsset.id ||
         baseAsset.id === finalAsset.id ||
         baseAsset.purpose !== 'BASE_IMAGE' ||
         finalAsset.purpose !== 'FINAL_PIECE' ||
@@ -128,10 +118,15 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
       )
         throw new CampaignImageError('INVALID_OUTPUT');
       for (const asset of [baseAsset, finalAsset]) await this.checkAsset(tx, lease, asset);
-      await new PrismaCampaignRepository(tx).save(
-        lease.organizationId,
-        campaign,
-        lease.expectedVersion,
+      const recorded = await this.generations.recordContent(
+        {
+          ...selection,
+          expectedVersion: lease.expectedVersion,
+          copy: content,
+          finalAssetId: finalAsset.id,
+          at,
+        },
+        transactionContext(tx),
       );
       // Recheck after all writes: a worker that waited for locks cannot commit an expired lease.
       await requireImageLease(tx, selection, lease.token);
@@ -145,6 +140,7 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
         data: { status: 'READY' },
       });
       if (completed.count !== 1) throw new CampaignImageError('STALE_RESULT');
+      return recorded;
     });
   }
 

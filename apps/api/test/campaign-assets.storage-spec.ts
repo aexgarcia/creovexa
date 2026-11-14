@@ -58,7 +58,7 @@ describe('Private campaign assets (MinIO + PostgreSQL)', () => {
     artifacts = new LocalImageArtifacts(directory);
     await context.init({ storage: config, artifacts });
     objects = new S3ObjectStorage(config);
-    storage = new MinioStorageProvider(context.database, artifacts, objects);
+    storage = new MinioStorageProvider(context.database, artifacts, objects, context.generations);
     client = new S3Client({
       endpoint: config.endpoint,
       region: config.region,
@@ -214,8 +214,8 @@ describe('Private campaign assets (MinIO + PostgreSQL)', () => {
     }));
     const renderer = context.module.get<TemplateRenderer>(TEMPLATE_RENDERER);
     const useCase = new GenerateCampaignImage(
-      context.campaigns,
-      new PrismaCampaignCopyRepository(context.database),
+      context.generations,
+      new PrismaCampaignCopyRepository(context.database, context.generations),
       context.images,
       { assertAvailable() {}, load: produce },
       { assertAvailable() {}, generate: produce },
@@ -330,8 +330,8 @@ describe('Private campaign assets (MinIO + PostgreSQL)', () => {
       contentType: 'image/png' as const,
     }));
     const useCase = new GenerateCampaignImage(
-      context.campaigns,
-      new PrismaCampaignCopyRepository(context.database),
+      context.generations,
+      new PrismaCampaignCopyRepository(context.database, context.generations),
       context.images,
       { assertAvailable() {}, load: produce },
       { assertAvailable() {}, generate },

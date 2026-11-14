@@ -21,6 +21,23 @@ export default [
     },
   },
   {
+    // content-generation may use campaigns only through its published contract.
+    files: ['src/modules/content-generation/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^#app/modules/campaigns/(?!contract$|campaigns[.]module$)',
+              message: 'Usa #app/modules/campaigns/contract (ADR-0021).',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.spec.ts', '**/*.e2e-spec.ts', '**/*.integration-spec.ts'],
     languageOptions: {
       globals: Object.fromEntries(

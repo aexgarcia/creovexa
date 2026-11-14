@@ -1,5 +1,5 @@
 export const COPY_GENERATOR = Symbol('COPY_GENERATOR');
-import type { GenerationSnapshotData } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
+import type { GenerationSnapshotData } from '#app/modules/campaigns/contract';
 export interface CampaignCopy {
   headline: string;
   caption: string;

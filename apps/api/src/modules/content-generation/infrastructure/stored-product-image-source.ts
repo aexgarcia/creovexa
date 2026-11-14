@@ -4,7 +4,7 @@ import type {
   ProductImageSource,
   LoadProductImageInput,
 } from '../application/ports/product-image-source.js';
-import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
+import { CampaignImageError } from '#app/modules/campaigns/contract';
 import { LocalImageArtifacts } from './local-image-artifacts.js';
 
 export class StoredProductImageSource implements ProductImageSource {

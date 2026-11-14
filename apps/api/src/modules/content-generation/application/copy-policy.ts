@@ -1,4 +1,4 @@
-import type { GenerationSnapshotData } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
+import type { GenerationSnapshotData } from '#app/modules/campaigns/contract';
 import { CopyGenerationError, type CampaignCopy } from './ports/copy-generator.js';
 // Only factual text from the frozen snapshot and neutral editorial phrases is eligible.
 export function copyChoices(input: GenerationSnapshotData) {

@@ -1,6 +1,6 @@
 import { setTimeout as delay } from 'node:timers/promises';
 import type { GeminiCopyConfig } from '#app/config/copy-generation.config';
-import type { GenerationSnapshotData } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
+import type { GenerationSnapshotData } from '#app/modules/campaigns/contract';
 import { CopyGenerationError, type CopyGenerator } from '../application/ports/copy-generator.js';
 import { copyChoices, validateCopy } from '../application/copy-policy.js';
 interface CopyLogger {

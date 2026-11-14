@@ -1,17 +1,15 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { inspectImageBytes } from '#app/infrastructure/image-files';
-import type { EntityId } from '#app/domain/entity-id';
+import { entityId, type EntityId } from '#app/domain/entity-id';
 import type {
   PrismaClient,
   CampaignAsset,
 } from '#app/infrastructure/persistence/prisma/generated/client';
-import type { ObjectStorage } from '#app/modules/assets/application/ports/object-storage';
-import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
 import {
-  StoredCampaignAssets,
-  campaignAssetResult,
-  sha256 as digest,
-} from '#app/modules/campaigns/infrastructure/stored-campaign-assets';
+  ObjectStorageError,
+  type ObjectStorage,
+} from '#app/modules/assets/application/ports/object-storage';
+import { CampaignImageError, type CampaignGenerations } from '#app/modules/campaigns/contract';
 import type {
   StorageProvider,
   StoreCampaignAssetInput,
@@ -23,20 +21,23 @@ import {
   requireImageLease,
 } from './persistence/prisma/prisma-campaign-image.repository.js';
 
-// Writes the assets a generation produces. Reading recorded assets belongs to campaigns.
+// Writes the assets a generation produces and reads back the ones its own operation stored.
 export class MinioStorageProvider implements StorageProvider {
-  private readonly assets: StoredCampaignAssets;
-
   constructor(
     private readonly database: PrismaClient,
     private readonly artifacts: LocalImageArtifacts,
     private readonly storage: ObjectStorage,
-  ) {
-    this.assets = new StoredCampaignAssets(database, storage);
+    private readonly generations: CampaignGenerations,
+  ) {}
+
+  private get bucket(): string {
+    const bucket = this.storage.bucket;
+    if (!bucket) throw new CampaignImageError('UNAVAILABLE');
+    return bucket;
   }
 
   assertAvailable(): void {
-    this.assets.assertAvailable();
+    void this.bucket;
   }
 
   async store(input: StoreCampaignAssetInput): Promise<StoredCampaignAsset> {
@@ -58,7 +59,7 @@ export class MinioStorageProvider implements StorageProvider {
         return campaignAssetResult(existing);
       }
       await this.database.$transaction(async (tx) => {
-        await lockImageCampaign(tx, selection);
+        await lockImageCampaign(this.generations, tx, selection);
         await requireImageLease(tx, selection, input.operationId);
       });
       const created = await this.storage.putIfAbsent({
@@ -69,11 +70,11 @@ export class MinioStorageProvider implements StorageProvider {
       });
       if (!created) {
         // An earlier upload may have succeeded before metadata committed. Never overwrite it.
-        const stored = await this.assets.readObject(objectKey);
+        const stored = await this.readObject(objectKey);
         if (digest(stored) !== sha256) throw new CampaignImageError('INVALID_OUTPUT');
       }
       return await this.database.$transaction(async (tx) => {
-        await lockImageCampaign(tx, selection);
+        await lockImageCampaign(this.generations, tx, selection);
         await requireImageLease(tx, selection, input.operationId);
         const previous = await tx.campaignAsset.findFirst({ where });
         if (previous) {
@@ -84,7 +85,7 @@ export class MinioStorageProvider implements StorageProvider {
           data: {
             ...where,
             id: randomUUID(),
-            bucket: this.assets.bucket,
+            bucket: this.bucket,
             objectKey,
             sha256,
             byteLength: bytes.length,
@@ -101,9 +102,37 @@ export class MinioStorageProvider implements StorageProvider {
     }
   }
 
-  // The renderer reads back the base image this same operation stored.
-  read(organizationId: EntityId, assetId: EntityId) {
-    return this.assets.read(organizationId, assetId);
+  // The renderer reads back the base image this same operation stored. Foreign assets look absent.
+  async read(
+    organizationId: EntityId,
+    assetId: EntityId,
+  ): Promise<{ bytes: Buffer; asset: StoredCampaignAsset } | null> {
+    try {
+      const row = await this.database.campaignAsset.findFirst({
+        where: { id: assetId, organizationId },
+      });
+      if (!row) return null;
+      if (row.bucket !== this.bucket) throw new CampaignImageError('UNAVAILABLE');
+      const bytes = await this.readObject(row.objectKey);
+      if (bytes.length !== row.byteLength || digest(bytes) !== row.sha256)
+        throw new CampaignImageError('INVALID_OUTPUT');
+      return { bytes, asset: campaignAssetResult(row) };
+    } catch (error) {
+      if (error instanceof CampaignImageError) throw error;
+      throw new CampaignImageError('UNAVAILABLE');
+    }
+  }
+
+  private async readObject(key: string): Promise<Buffer> {
+    try {
+      return await this.storage.read(key, MAX_IMAGE_BYTES);
+    } catch (error) {
+      if (!(error instanceof ObjectStorageError)) throw error;
+      if (error.code === 'TIMEOUT') throw new CampaignImageError('TIMEOUT');
+      if (error.code === 'EMPTY' || error.code === 'TOO_LARGE')
+        throw new CampaignImageError('INVALID_OUTPUT');
+      throw new CampaignImageError('UNAVAILABLE');
+    }
   }
 
   private assertSame(row: CampaignAsset, input: StoreCampaignAssetInput, hash: string): void {
@@ -112,7 +141,7 @@ export class MinioStorageProvider implements StorageProvider {
       row.contentType !== input.source.contentType ||
       row.width !== input.source.width ||
       row.height !== input.source.height ||
-      row.bucket !== this.assets.bucket
+      row.bucket !== this.bucket
     )
       throw new CampaignImageError('INVALID_OUTPUT');
   }
@@ -136,4 +165,21 @@ async function validateImage(bytes: Buffer, input: StoreCampaignAssetInput): Pro
   } catch {
     throw new CampaignImageError('INVALID_OUTPUT');
   }
+}
+
+function digest(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+function campaignAssetResult(row: CampaignAsset): StoredCampaignAsset {
+  return {
+    id: entityId(row.id),
+    organizationId: entityId(row.organizationId),
+    campaignId: entityId(row.campaignId),
+    generationId: entityId(row.generationId),
+    purpose: row.purpose,
+    contentType: row.contentType as StoredCampaignAsset['contentType'],
+    width: row.width,
+    height: row.height,
+  };
 }

@@ -55,6 +55,8 @@ Orden de ejecución: primero `assets` (elimina duplicación sin cambiar comporta
 
 Diferencia con la decisión original: se preveía que `content-generation` registrara el resultado "mediante un port". En la práctica usa directamente la entidad `Campaign` y su repositorio, porque el contenido generado, el cambio de estado y el cierre de la reserva deben confirmarse en una sola transacción. Queda documentado como la única excepción permitida a la regla de no importar el dominio de otro módulo.
 
+**Corrección posterior:** la excepción descrita arriba se eliminó el mismo día con [ADR-0021](0021-contrato-publicado-entre-modulos.md). `content-generation` ya no usa la entidad `Campaign` ni su repositorio; habla con `campaigns` solo a través de su contrato publicado.
+
 Pendiente:
 
 - Unificar las tres tablas de assets y mover la validación de bytes a `assets`.

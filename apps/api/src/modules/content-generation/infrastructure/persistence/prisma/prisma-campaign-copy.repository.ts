@@ -8,9 +8,16 @@ import {
   CopyGenerationError,
   type CampaignCopy,
 } from '../../../application/ports/copy-generator.js';
-import { StaleGenerationResultError } from '#app/modules/campaigns/domain/errors/campaign.errors';
+import { transactionContext } from '#app/infrastructure/persistence/prisma/transaction-context';
+import {
+  StaleGenerationResultError,
+  type CampaignGenerations,
+} from '#app/modules/campaigns/contract';
 export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
-  constructor(private readonly client: PrismaClient) {}
+  constructor(
+    private readonly client: PrismaClient,
+    private readonly generations: CampaignGenerations,
+  ) {}
   async find(selection: CopySelection): Promise<CampaignCopy | null> {
     const row = await this.client.campaignCopy.findFirst({
       where: {
@@ -24,17 +31,9 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
   }
   async claim(lease: CopyLease) {
     return this.client.$transaction(async (tx) => {
-      // A no-op update locks the owner row using Prisma's configured schema.
-      const locked = await tx.campaign.updateMany({
-        where: {
-          id: lease.campaignId,
-          organizationId: lease.organizationId,
-          currentGenerationId: lease.generationId,
-          status: 'GENERATING',
-        },
-        data: { version: { increment: 0 } },
-      });
-      if (locked.count !== 1) throw new StaleGenerationResultError();
+      // Campaigns locks its own row and confirms this generation is still the current one.
+      if (!(await this.generations.lock(selectionOf(lease), transactionContext(tx))))
+        throw new StaleGenerationResultError();
       const existing = await tx.campaignCopy.findUnique({
         where: { generationId: lease.generationId },
       });
@@ -60,17 +59,9 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
   }
   async complete(lease: CopyLease, content: CampaignCopy) {
     await this.client.$transaction(async (tx) => {
-      // A no-op update locks the owner row using Prisma's configured schema.
-      const locked = await tx.campaign.updateMany({
-        where: {
-          id: lease.campaignId,
-          organizationId: lease.organizationId,
-          currentGenerationId: lease.generationId,
-          status: 'GENERATING',
-        },
-        data: { version: { increment: 0 } },
-      });
-      if (locked.count !== 1) throw new StaleGenerationResultError();
+      // Campaigns locks its own row and confirms this generation is still the current one.
+      if (!(await this.generations.lock(selectionOf(lease), transactionContext(tx))))
+        throw new StaleGenerationResultError();
       const result = await tx.campaignCopy.updateMany({
         where: {
           generationId: lease.generationId,
@@ -96,4 +87,12 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
       data: { status: 'FAILED' },
     });
   }
+}
+
+function selectionOf(value: CopySelection): CopySelection {
+  return {
+    organizationId: value.organizationId,
+    campaignId: value.campaignId,
+    generationId: value.generationId,
+  };
 }

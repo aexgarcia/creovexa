@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, open, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { entityId } from '#app/domain/entity-id';
-import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
+import { CampaignImageError } from '#app/modules/campaigns/contract';
 import type { CampaignImageSelection, ImageArtifact } from '../application/ports/image-artifact.js';
 
 import { MAX_IMAGE_BYTES } from '#app/infrastructure/image-files';

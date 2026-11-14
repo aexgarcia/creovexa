@@ -62,9 +62,11 @@ La regeneración existe en dominio y aplicación, pero todavía no tiene endpoin
 
 | Contrato | Consumidor | Uso |
 | --- | --- | --- |
-| Dominio y aplicación de campaña, `PrismaCampaignRepository`, `PrismaCampaignLookups`, `StoredCampaignAssets` | `content-generation` | Ejecutar la generación; detalle en [su contrato](../content-generation/contrato.md#lo-que-consume) |
+| **Contrato publicado** `contract.ts`: port `CampaignGenerations` (`view`, `begin`, `assertPromotionActive`, `lock`, `recordContent`), datos planos y errores compartidos | `content-generation` | Ejecutar la generación sin conocer la entidad `Campaign` ([ADR-0021](../../adr/0021-contrato-publicado-entre-modulos.md)) |
 | Existencia de la campaña | `publications`, mediante su port `PublicationCampaignLookup` | Validar pertenencia al listar publicaciones |
 | `CampaignNotFoundError` | `publications` | Import directo de una clase de error; debería sustituirse por un resultado del port |
+
+`contract.ts` es el único archivo de este módulo que otro puede importar, y `CAMPAIGN_GENERATIONS` lo único que `CampaignsModule` exporta. Lo implementa `PublishedCampaignGenerations`, que traduce entre el agregado y los datos planos. Cambiar el contrato exige revisar a sus consumidores.
 
 `campaigns` no importa nada de `content-generation`; una regla de ESLint lo impide.
 
@@ -74,6 +76,7 @@ La regeneración existe en dominio y aplicación, pero todavía no tiene endpoin
 | --- | --- | --- |
 | Persistencia | `CampaignRepository` | `PrismaCampaignRepository` |
 | Datos para el snapshot | `CampaignLookups` (`OrganizationLookup`, `ProductLookup`, `TemplateRevisionLookup`) | `PrismaCampaignLookups` |
+| Persistencia dentro de la transacción de otro módulo | `CampaignWorkspace` | `PrismaCampaignWorkspace` |
 | Lectura del flyer final | `CampaignFinalAssets` | `StoredCampaignAssets`, sobre `ObjectStorage` de [assets](../assets/contrato.md) |
 | Reloj e identificadores | `Clock`, `IdGenerator` | `RuntimeModule` |
 
@@ -87,7 +90,7 @@ La regeneración existe en dominio y aplicación, pero todavía no tiene endpoin
 
 - [ADR-0016 · Snapshot inmutable por generación](adr/0016-snapshot-inmutable-por-generacion.md)
 - [ADR-0017 · Aprobación de una revisión exacta y concurrencia optimista](adr/0017-aprobacion-de-revision-exacta.md)
-- Transversales: [ADR-0007](../../adr/0007-almacenamiento-privado-s3.md), [ADR-0010](../../adr/0010-dividir-campaigns.md)
+- Transversales: [ADR-0007](../../adr/0007-almacenamiento-privado-s3.md), [ADR-0010](../../adr/0010-dividir-campaigns.md), [ADR-0021](../../adr/0021-contrato-publicado-entre-modulos.md)
 
 ## Pendiente
 
