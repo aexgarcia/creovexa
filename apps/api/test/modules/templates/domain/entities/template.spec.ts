@@ -1,9 +1,6 @@
 import { Template } from '#app/modules/templates/domain/entities/template';
-import { TemplateDimensions } from '#app/modules/templates/domain/value-objects/template-dimensions';
-import {
-  InvalidTemplateNameError,
-  UnsupportedTemplateDimensionsError,
-} from '#app/modules/templates/domain/errors/template.errors';
+import { InvalidTemplateNameError } from '#app/modules/templates/domain/errors/template.errors';
+import { InvalidFlyerDesignError } from '#app/domain/value-objects/flyer-design';
 import { InvalidEntityIdError } from '#app/domain/entity-id';
 import { InvalidTimestampError } from '#app/domain/timestamp';
 import {
@@ -30,24 +27,14 @@ describe('Template', () => {
 
   it.each(['', ' \n '])('rejects blank names %j', (name) => {
     expect(() =>
-      Template.create(
-        TEMPLATE_ID,
-        ORGANIZATION_ID,
-        REVISION_ID,
-        { name, dimensions: TemplateDimensions.create(1080, 1080) },
-        new Date(CREATED_AT),
-      ),
+      Template.create(TEMPLATE_ID, ORGANIZATION_ID, REVISION_ID, { name }, new Date(CREATED_AT)),
     ).toThrow(InvalidTemplateNameError);
   });
 
   it('preserves template identity and existing references when adding a revision', () => {
     const original = templateFixture();
     const campaignRevisionReference = original.currentRevision;
-    const updated = original.createRevision(
-      NEXT_REVISION_ID,
-      TemplateDimensions.create(1080, 1080),
-      new Date(UPDATED_AT),
-    );
+    const updated = original.createRevision(NEXT_REVISION_ID, new Date(UPDATED_AT));
 
     expect(updated.id).toBe(original.id);
     expect(updated.organizationId).toBe(original.organizationId);
@@ -63,14 +50,9 @@ describe('Template', () => {
   });
 
   it('increments revision numbers across successive valid revisions', () => {
-    const second = templateFixture().createRevision(
-      NEXT_REVISION_ID,
-      TemplateDimensions.create(1080, 1080),
-      new Date(UPDATED_AT),
-    );
+    const second = templateFixture().createRevision(NEXT_REVISION_ID, new Date(UPDATED_AT));
     const third = second.createRevision(
       'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-      TemplateDimensions.create(1080, 1080),
       new Date(UPDATED_AT),
     );
     expect(third.currentRevision.number).toBe(3);
@@ -80,35 +62,23 @@ describe('Template', () => {
   it('leaves the original aggregate unchanged when a revision fails validation', () => {
     const original = templateFixture();
     expect(() =>
-      original.createRevision(
-        NEXT_REVISION_ID,
-        TemplateDimensions.create(1080, 1350),
-        new Date(UPDATED_AT),
-      ),
-    ).toThrow(UnsupportedTemplateDimensionsError);
+      original.createRevision(NEXT_REVISION_ID, new Date(UPDATED_AT), { format: 'A4' }),
+    ).toThrow(InvalidFlyerDesignError);
     expect(original.currentRevision.id).toBe(REVISION_ID);
     expect(original.updatedAt.toISOString()).toBe(CREATED_AT);
   });
 
   it('validates new revision identifiers and dates before changing the aggregate', () => {
     const original = templateFixture();
-    expect(() =>
-      original.createRevision('invalid', original.currentRevision.dimensions, new Date(UPDATED_AT)),
-    ).toThrow(InvalidEntityIdError);
-    expect(() =>
-      original.createRevision(NEXT_REVISION_ID, original.currentRevision.dimensions, new Date(NaN)),
-    ).toThrow(InvalidTimestampError);
-    const updated = original.createRevision(
-      NEXT_REVISION_ID,
-      original.currentRevision.dimensions,
-      new Date(UPDATED_AT),
+    expect(() => original.createRevision('invalid', new Date(UPDATED_AT))).toThrow(
+      InvalidEntityIdError,
     );
+    expect(() => original.createRevision(NEXT_REVISION_ID, new Date(NaN))).toThrow(
+      InvalidTimestampError,
+    );
+    const updated = original.createRevision(NEXT_REVISION_ID, new Date(UPDATED_AT));
     expect(() =>
-      updated.createRevision(
-        'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
-        updated.currentRevision.dimensions,
-        new Date(CREATED_AT),
-      ),
+      updated.createRevision('cccccccc-cccc-4ccc-8ccc-cccccccccccc', new Date(CREATED_AT)),
     ).toThrow(InvalidTimestampError);
   });
 

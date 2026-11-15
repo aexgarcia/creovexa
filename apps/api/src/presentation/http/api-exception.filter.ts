@@ -31,7 +31,6 @@ import {
   TemplateNotFoundError,
   InvalidTemplateNameError,
   InvalidTemplateDimensionsError,
-  UnsupportedTemplateDimensionsError,
 } from '#app/modules/templates/domain/errors/template.errors';
 import { ProductOrganizationNotFoundError } from '#app/modules/products/application/errors/product-organization-not-found.error';
 import { TemplateOrganizationNotFoundError } from '#app/modules/templates/application/errors/template-organization-not-found.error';
@@ -174,8 +173,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
       error instanceof UnsupportedCurrencyError ||
       error instanceof InvalidProductError ||
       error instanceof InvalidTemplateNameError ||
-      error instanceof InvalidTemplateDimensionsError ||
-      error instanceof UnsupportedTemplateDimensionsError
+      error instanceof InvalidTemplateDimensionsError
     ) {
       status = 400;
       code = 'INVALID_INPUT';

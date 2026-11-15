@@ -98,7 +98,7 @@ model TemplateRevision {
   number         BigInt
   width          Int
   height         Int
-  design         Json       @default("{\"layout\":\"CLASSIC\",\"palette\":\"BLUE\",\"settings\":{\"showLogo\":true,\"showRegularPrice\":true,\"showPromotionPrice\":true,\"showHeadline\":true,\"showCta\":true,\"showMainImage\":true}}")
+  design         Json       @default("{\"format\":\"SQUARE\",\"composition\":\"PRODUCT_HERO\",\"style\":\"BOLD\",\"mode\":\"DARK\",\"background\":\"BRAND_COLOR\",\"logoPosition\":\"TOP_RIGHT\",\"textDensity\":\"BALANCED\",\"elements\":{\"logo\":true,\"headline\":true,\"subheadline\":false,\"productName\":true,\"keyAttributes\":0,\"regularPrice\":true,\"promotionPrice\":true,\"validity\":true,\"cta\":true,\"contact\":false,\"legalText\":false}}")
   createdAt      DateTime   @map("created_at") @db.Timestamptz(3)
   template       Template   @relation("TemplateRevisions", fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   currentFor     Template[] @relation("CurrentRevision")

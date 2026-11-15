@@ -2,7 +2,6 @@ import { TemplateMapper } from '#app/modules/templates/infrastructure/persistenc
 import { Template } from '#app/modules/templates/domain/entities/template';
 import { TemplateRevision } from '#app/modules/templates/domain/entities/template-revision';
 import { InvalidTemplateRevisionError } from '#app/modules/templates/domain/errors/template.errors';
-import { TemplateDimensions } from '#app/modules/templates/domain/value-objects/template-dimensions';
 import {
   templateFixture,
   NEXT_REVISION_ID,
@@ -13,11 +12,7 @@ import { templateResult } from '#app/modules/templates/application/template-resu
 
 describe('Template reconstruction', () => {
   it('restores the current revision without recreating revision one', () => {
-    const template = templateFixture().createRevision(
-      NEXT_REVISION_ID,
-      TemplateDimensions.create(1080, 1080),
-      new Date(UPDATED_AT),
-    );
+    const template = templateFixture().createRevision(NEXT_REVISION_ID, new Date(UPDATED_AT));
     const row = TemplateMapper.toPersistence(template);
     expect(
       templateResult(TemplateMapper.toDomain({ ...row.template, currentRevision: row.revision })),

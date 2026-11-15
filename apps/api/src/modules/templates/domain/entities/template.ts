@@ -4,12 +4,11 @@ import {
   InvalidTemplateNameError,
   InvalidTemplateRevisionError,
 } from '../errors/template.errors.js';
-import type { TemplateDimensions } from '../value-objects/template-dimensions.js';
 import { TemplateRevision } from './template-revision.js';
 
 export interface TemplateDetails {
   name: string;
-  dimensions: TemplateDimensions;
+  // Sin diseño se usa el predeterminado; el formato decide las dimensiones.
   design?: unknown;
 }
 
@@ -44,28 +43,21 @@ export class Template {
       id: templateId,
       organizationId: ownerId,
       name: input.name.trim(),
-      currentRevision: TemplateRevision.initial(
-        revisionId,
-        templateId,
-        ownerId,
-        input.dimensions,
-        at,
-        input.design,
-      ),
+      currentRevision: TemplateRevision.initial(revisionId, templateId, ownerId, at, input.design),
       createdAt,
       updatedAt: createdAt,
     });
   }
 
-  createRevision(id: string, dimensions: TemplateDimensions, at: Date, design?: unknown): Template {
+  createRevision(id: string, at: Date, design?: unknown): Template {
     const updatedAt = timestamp(at, this.#state.updatedAt);
-    const currentRevision = this.currentRevision.next(id, dimensions, at, design);
+    const currentRevision = this.currentRevision.next(id, at, design);
     return new Template({ ...this.#state, currentRevision, updatedAt });
   }
 
   revise(id: string, name: string, at: Date, design?: unknown): Template {
     if (typeof name !== 'string' || !name.trim()) throw new InvalidTemplateNameError();
-    const revised = this.createRevision(id, this.currentRevision.dimensions, at, design);
+    const revised = this.createRevision(id, at, design);
     return new Template({ ...revised.#state, name: name.trim() });
   }
 

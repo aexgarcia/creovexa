@@ -14,8 +14,8 @@ export interface StoredTemplate {
   createdAt: string;
   updatedAt: string;
 }
+// Las dimensiones salen del formato del diseño.
 export interface CreateStoredTemplateInput {
   name: string;
-  dimensions: { width: number; height: number };
   design?: TemplateDesign;
 }

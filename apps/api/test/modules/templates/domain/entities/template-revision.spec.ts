@@ -3,8 +3,11 @@ import { TemplateDimensions } from '#app/modules/templates/domain/value-objects/
 import {
   InvalidTemplateDimensionsError,
   InvalidTemplateRevisionError,
-  UnsupportedTemplateDimensionsError,
 } from '#app/modules/templates/domain/errors/template.errors';
+import {
+  DEFAULT_FLYER_DESIGN,
+  InvalidFlyerDesignError,
+} from '#app/domain/value-objects/flyer-design';
 import { InvalidEntityIdError } from '#app/domain/entity-id';
 import { InvalidTimestampError } from '#app/domain/timestamp';
 import {
@@ -17,38 +20,52 @@ import {
   templateFixture,
 } from '../../../../support/template-fakes.js';
 
+const story = { ...DEFAULT_FLYER_DESIGN, format: 'STORY' };
+
 describe('TemplateRevision', () => {
-  it('starts at one with stable template and organization references', () => {
+  it('starts at one with stable references and the default square design', () => {
     const revision = templateFixture().currentRevision;
     expect(revision.id).toBe(REVISION_ID);
     expect(revision.templateId).toBe(TEMPLATE_ID);
     expect(revision.organizationId).toBe(ORGANIZATION_ID);
     expect(revision.number).toBe(1);
+    expect(revision.design).toEqual(DEFAULT_FLYER_DESIGN);
+    expect([revision.dimensions.width, revision.dimensions.height]).toEqual([1080, 1080]);
     expect(revision.createdAt.toISOString()).toBe(CREATED_AT);
   });
 
-  it('creates the next revision without mutating the previous one', () => {
-    const original = templateFixture().currentRevision;
-    const next = original.next(
-      NEXT_REVISION_ID,
-      TemplateDimensions.create(1080, 1080),
-      new Date(UPDATED_AT),
+  it.each([
+    ['SQUARE', 1080],
+    ['PORTRAIT', 1350],
+    ['STORY', 1920],
+  ])('derives the dimensions from the %s format', (format, height) => {
+    const revision = TemplateRevision.initial(
+      REVISION_ID,
+      TEMPLATE_ID,
+      ORGANIZATION_ID,
+      new Date(CREATED_AT),
+      { ...DEFAULT_FLYER_DESIGN, format },
     );
-    expect(next.id).toBe(NEXT_REVISION_ID);
+    expect([revision.dimensions.width, revision.dimensions.height]).toEqual([1080, height]);
+  });
+
+  it('creates the next revision, with a new format, without mutating the previous one', () => {
+    const original = templateFixture().currentRevision;
+    const next = original.next(NEXT_REVISION_ID, new Date(UPDATED_AT), story);
     expect(next.number).toBe(2);
-    expect(next.templateId).toBe(original.templateId);
-    expect(next.organizationId).toBe(original.organizationId);
+    expect(next.design.format).toBe('STORY');
+    expect(next.dimensions.height).toBe(1920);
     expect(next.createdAt.toISOString()).toBe(UPDATED_AT);
-    expect(original.id).toBe(REVISION_ID);
     expect(original.number).toBe(1);
-    expect(original.createdAt.toISOString()).toBe(CREATED_AT);
+    expect(original.design.format).toBe('SQUARE');
+    expect(original.next(NEXT_REVISION_ID, new Date(UPDATED_AT)).design).toEqual(original.design);
   });
 
   it('rejects reusing the current identity, including different casing', () => {
     const revision = templateFixture().currentRevision;
-    expect(() =>
-      revision.next(REVISION_ID.toUpperCase(), revision.dimensions, new Date(UPDATED_AT)),
-    ).toThrow(InvalidTemplateRevisionError);
+    expect(() => revision.next(REVISION_ID.toUpperCase(), new Date(UPDATED_AT))).toThrow(
+      InvalidTemplateRevisionError,
+    );
   });
 
   it.each([
@@ -57,74 +74,49 @@ describe('TemplateRevision', () => {
     [REVISION_ID, TEMPLATE_ID, 'invalid'],
   ])('validates all revision identifiers', (id, templateId, organizationId) => {
     expect(() =>
-      TemplateRevision.initial(
-        id,
-        templateId,
-        organizationId,
-        TemplateDimensions.create(1080, 1080),
-        new Date(CREATED_AT),
-      ),
+      TemplateRevision.initial(id, templateId, organizationId, new Date(CREATED_AT)),
     ).toThrow(InvalidEntityIdError);
   });
 
-  it.each([
-    [1080, 1350],
-    [1080, 1920],
-    [720, 720],
-  ])('rejects the not-yet-supported format %s × %s', (width, height) => {
-    const dimensions = TemplateDimensions.create(width, height);
-    const original = templateFixture().currentRevision;
+  it('rejects an invalid design', () => {
     expect(() =>
-      TemplateRevision.initial(
-        REVISION_ID,
-        TEMPLATE_ID,
-        ORGANIZATION_ID,
-        dimensions,
-        new Date(CREATED_AT),
-      ),
-    ).toThrow(UnsupportedTemplateDimensionsError);
-    expect(() => original.next(NEXT_REVISION_ID, dimensions, new Date(UPDATED_AT))).toThrow(
-      UnsupportedTemplateDimensionsError,
-    );
+      TemplateRevision.initial(REVISION_ID, TEMPLATE_ID, ORGANIZATION_ID, new Date(CREATED_AT), {
+        ...DEFAULT_FLYER_DESIGN,
+        format: 'A4',
+      }),
+    ).toThrow(InvalidFlyerDesignError);
   });
 
-  it('requires validated dimensions rather than a structurally similar object', () => {
-    expect(() =>
-      TemplateRevision.initial(
+  it('restores only when the stored dimensions match the format', () => {
+    const restore = (dimensions: TemplateDimensions) =>
+      TemplateRevision.restore(
         REVISION_ID,
         TEMPLATE_ID,
         ORGANIZATION_ID,
-        { width: 1080, height: 1080 } as TemplateDimensions,
+        3,
+        dimensions,
         new Date(CREATED_AT),
-      ),
-    ).toThrow(InvalidTemplateDimensionsError);
+        story,
+      );
+    expect(restore(TemplateDimensions.create(1080, 1920)).number).toBe(3);
+    expect(() => restore(TemplateDimensions.create(1080, 1080))).toThrow(
+      InvalidTemplateDimensionsError,
+    );
   });
 
   it('rejects invalid or backwards dates', () => {
     const revision = templateFixture().currentRevision;
     expect(() =>
-      TemplateRevision.initial(
-        REVISION_ID,
-        TEMPLATE_ID,
-        ORGANIZATION_ID,
-        revision.dimensions,
-        new Date(NaN),
-      ),
+      TemplateRevision.initial(REVISION_ID, TEMPLATE_ID, ORGANIZATION_ID, new Date(NaN)),
     ).toThrow(InvalidTimestampError);
-    expect(() =>
-      revision.next(NEXT_REVISION_ID, revision.dimensions, new Date('2026-09-17T00:00:00Z')),
-    ).toThrow(InvalidTimestampError);
+    expect(() => revision.next(NEXT_REVISION_ID, new Date('2026-09-17T00:00:00Z'))).toThrow(
+      InvalidTimestampError,
+    );
   });
 
   it('protects the revision and its creation date from external mutation', () => {
     const date = new Date(CREATED_AT);
-    const revision = TemplateRevision.initial(
-      REVISION_ID,
-      TEMPLATE_ID,
-      ORGANIZATION_ID,
-      TemplateDimensions.create(1080, 1080),
-      date,
-    );
+    const revision = TemplateRevision.initial(REVISION_ID, TEMPLATE_ID, ORGANIZATION_ID, date);
     date.setFullYear(2000);
     revision.createdAt.setFullYear(2001);
     expect(() => Object.assign(revision, { number: 99 })).toThrow(TypeError);

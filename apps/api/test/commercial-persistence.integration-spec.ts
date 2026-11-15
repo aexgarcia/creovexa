@@ -18,7 +18,6 @@ import { ProductKind } from '#app/modules/products/domain/product-kind';
 import { ProductNotFoundError } from '#app/modules/products/domain/errors/product.errors';
 import { ProductOrganizationNotFoundError } from '#app/modules/products/application/errors/product-organization-not-found.error';
 import { Template } from '#app/modules/templates/domain/entities/template';
-import { TemplateDimensions } from '#app/modules/templates/domain/value-objects/template-dimensions';
 import { CreateOrganization } from '#app/modules/organizations/application/use-cases/create-organization';
 import { UpdateOrganizationProfile } from '#app/modules/organizations/application/use-cases/update-organization-profile';
 import { CreateProduct } from '#app/modules/products/application/use-cases/create-product';
@@ -95,13 +94,7 @@ describe('Commercial persistence (PostgreSQL)', () => {
   }
 
   function template(organizationId: string, revisionId = uuid()) {
-    return Template.create(
-      uuid(),
-      organizationId,
-      revisionId,
-      { name: 'Plantilla', dimensions: TemplateDimensions.create(1080, 1080) },
-      NOW,
-    );
+    return Template.create(uuid(), organizationId, revisionId, { name: 'Plantilla' }, NOW);
   }
 
   it('runs organization use cases through Nest injection and reloads domain state and dates', async () => {
@@ -208,9 +201,7 @@ describe('Commercial persistence (PostgreSQL)', () => {
 
   it('inserts a template and its initial revision atomically through the real use case', async () => {
     const organizationId = await organization();
-    const result = await module
-      .get(CreateTemplate)
-      .execute({ organizationId, name: 'Cuadrada', dimensions: { width: 1080, height: 1080 } });
+    const result = await module.get(CreateTemplate).execute({ organizationId, name: 'Cuadrada' });
     const row = await database.template.findUniqueOrThrow({
       where: { id: result.id },
       include: { currentRevision: true, revisions: true },

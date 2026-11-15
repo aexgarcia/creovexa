@@ -138,7 +138,7 @@ describe('Private campaign assets (MinIO + PostgreSQL)', () => {
       templateId: revision.id,
       expectedRevisionId: revision.revisionId,
       name: 'Nombre actualizado',
-      design: { ...FlyerDesign.create().data, layout: 'PRODUCT_FOCUS', palette: 'CORAL' },
+      design: { ...FlyerDesign.create().data, composition: 'PRODUCT_PANEL', mode: 'LIGHT' },
     });
     const result = await f.resources.load(f.input);
     expect(result.mainImage.bytes).toEqual(png);
@@ -147,7 +147,7 @@ describe('Private campaign assets (MinIO + PostgreSQL)', () => {
     const current = await context.database.templateRevision.findFirstOrThrow({
       where: { templateId: revision.id, number: 2n },
     });
-    expect(current.design).toMatchObject({ layout: 'PRODUCT_FOCUS', palette: 'CORAL' });
+    expect(current.design).toMatchObject({ composition: 'PRODUCT_PANEL', mode: 'LIGHT' });
     await expect(
       f.resources.load({
         ...f.input,

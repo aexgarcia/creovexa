@@ -1,6 +1,6 @@
 import { apiRequest, type ApiPage } from '@/lib/api-client';
 import type { CreateStoredTemplateInput, StoredTemplate } from '../types/stored-template.types';
-import type { TemplateDesign } from '../types/template-design';
+import type { BaseTemplate, TemplateDesign } from '../types/template-design';
 
 class TemplateService {
   async update(
@@ -30,11 +30,14 @@ class TemplateService {
       method: 'POST',
       body: JSON.stringify({
         name: input.name.trim(),
-        dimensions: input.dimensions,
         design: input.design,
       }),
     });
     return response.data;
+  }
+  // Plantillas de ejemplo del sistema; no pertenecen a ninguna empresa.
+  async findBase(signal?: AbortSignal): Promise<BaseTemplate[]> {
+    return (await apiRequest<{ data: BaseTemplate[] }>('/templates/base', { signal })).data;
   }
 }
 export const templateService = new TemplateService();

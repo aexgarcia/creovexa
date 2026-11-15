@@ -60,9 +60,9 @@ describe('UpdateTemplate', () => {
     const original = await repo.findById(ORGANIZATION_ID, TEMPLATE_ID);
     const design = {
       ...FlyerDesign.create().data,
-      layout: 'PRODUCT_FOCUS',
-      palette: 'CORAL',
-      settings: { ...FlyerDesign.create().data.settings, showRegularPrice: false },
+      composition: 'PRODUCT_PANEL',
+      mode: 'LIGHT',
+      elements: { ...FlyerDesign.create().data.elements, regularPrice: false },
     };
     const result = await useCase.execute({ ...input, design });
     expect(result.currentRevision.design).toEqual(design);

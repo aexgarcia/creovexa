@@ -26,7 +26,6 @@ import { Product } from '#app/modules/products/domain/entities/product';
 import { ProductKind } from '#app/modules/products/domain/product-kind';
 import { Money } from '#app/domain/value-objects/money';
 import { Template } from '#app/modules/templates/domain/entities/template';
-import { TemplateDimensions } from '#app/modules/templates/domain/value-objects/template-dimensions';
 import { PersistenceConflictError } from '#app/infrastructure/persistence/persistence.errors';
 
 const validProduct = {
@@ -34,7 +33,7 @@ const validProduct = {
   name: 'Producto',
   regularPrice: { amountMinor: 1990, currency: 'PEN' },
 };
-const validTemplate = { name: 'Plantilla', dimensions: { width: 1080, height: 1080 } };
+const validTemplate = { name: 'Plantilla' };
 
 describe('Catalog HTTP with real use cases', () => {
   let app: INestApplication<App>;
@@ -170,7 +169,7 @@ describe('Catalog HTTP with real use cases', () => {
       .expect(201);
     expect(created.body.data.currentRevision).toMatchObject({
       number: 1,
-      dimensions: validTemplate.dimensions,
+      dimensions: { width: 1080, height: 1080 },
     });
     expect(created.body.data.currentRevision).not.toHaveProperty('organizationId');
     expect(created.body.data.currentRevision).not.toHaveProperty('templateId');
@@ -230,12 +229,11 @@ describe('Catalog HTTP with real use cases', () => {
   });
 
   it.each([
-    { ...validTemplate, dimensions: null },
-    { ...validTemplate, dimensions: { width: '1080', height: 1080 } },
-    { ...validTemplate, dimensions: { width: 1080, height: 1920 } },
+    // Las dimensiones salen del formato: enviarlas es un campo desconocido.
+    { ...validTemplate, dimensions: { width: 1080, height: 1080 } },
+    { ...validTemplate, design: { format: 'A4' } },
     { ...validTemplate, name: '' },
     { ...validTemplate, organizationId: OTHER_ORGANIZATION_ID },
-    { ...validTemplate, dimensions: { width: 0, height: 1080 } },
   ])('rejects invalid template input %#', async (body) => {
     await request(app.getHttpServer()).post('/templates').send(body).expect(400);
     expect(templates.records.size).toBe(0);
@@ -271,7 +269,7 @@ describe('Catalog HTTP with real use cases', () => {
       randomUUID(),
       OTHER_ORGANIZATION_ID,
       randomUUID(),
-      { name: 'Ajena', dimensions: TemplateDimensions.create(1080, 1080) },
+      { name: 'Ajena' },
       new Date(),
     );
     templates.records.set(template.id, template);

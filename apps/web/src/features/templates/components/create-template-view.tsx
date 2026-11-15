@@ -11,6 +11,7 @@ import { TemplateVisualSettings } from './template-visual-settings';
 import { TemplateDesignPreview } from './template-design-preview';
 import { useCreateTemplate } from '../hooks/use-create-template';
 import { defaultTemplateDesign } from '../types/template-design';
+import { BaseTemplatePicker } from './base-template-picker';
 
 export function CreateTemplateView() {
   const router = useRouter();
@@ -26,11 +27,7 @@ export function CreateTemplateView() {
     }
     setError('');
     try {
-      await createTemplate.mutateAsync({
-        name: name.trim(),
-        dimensions: { width: 1080, height: 1080 },
-        design,
-      });
+      await createTemplate.mutateAsync({ name: name.trim(), design });
       toast.success('Plantilla creada correctamente');
       router.push('/templates');
     } catch (cause) {
@@ -41,14 +38,20 @@ export function CreateTemplateView() {
     <div className="space-y-6">
       <PageHeader
         title="Nueva plantilla"
-        description="Crea una plantilla cuadrada con su primera revisión."
+        description="Empieza desde una plantilla base o define la tuya."
+      />
+      <BaseTemplatePicker
+        onChoose={(base) => {
+          setDesign(base.design);
+          if (!name.trim()) setName(base.name);
+        }}
       />
       <div className="grid items-start gap-6 xl:grid-cols-[420px_1fr]">
         <form onSubmit={handleSubmit} className="space-y-5 rounded-xl border bg-card p-6">
           <div>
             <h2 className="text-lg font-semibold">Información de la plantilla</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Define el nombre y formato de tu próxima pieza.
+              Define el nombre y la dirección de arte de tus flyers.
             </p>
           </div>
           <fieldset disabled={createTemplate.isPending} className="space-y-5">
@@ -62,7 +65,6 @@ export function CreateTemplateView() {
                 onChange={(event) => setName(event.target.value)}
               />
             </div>
-            <p>Formato cuadrado · 1080 × 1080 px</p>
             <TemplateVisualSettings
               design={design}
               onChange={setDesign}

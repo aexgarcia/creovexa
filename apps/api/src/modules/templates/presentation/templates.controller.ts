@@ -31,8 +31,15 @@ import { validateRequest } from '#app/presentation/http/request-validation';
 import { CreateTemplate } from '../application/use-cases/create-template.js';
 import { GetTemplate } from '../application/use-cases/get-template.js';
 import { ListTemplates } from '../application/use-cases/list-templates.js';
-import { CreateTemplateRequest } from './template.requests.js';
-import { TemplateEnvelope, TemplatePageResponse, templateResponse } from './template.responses.js';
+import { CreateTemplateRequest, UseBaseTemplateRequest } from './template.requests.js';
+import {
+  BaseTemplateListResponse,
+  TemplateEnvelope,
+  TemplatePageResponse,
+  templateResponse,
+} from './template.responses.js';
+import { BASE_TEMPLATES, findBaseTemplate } from '../application/base-templates.js';
+import { TemplateNotFoundError } from '../domain/errors/template.errors.js';
 
 @ApiTags('Plantillas')
 @ApiErrors()
@@ -82,6 +89,39 @@ export class TemplatesController {
   ): Promise<TemplatePageResponse> {
     const result = await this.listTemplates.execute({ organizationId, ...query });
     return { data: result.items.map(templateResponse), meta: paginationResponse(result) };
+  }
+  @Get('base')
+  @ApiOperation({ summary: 'Listar las plantillas base del sistema' })
+  @ApiOkResponse({ type: BaseTemplateListResponse })
+  listBase(): BaseTemplateListResponse {
+    return {
+      data: BASE_TEMPLATES.map((template) => ({
+        ...template,
+        design: { ...template.design, elements: { ...template.design.elements } },
+      })),
+    };
+  }
+  @Post('base/:key')
+  @ApiOperation({ summary: 'Usar una plantilla base: crea una copia en la organización' })
+  @ApiParam({ name: 'key', type: String, example: 'PROMOTION' })
+  @ApiBody({ type: UseBaseTemplateRequest, required: false })
+  @ApiCreatedResponse({ type: TemplateEnvelope })
+  async useBase(
+    @OrganizationId() organizationId: string,
+    @Param('key') key: string,
+    @Body(validateRequest(UseBaseTemplateRequest)) body: UseBaseTemplateRequest,
+  ): Promise<TemplateEnvelope> {
+    const template = findBaseTemplate(key);
+    if (!template) throw new TemplateNotFoundError();
+    return {
+      data: templateResponse(
+        await this.createTemplate.execute({
+          organizationId,
+          name: body.name ?? template.name,
+          design: template.design,
+        }),
+      ),
+    };
   }
   @Get(':id')
   @ApiOperation({ summary: 'Consultar plantilla y revisión vigente' })

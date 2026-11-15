@@ -13,15 +13,25 @@ registerHooks({
 const { templateService } = await import('../src/features/templates/services/template.service.ts');
 const originalFetch = globalThis.fetch;
 const design = {
-  layout: 'PRODUCT_FOCUS',
-  palette: 'CORAL',
-  settings: {
-    showLogo: true,
-    showRegularPrice: false,
-    showPromotionPrice: true,
-    showHeadline: true,
-    showCta: true,
-    showMainImage: true,
+  format: 'STORY',
+  composition: 'PRODUCT_PANEL',
+  style: 'BOLD',
+  mode: 'LIGHT',
+  background: 'BRAND_COLOR',
+  logoPosition: 'TOP_LEFT',
+  textDensity: 'BALANCED',
+  elements: {
+    logo: true,
+    headline: true,
+    subheadline: false,
+    productName: true,
+    keyAttributes: 2,
+    regularPrice: false,
+    promotionPrice: true,
+    validity: true,
+    cta: true,
+    contact: false,
+    legalText: false,
   },
 };
 afterEach(() => {
@@ -58,15 +68,12 @@ test('template creation sends only persisted fields and returns the stored revis
     calls++;
     assert.ok(url.endsWith('/templates'));
     assert.equal(options.method, 'POST');
-    assert.deepEqual(JSON.parse(options.body), {
-      name: 'Oferta',
-      dimensions: { width: 1080, height: 1080 },
-    });
+    // Sin dimensiones: salen del formato del diseño.
+    assert.deepEqual(JSON.parse(options.body), { name: 'Oferta' });
     return Response.json({ data: template }, { status: 201 });
   };
   const result = await templateService.create({
     name: ' Oferta ',
-    dimensions: { width: 1080, height: 1080 },
     settings: { showLogo: true },
     isActive: true,
   });
@@ -83,10 +90,7 @@ test('template detail encodes identifiers and never replaces failures with fixtu
   globalThis.fetch = async () => {
     throw new TypeError('offline');
   };
-  await assert.rejects(
-    templateService.create({ name: 'Oferta', dimensions: { width: 1080, height: 1080 } }),
-    (error) => error.status === 0,
-  );
+  await assert.rejects(templateService.create({ name: 'Oferta' }), (error) => error.status === 0);
 });
 
 test('template create and update preserve the complete selected design', async () => {
@@ -98,7 +102,6 @@ test('template create and update preserve the complete selected design', async (
   assert.deepEqual(
     await templateService.create({
       name: 'Oferta',
-      dimensions: { width: 1080, height: 1080 },
       design,
     }),
     template,
@@ -114,4 +117,14 @@ test('template create and update preserve the complete selected design', async (
   assert.equal(calls.length, 2);
   assert.deepEqual(calls[0].body.design, design);
   assert.deepEqual(calls[1].body, { name: 'Oferta', expectedRevisionId: 'revision-1', design });
+});
+
+test('lists the base templates of the system', async () => {
+  globalThis.fetch = async (url) => {
+    assert.ok(url.endsWith('/templates/base'));
+    return Response.json({
+      data: [{ key: 'LAUNCH', name: 'Lanzamiento', intendedFor: 'x', design }],
+    });
+  };
+  assert.equal((await templateService.findBase())[0].key, 'LAUNCH');
 });

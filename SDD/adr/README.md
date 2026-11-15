@@ -44,6 +44,7 @@
 | [0019](../modulos/organizations/adr/0019-perfil-de-marca-en-la-organizacion.md) | `organizations` | Perfil de marca y logo en la organización | Aceptado (retroactivo) |
 | [0020](../modulos/dashboard/adr/0020-dashboard-como-modelo-de-lectura.md) | `dashboard` | Dashboard como modelo de lectura sin dominio | Aceptado (retroactivo) |
 | [0022](../modulos/organizations/adr/0022-kit-de-marca.md) | `organizations` | Kit de marca: rubro, región y colores propuestos desde el logo | Aceptado, implementado |
+| [0023](../modulos/templates/adr/0023-direccion-de-arte-y-plantillas-base.md) | `templates` | La plantilla como dirección de arte, con plantillas base del sistema | Aceptado, implementado |
 
 ## Plantilla
 

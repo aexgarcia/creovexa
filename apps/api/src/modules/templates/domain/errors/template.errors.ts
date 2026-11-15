@@ -19,13 +19,6 @@ export class InvalidTemplateDimensionsError extends Error {
   }
 }
 
-export class UnsupportedTemplateDimensionsError extends Error {
-  constructor() {
-    super('El formato inicial de las plantillas es 1080 × 1080.');
-    this.name = 'UnsupportedTemplateDimensionsError';
-  }
-}
-
 export class InvalidTemplateRevisionError extends Error {
   constructor() {
     super('La nueva revisión requiere otra identidad y un número de revisión válido.');

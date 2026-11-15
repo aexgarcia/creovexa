@@ -108,11 +108,7 @@ function TemplateProfile({ template }: { template: StoredTemplate }) {
         </form>
         <aside className="space-y-5 rounded-xl border bg-card p-6">
           <h2 className="font-semibold">Vista previa</h2>
-          <TemplateDesignPreview
-            design={design}
-            width={template.currentRevision.dimensions.width}
-            height={template.currentRevision.dimensions.height}
-          />
+          <TemplateDesignPreview design={design} />
         </aside>
       </div>
       <Button variant="outline" nativeButton={false} render={<Link href="/templates" />}>

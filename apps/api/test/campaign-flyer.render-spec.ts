@@ -210,11 +210,13 @@ describe('Flyer composition with real Chromium', () => {
     expect(observed.observation.requests.filter((url) => /^(https?:|file:)/.test(url))).toEqual([]);
     expect(observed.browsers.every((browser) => !browser.isConnected())).toBe(true);
   });
-  it('renders the selected product-focus composition and coral palette with exact facts', async () => {
+  // COMPOSED traduce el diseño: PRODUCT_PANEL es su composición con foco en el producto y LIGHT,
+  // su paleta coral.
+  it('renders the product-panel composition and light mode with exact facts', async () => {
     const f = fixture(true);
     f.resources.load.mockResolvedValue({
       ...f.resolved,
-      design: { ...f.resolved.design, layout: 'PRODUCT_FOCUS', palette: 'CORAL' },
+      design: { ...f.resolved.design, composition: 'PRODUCT_PANEL', mode: 'LIGHT' },
     });
     const observed = observedLaunch();
     const output = await new PlaywrightTemplateRenderer(
@@ -234,19 +236,21 @@ describe('Flyer composition with real Chromium', () => {
       await artifacts.read({ ...f.input, source: output }),
     );
   });
-  it('honors all visibility settings while retaining product identity and promotion dates', async () => {
+  it('honors the hidden elements while retaining product identity', async () => {
     const f = fixture(true);
     f.resources.load.mockResolvedValue({
       ...f.resolved,
       design: {
         ...f.resolved.design,
-        settings: {
-          showLogo: false,
-          showRegularPrice: false,
-          showPromotionPrice: false,
-          showHeadline: false,
-          showCta: false,
-          showMainImage: false,
+        composition: 'TYPOGRAPHIC',
+        elements: {
+          ...f.resolved.design.elements,
+          logo: false,
+          regularPrice: false,
+          promotionPrice: false,
+          headline: false,
+          cta: false,
+          validity: false,
         },
       },
     });
@@ -261,7 +265,7 @@ describe('Flyer composition with real Chromium', () => {
     for (const hidden of ['PEN 150.00', 'PEN 120.00', f.input.copy.headline, f.input.copy.cta])
       expect(observed.observation.text).not.toContain(hidden);
     expect(observed.observation.text).toContain('Mouse gamer 502');
-    expect(observed.observation.text).toContain('30 de setiembre de 2026');
+    expect(observed.observation.text).not.toContain('30 de setiembre de 2026');
   });
   it('keeps the regular price unstruck when the promotional price is hidden', async () => {
     const f = fixture();
@@ -269,7 +273,7 @@ describe('Flyer composition with real Chromium', () => {
       ...f.resolved,
       design: {
         ...f.resolved.design,
-        settings: { ...f.resolved.design.settings, showPromotionPrice: false },
+        elements: { ...f.resolved.design.elements, promotionPrice: false },
       },
     });
     const observed = observedLaunch();

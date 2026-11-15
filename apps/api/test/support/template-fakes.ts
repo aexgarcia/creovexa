@@ -7,7 +7,6 @@ import type { OrganizationLookup } from '#app/modules/templates/application/port
 import { Template } from '#app/modules/templates/domain/entities/template';
 import type { TemplateRevision } from '#app/modules/templates/domain/entities/template-revision';
 import type { TemplateRepository } from '#app/modules/templates/domain/repositories/template.repository';
-import { TemplateDimensions } from '#app/modules/templates/domain/value-objects/template-dimensions';
 
 export const ORGANIZATION_ID = entityId('11111111-1111-4111-8111-111111111111');
 export const OTHER_ORGANIZATION_ID = entityId('22222222-2222-4222-8222-222222222222');
@@ -25,7 +24,6 @@ export function templateFixture(): Template {
     REVISION_ID,
     {
       name: ' Promoción ',
-      dimensions: TemplateDimensions.create(1080, 1080),
     },
     creationClock.now(),
   );

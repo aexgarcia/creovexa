@@ -1,20 +1,19 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { PaginationResponse } from '#app/presentation/http/pagination.dto';
 import type { TemplateResult } from '../application/template-result.js';
-import type { FlyerDesignData } from '#app/domain/value-objects/flyer-design';
+import { TemplateDesignRequest } from './template-design.request.js';
 
-export class TemplateElementsResponse {
-  @ApiProperty({ type: Boolean }) showLogo!: boolean;
-  @ApiProperty({ type: Boolean }) showRegularPrice!: boolean;
-  @ApiProperty({ type: Boolean }) showPromotionPrice!: boolean;
-  @ApiProperty({ type: Boolean }) showHeadline!: boolean;
-  @ApiProperty({ type: Boolean }) showCta!: boolean;
-  @ApiProperty({ type: Boolean }) showMainImage!: boolean;
+// La respuesta tiene la misma forma que el diseño que se envía.
+export class TemplateDesignResponse extends TemplateDesignRequest {}
+
+export class BaseTemplateResponse {
+  @ApiProperty({ type: String, example: 'PROMOTION' }) key!: string;
+  @ApiProperty({ type: String }) name!: string;
+  @ApiProperty({ type: String }) intendedFor!: string;
+  @ApiProperty({ type: TemplateDesignResponse }) design!: TemplateDesignResponse;
 }
-export class TemplateDesignResponse {
-  @ApiProperty({ enum: ['CLASSIC', 'PRODUCT_FOCUS'] }) layout!: FlyerDesignData['layout'];
-  @ApiProperty({ enum: ['BLUE', 'CORAL'] }) palette!: FlyerDesignData['palette'];
-  @ApiProperty({ type: TemplateElementsResponse }) settings!: TemplateElementsResponse;
+export class BaseTemplateListResponse {
+  @ApiProperty({ type: [BaseTemplateResponse] }) data!: BaseTemplateResponse[];
 }
 
 export class DimensionsResponse {
@@ -57,7 +56,7 @@ export function templateResponse(result: TemplateResult): TemplateResponse {
       },
       design: {
         ...result.currentRevision.design,
-        settings: { ...result.currentRevision.design.settings },
+        elements: { ...result.currentRevision.design.elements },
       },
       createdAt: result.currentRevision.createdAt,
     },

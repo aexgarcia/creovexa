@@ -1,6 +1,6 @@
 # Datos para generar el flyer
 
-- **Estado:** Decisiones cerradas el 2026-11-14 (ver [Decisiones](#decisiones)). En implementación. Hecho: el kit de marca de la fase 1 (rubro, región, colores y `esOscuro`, [ADR-0022](../modulos/organizations/adr/0022-kit-de-marca.md)) y los datos del producto (`nombreCorto`, `marcaDelProducto`, `atributosClave`, `unidad`, `foto.tipo` y `tieneFondoTransparente`). Pendiente: plantillas, campaña y copy.
+- **Estado:** Decisiones cerradas el 2026-11-14 (ver [Decisiones](#decisiones)). En implementación. Hecho: el kit de marca de la fase 1 (rubro, región, colores y `esOscuro`, [ADR-0022](../modulos/organizations/adr/0022-kit-de-marca.md)) y los datos del producto (`nombreCorto`, `marcaDelProducto`, `atributosClave`, `unidad`, `foto.tipo` y `tieneFondoTransparente`). Hecho también: la plantilla como dirección de arte y las plantillas base ([ADR-0023](../modulos/templates/adr/0023-direccion-de-arte-y-plantillas-base.md)); los nombres en el código están en inglés (`SQUARE`, `PRODUCT_HERO`, `BOLD`…). Pendiente: campaña y copy.
 - **Fecha:** 2026-11-14
 - **Relacionado:** [ADR-0009](../adr/0009-estrategia-de-generacion-del-flyer.md), [datos que se envían hoy](../modulos/content-generation/datos-enviados-a-la-ia.md)
 

@@ -28,7 +28,6 @@ import { CreateTemplate } from '#app/modules/templates/application/use-cases/cre
 import { ProductKind } from '#app/modules/products/domain/product-kind';
 import { PrismaTemplateRepository } from '#app/modules/templates/infrastructure/persistence/prisma/prisma-template.repository';
 import { TemplateMapper } from '#app/modules/templates/infrastructure/persistence/prisma/template.mapper';
-import { TemplateDimensions } from '#app/modules/templates/domain/value-objects/template-dimensions';
 import { RequestCampaignGeneration } from '#app/modules/campaigns/application/use-cases/request-campaign-generation';
 import { RecordGeneratedCampaign } from '#app/modules/campaigns/application/use-cases/record-generated-campaign';
 import { PrismaCampaignRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign.repository';
@@ -47,7 +46,7 @@ const productBody = {
   name: 'Catálogo HTTP',
   regularPrice: { amountMinor: 3500, currency: 'PEN' },
 };
-const templateBody = { name: 'Plantilla HTTP', dimensions: { width: 1080, height: 1080 } };
+const templateBody = { name: 'Plantilla HTTP' };
 
 describe('Catalog HTTP with PostgreSQL', () => {
   let app: INestApplication<App>;
@@ -236,18 +235,50 @@ describe('Catalog HTTP with PostgreSQL', () => {
       .send({ name: 'Foreign', expectedRevisionId: read.body.data.currentRevision.id })
       .expect(404);
   });
+  it('lists the base templates and copies one into the organization', async () => {
+    const list = await request(app.getHttpServer()).get('/templates/base').expect(200);
+    expect(list.body.data).toHaveLength(5);
+    const launch = list.body.data.find((t: { key: string }) => t.key === 'LAUNCH');
+    const copy = await request(app.getHttpServer())
+      .post('/templates/base/LAUNCH')
+      .send({ name: 'Mi lanzamiento' })
+      .expect(201);
+    expect(copy.body.data).toMatchObject({
+      organizationId: context.organizationId,
+      name: 'Mi lanzamiento',
+      currentRevision: {
+        number: 1,
+        design: launch.design,
+        dimensions: { width: 1080, height: 1350 },
+      },
+    });
+    const unnamed = await request(app.getHttpServer())
+      .post('/templates/base/PROMOTION')
+      .send({})
+      .expect(201);
+    expect(unnamed.body.data.name).toBe('Promoción destacada');
+    const missing = await request(app.getHttpServer())
+      .post('/templates/base/NOPE')
+      .send({})
+      .expect(404);
+    expect(missing.body.error.code).toBe('TEMPLATE_NOT_FOUND');
+  });
+
   it('persists design over HTTP, retains the historical revision and rejects malformed configuration', async () => {
     const design = {
       ...FlyerDesign.create().data,
-      layout: 'PRODUCT_FOCUS',
-      palette: 'CORAL',
-      settings: { ...FlyerDesign.create().data.settings, showRegularPrice: false },
+      format: 'STORY',
+      composition: 'PRODUCT_PANEL',
+      mode: 'LIGHT',
+      elements: { ...FlyerDesign.create().data.elements, regularPrice: false, keyAttributes: 2 },
     };
     const created = await request(app.getHttpServer())
       .post('/templates')
       .send({ ...templateBody, design })
       .expect(201);
     expect(created.body.data.currentRevision.design).toEqual(design);
+    // Las dimensiones salen del formato.
+    expect(created.body.data.currentRevision.dimensions).toEqual({ width: 1080, height: 1920 });
     const revision = created.body.data.currentRevision.id;
     clock.value = LATER;
     const edited = await request(app.getHttpServer())
@@ -275,7 +306,7 @@ describe('Catalog HTTP with PostgreSQL', () => {
       .send({
         name: 'Inválida',
         expectedRevisionId: edited.body.data.currentRevision.id,
-        design: { ...design, settings: { ...design.settings, showLogo: 'false' } },
+        design: { ...design, elements: { ...design.elements, logo: 'false' } },
       })
       .expect(400);
     expect(
@@ -287,7 +318,7 @@ describe('Catalog HTTP with PostgreSQL', () => {
         data: {
           design: {
             ...FlyerDesign.create().data,
-            settings: { ...FlyerDesign.create().data.settings },
+            elements: { ...FlyerDesign.create().data.elements },
           },
         },
       }),
@@ -734,11 +765,7 @@ describe('Catalog HTTP with PostgreSQL', () => {
     const id = entityId(created.body.data.id);
     const repository = module.get(PrismaTemplateRepository);
     const original = (await repository.findById(context.organizationId!, id))!;
-    const next = original.createRevision(
-      randomUUID(),
-      TemplateDimensions.create(1080, 1080),
-      LATER,
-    );
+    const next = original.createRevision(randomUUID(), LATER);
     const row = TemplateMapper.toPersistence(next);
     await database.$transaction(async (tx) => {
       await tx.templateRevision.create({ data: row.revision });

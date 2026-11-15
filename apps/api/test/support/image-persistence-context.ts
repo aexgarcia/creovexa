@@ -90,7 +90,6 @@ export class ImagePersistenceContext {
     const template = await this.module.get(CreateTemplate).execute({
       organizationId,
       name: 'Cuadrada',
-      dimensions: { width: 1080, height: 1080 },
     });
     const draft = await this.module.get(CreateCampaign).execute({
       organizationId,

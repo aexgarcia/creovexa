@@ -110,7 +110,6 @@ describe('Campaign persistence (PostgreSQL)', () => {
     const template = await module.get(CreateTemplate).execute({
       organizationId,
       name: 'Plantilla',
-      dimensions: { width: 1080, height: 1080 },
     });
     const input = {
       organizationId,

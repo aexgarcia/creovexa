@@ -31,8 +31,9 @@ export class TemplateMapper {
 
   static toPersistence(template: Template): {
     template: TemplateRecord;
+    // Un tipo concreto que sirve tanto para escribir como para volver a leer la fila.
     revision: Omit<RevisionRecord, 'design'> & {
-      design: { layout: string; palette: string; settings: Record<string, boolean> };
+      design: Record<string, string | Record<string, boolean | number>>;
     };
   } {
     const revision = template.currentRevision;
@@ -52,7 +53,7 @@ export class TemplateMapper {
         number: BigInt(revision.number),
         width: revision.dimensions.width,
         height: revision.dimensions.height,
-        design: { ...revision.design, settings: { ...revision.design.settings } },
+        design: { ...revision.design, elements: { ...revision.design.elements } },
         createdAt: revision.createdAt,
       },
     };

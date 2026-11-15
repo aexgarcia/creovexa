@@ -30,7 +30,18 @@ export function campaignFlyerHtml(
   logo: string | null,
   design?: FlyerDesignData,
 ): string {
-  const { layout, palette, settings } = FlyerDesign.create(design).data;
+  // COMPOSED conserva sus dos diseños cuadrados y traduce a ellos la dirección de arte.
+  const { composition, mode, elements } = FlyerDesign.create(design).data;
+  const layout = composition === 'PRODUCT_PANEL' ? 'PRODUCT_FOCUS' : 'CLASSIC';
+  const palette = mode === 'LIGHT' ? 'CORAL' : 'BLUE';
+  const settings = {
+    showLogo: elements.logo,
+    showRegularPrice: elements.regularPrice,
+    showPromotionPrice: elements.promotionPrice,
+    showHeadline: elements.headline,
+    showCta: elements.cta,
+    showMainImage: composition !== 'TYPOGRAPHIC',
+  };
   const colors =
     palette === 'BLUE'
       ? { background: '#101321', glow: '#4052a0', accent: '#4b63fb', muted: '#d7defa' }
@@ -42,11 +53,13 @@ export function campaignFlyerHtml(
     (settings.showRegularPrice
       ? `<div class="${showOffer ? 'regular' : 'price'}" data-fit>${showOffer ? 'Precio regular: ' : ''}${money(snapshot.product.regularPrice)}</div>`
       : '') + (showOffer ? `<div class="price" data-fit>${money(promotion!)}</div>` : '');
-  const dates = promotion?.endsAt
-    ? `${promotion.startsAt ? `Del ${escape(date(promotion.startsAt))} al ` : 'Hasta el '}${escape(date(promotion.endsAt))}`
-    : promotion?.startsAt
-      ? `Desde el ${escape(date(promotion.startsAt))}`
-      : '';
+  const dates = !elements.validity
+    ? ''
+    : promotion?.endsAt
+      ? `${promotion.startsAt ? `Del ${escape(date(promotion.startsAt))} al ` : 'Hasta el '}${escape(date(promotion.endsAt))}`
+      : promotion?.startsAt
+        ? `Desde el ${escape(date(promotion.startsAt))}`
+        : '';
   return `<!doctype html><html lang="es"><head><meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none'; frame-src 'none'">
 <style>

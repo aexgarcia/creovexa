@@ -1,4 +1,4 @@
-import { FlyerDesign } from '#app/domain/value-objects/flyer-design';
+import { FlyerDesign, InvalidFlyerDesignError } from '#app/domain/value-objects/flyer-design';
 import {
   CreateTemplate,
   type CreateTemplateInput,
@@ -6,11 +6,7 @@ import {
 import { TemplateOrganizationNotFoundError } from '#app/modules/templates/application/errors/template-organization-not-found.error';
 import { Template } from '#app/modules/templates/domain/entities/template';
 import { TemplateRevision } from '#app/modules/templates/domain/entities/template-revision';
-import {
-  InvalidTemplateNameError,
-  InvalidTemplateDimensionsError,
-  UnsupportedTemplateDimensionsError,
-} from '#app/modules/templates/domain/errors/template.errors';
+import { InvalidTemplateNameError } from '#app/modules/templates/domain/errors/template.errors';
 import { InvalidEntityIdError } from '#app/domain/entity-id';
 import { InvalidTimestampError } from '#app/domain/timestamp';
 import {
@@ -29,7 +25,6 @@ function input(): CreateTemplateInput {
   return {
     organizationId: ORGANIZATION_ID,
     name: ' Promoción ',
-    dimensions: { width: 1080, height: 1080 },
   };
 }
 
@@ -104,15 +99,7 @@ describe('CreateTemplate', () => {
 
   it.each([
     { changes: { name: ' ' }, error: InvalidTemplateNameError },
-    { changes: { dimensions: { width: 0, height: 1080 } }, error: InvalidTemplateDimensionsError },
-    {
-      changes: { dimensions: { width: 1080, height: 1.5 } },
-      error: InvalidTemplateDimensionsError,
-    },
-    {
-      changes: { dimensions: { width: 1080, height: 1350 } },
-      error: UnsupportedTemplateDimensionsError,
-    },
+    { changes: { design: { format: 'A4' } }, error: InvalidFlyerDesignError },
   ])('does not store any part of an invalid template', async ({ changes, error }) => {
     const { repository, useCase } = setup();
     await expect(useCase.execute({ ...input(), ...changes })).rejects.toThrow(error);
@@ -148,12 +135,11 @@ describe('CreateTemplate', () => {
     expect(repository.records.size).toBe(0);
   });
 
-  it('does not expose mutable dimensions or revisions through input or output DTOs', async () => {
+  it('does not expose mutable dimensions or revisions through the output DTO', async () => {
     const { repository, useCase } = setup();
     const request = input();
     const result = await useCase.execute(request);
 
-    request.dimensions.width = 20;
     result.currentRevision.dimensions.width = -1;
     result.currentRevision.number = 90;
     result.currentRevision.id = 'replaced';

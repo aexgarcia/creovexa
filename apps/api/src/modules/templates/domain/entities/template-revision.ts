@@ -4,7 +4,6 @@ import { FlyerDesign, type FlyerDesignData } from '#app/domain/value-objects/fly
 import {
   InvalidTemplateDimensionsError,
   InvalidTemplateRevisionError,
-  UnsupportedTemplateDimensionsError,
 } from '../errors/template.errors.js';
 import { TemplateDimensions } from '../value-objects/template-dimensions.js';
 
@@ -18,12 +17,13 @@ interface TemplateRevisionState {
   createdAt: number;
 }
 
-function supportedDimensions(dimensions: TemplateDimensions): TemplateDimensions {
-  if (!(dimensions instanceof TemplateDimensions)) throw new InvalidTemplateDimensionsError();
-  if (dimensions.width !== 1080 || dimensions.height !== 1080) {
-    throw new UnsupportedTemplateDimensionsError();
-  }
-  return dimensions;
+// Las dimensiones salen del formato del diseño; no se eligen aparte.
+function designed(design: unknown) {
+  const flyer = FlyerDesign.create(design);
+  return {
+    design: flyer.data,
+    dimensions: TemplateDimensions.create(flyer.size.width, flyer.size.height),
+  };
 }
 
 export class TemplateRevision {
@@ -38,7 +38,6 @@ export class TemplateRevision {
     id: string,
     templateId: string,
     organizationId: string,
-    dimensions: TemplateDimensions,
     at: Date,
     design?: unknown,
   ): TemplateRevision {
@@ -47,18 +46,12 @@ export class TemplateRevision {
       templateId: entityId(templateId, 'templateId'),
       organizationId: entityId(organizationId, 'organizationId'),
       number: 1,
-      dimensions: supportedDimensions(dimensions),
-      design: FlyerDesign.create(design).data,
+      ...designed(design),
       createdAt: timestamp(at),
     });
   }
 
-  next(
-    id: string,
-    dimensions: TemplateDimensions,
-    at: Date,
-    design: unknown = this.design,
-  ): TemplateRevision {
+  next(id: string, at: Date, design: unknown = this.design): TemplateRevision {
     const revisionId = entityId(id, 'revisionId');
     const number = this.number + 1;
     if (revisionId === this.id || !Number.isSafeInteger(number)) {
@@ -68,30 +61,25 @@ export class TemplateRevision {
       ...this.#state,
       id: revisionId,
       number,
-      dimensions: supportedDimensions(dimensions),
-      design: FlyerDesign.create(design).data,
+      ...designed(design),
       createdAt: timestamp(at, this.#state.createdAt),
     });
   }
 
+  /** stored: las dimensiones guardadas, que deben ser las del formato del diseño. */
   static restore(
     id: string,
     templateId: string,
     organizationId: string,
     number: number,
-    dimensions: TemplateDimensions,
+    stored: TemplateDimensions,
     at: Date,
     design?: unknown,
   ): TemplateRevision {
     if (!Number.isSafeInteger(number) || number < 1) throw new InvalidTemplateRevisionError();
-    const initial = TemplateRevision.initial(
-      id,
-      templateId,
-      organizationId,
-      dimensions,
-      at,
-      design,
-    );
+    const initial = TemplateRevision.initial(id, templateId, organizationId, at, design);
+    if (!(stored instanceof TemplateDimensions) || !stored.equals(initial.dimensions))
+      throw new InvalidTemplateDimensionsError();
     return new TemplateRevision({ ...initial.#state, number });
   }
 
