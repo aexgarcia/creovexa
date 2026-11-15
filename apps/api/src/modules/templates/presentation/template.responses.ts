@@ -57,6 +57,7 @@ export function templateResponse(result: TemplateResult): TemplateResponse {
       design: {
         ...result.currentRevision.design,
         elements: { ...result.currentRevision.design.elements },
+        styleReferenceAssetIds: [...result.currentRevision.design.styleReferenceAssetIds],
       },
       createdAt: result.currentRevision.createdAt,
     },

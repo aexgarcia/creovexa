@@ -1,5 +1,6 @@
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import type { TemplateDesign, TemplateElements } from '../types/template-design';
 
 type Options<K extends keyof TemplateDesign> = [TemplateDesign[K], string][];
@@ -119,6 +120,20 @@ export function TemplateVisualSettings({
         <Choice field="textDensity" label="Cantidad de texto" options={DENSITIES} {...props} />
       </div>
       <Choice field="logoPosition" label="Posición del logo" options={LOGO_POSITIONS} {...props} />
+      <div className="space-y-2">
+        <Label htmlFor="template-instructions">Indicaciones fijas (opcional)</Label>
+        <Textarea
+          id="template-instructions"
+          rows={3}
+          maxLength={300}
+          placeholder="Ej. fondo con textura de papel kraft; nada de rojo"
+          value={design.instructions ?? ''}
+          onChange={(e) => onChange({ ...design, instructions: e.target.value || null })}
+        />
+        <p className="text-xs text-muted-foreground">
+          Valen para todos los flyers de esta plantilla. Orientan el diseño; no agregan textos.
+        </p>
+      </div>
       <p className="pt-2 text-sm font-medium">Elementos del flyer</p>
       {ELEMENTS.map(([key, label]) => (
         <div key={key} className="flex items-center justify-between gap-4 rounded-lg border p-3">

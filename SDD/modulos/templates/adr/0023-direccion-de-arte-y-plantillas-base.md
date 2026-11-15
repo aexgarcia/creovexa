@@ -34,6 +34,8 @@ Con el flyer generado por IA ([ADR-0009](../../../adr/0009-estrategia-de-generac
    
    Sigue generando solo en cuadrado.
 
+6. **Indicaciones fijas y referencias de estilo** (fase 2) también viven en el diseño, versionadas con cada revisión. Las imágenes van a `template_style_assets`, inmutables. Las referencias solo cambian con sus endpoints, que crean una revisión nueva; crear o editar el diseño las conserva, así nadie puede apuntar a imágenes que no se subieron a esa plantilla.
+
 ## Alternativas consideradas
 
 - **Plantillas base como filas sin organización:** obligaría a un `organizationId` nulo en `templates` y a excepciones al aislamiento ([ADR-0003](../../../adr/0003-aislamiento-por-organizacion.md)), y sus revisiones no tendrían dueño.

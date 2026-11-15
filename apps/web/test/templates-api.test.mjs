@@ -128,3 +128,21 @@ test('lists the base templates of the system', async () => {
   };
   assert.equal((await templateService.findBase())[0].key, 'LAUNCH');
 });
+
+test('adds and removes style references against the current revision', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, method: options.method, body: options.body });
+    return Response.json({ data: template });
+  };
+  await templateService.addStyleReference('template-1', 'revision-1', new File(['x'], 'r.png'));
+  await templateService.removeStyleReference('template-1', 'revision-2', 'asset-1');
+  assert.ok(calls[0].url.endsWith('/templates/template-1/style-references'));
+  assert.equal(calls[0].body.get('expectedRevisionId'), 'revision-1');
+  assert.ok(
+    calls[1].url.endsWith(
+      '/templates/template-1/style-references/asset-1?expectedRevisionId=revision-2',
+    ),
+  );
+  assert.equal(calls[1].method, 'DELETE');
+});

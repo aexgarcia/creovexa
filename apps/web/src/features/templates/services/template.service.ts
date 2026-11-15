@@ -35,6 +35,31 @@ class TemplateService {
     });
     return response.data;
   }
+  // Cada cambio de referencias crea una revisión nueva; se envía la vigente para no pisar otra.
+  async addStyleReference(id: string, revisionId: string, file: File): Promise<StoredTemplate> {
+    const body = new FormData();
+    body.append('expectedRevisionId', revisionId);
+    body.append('image', file);
+    return (
+      await apiRequest<{ data: StoredTemplate }>(
+        `/templates/${encodeURIComponent(id)}/style-references`,
+        { method: 'POST', body },
+        45000,
+      )
+    ).data;
+  }
+  async removeStyleReference(
+    id: string,
+    revisionId: string,
+    assetId: string,
+  ): Promise<StoredTemplate> {
+    return (
+      await apiRequest<{ data: StoredTemplate }>(
+        `/templates/${encodeURIComponent(id)}/style-references/${encodeURIComponent(assetId)}?expectedRevisionId=${encodeURIComponent(revisionId)}`,
+        { method: 'DELETE' },
+      )
+    ).data;
+  }
   // Plantillas de ejemplo del sistema; no pertenecen a ninguna empresa.
   async findBase(signal?: AbortSignal): Promise<BaseTemplate[]> {
     return (await apiRequest<{ data: BaseTemplate[] }>('/templates/base', { signal })).data;

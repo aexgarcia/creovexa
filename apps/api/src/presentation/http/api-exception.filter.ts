@@ -2,6 +2,7 @@ import { CopyGenerationError } from '#app/modules/content-generation/application
 import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
 import { InvalidFlyerDesignError } from '#app/domain/value-objects/flyer-design';
 import { ProductImageError } from '#app/modules/products/application/errors/product-image.error';
+import { TemplateStyleReferenceError } from '#app/modules/templates/application/errors/template-style-reference.error';
 import { OrganizationLogoError } from '#app/modules/organizations/application/errors/organization-logo.error';
 import { StaleGenerationResultError } from '#app/modules/campaigns/domain/errors/campaign.errors';
 import { PublicationNotFoundError } from '#app/modules/publications/application/publication-history-reader';
@@ -76,7 +77,13 @@ export class ApiExceptionFilter implements ExceptionFilter {
     let code: string | undefined;
     let message: string | undefined;
     let details: ValidationDetail[] | undefined;
-    if (error instanceof ProductImageError || error instanceof OrganizationLogoError) {
+    if (error instanceof TemplateStyleReferenceError) {
+      status = { INVALID_IMAGE: 400, TOO_LARGE: 413, NOT_FOUND: 404, LIMIT: 409, UNAVAILABLE: 503 }[
+        error.code
+      ];
+      code = 'TEMPLATE_STYLE_REFERENCE_' + error.code;
+      message = error.message;
+    } else if (error instanceof ProductImageError || error instanceof OrganizationLogoError) {
       status =
         error.code === 'INVALID_IMAGE'
           ? 400

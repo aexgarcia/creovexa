@@ -97,7 +97,11 @@ export class TemplatesController {
     return {
       data: BASE_TEMPLATES.map((template) => ({
         ...template,
-        design: { ...template.design, elements: { ...template.design.elements } },
+        design: {
+          ...template.design,
+          elements: { ...template.design.elements },
+          styleReferenceAssetIds: [],
+        },
       })),
     };
   }

@@ -56,6 +56,10 @@ export interface FlyerDesignData {
   readonly logoPosition: LogoPosition;
   readonly textDensity: TextDensity;
   readonly elements: FlyerElements;
+  // Indicaciones de la marca que valen para todos los flyers de esta plantilla.
+  readonly instructions: string | null;
+  // Hasta 2 flyers de ejemplo; la IA los usa solo como estilo.
+  readonly styleReferenceAssetIds: readonly string[];
 }
 
 // Tamaño en píxeles del flyer final de cada formato, para redes sociales.
@@ -101,7 +105,13 @@ export const DEFAULT_FLYER_DESIGN: FlyerDesignData = Object.freeze({
     contact: false,
     legalText: false,
   }),
+  instructions: null,
+  styleReferenceAssetIds: Object.freeze([]),
 });
+
+export const INSTRUCTIONS_MAX_LENGTH = 300;
+export const MAX_STYLE_REFERENCES = 2;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export class InvalidFlyerDesignError extends Error {
   constructor(readonly field: string) {
@@ -135,7 +145,30 @@ const DESIGN_KEYS = [
   'logoPosition',
   'textDensity',
   'elements',
+  'instructions',
+  'styleReferenceAssetIds',
 ] as const;
+
+// Opcionales al recibir, para aceptar el JSON de revisiones anteriores a estos campos.
+function instructions(value: unknown): string | null {
+  if (value == null) return null;
+  if (typeof value !== 'string' || value.trim().length > INSTRUCTIONS_MAX_LENGTH)
+    throw new InvalidFlyerDesignError('instructions');
+  return value.trim() || null;
+}
+
+function styleReferences(value: unknown): readonly string[] {
+  if (value == null) return Object.freeze([]);
+  if (
+    !Array.isArray(value) ||
+    value.length > MAX_STYLE_REFERENCES ||
+    value.some((id) => typeof id !== 'string' || !UUID.test(id))
+  )
+    throw new InvalidFlyerDesignError('styleReferenceAssetIds');
+  const ids = value.map((id: string) => id.toLowerCase());
+  if (new Set(ids).size !== ids.length) throw new InvalidFlyerDesignError('styleReferenceAssetIds');
+  return Object.freeze(ids);
+}
 
 export class FlyerDesign {
   private constructor(readonly data: FlyerDesignData) {
@@ -175,6 +208,8 @@ export class FlyerDesign {
           ...flags,
           keyAttributes: keyAttributes as number,
         }) as FlyerElements,
+        instructions: instructions(value.instructions),
+        styleReferenceAssetIds: styleReferences(value.styleReferenceAssetIds),
       }),
     );
   }

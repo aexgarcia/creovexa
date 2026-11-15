@@ -1,6 +1,7 @@
 'use client';
 import { TemplateVisualSettings } from './template-visual-settings';
 import { TemplateDesignPreview } from './template-design-preview';
+import { StyleReferencesField } from './style-references-field';
 import { toast } from 'sonner';
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -50,7 +51,7 @@ function TemplateProfile({ template }: { template: StoredTemplate }) {
     try {
       await mutation.mutateAsync();
     } catch {
-      /* Safe error displayed below. */
+      /* El error se muestra abajo, sin detalles internos. */
     }
   }
   return (
@@ -110,6 +111,9 @@ function TemplateProfile({ template }: { template: StoredTemplate }) {
           <h2 className="font-semibold">Vista previa</h2>
           <TemplateDesignPreview design={design} />
         </aside>
+      </div>
+      <div className="xl:max-w-[420px]">
+        <StyleReferencesField template={template} />
       </div>
       <Button variant="outline" nativeButton={false} render={<Link href="/templates" />}>
         Volver a plantillas

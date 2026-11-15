@@ -37,6 +37,10 @@ export interface TemplateDesign {
   logoPosition: LogoPosition;
   textDensity: TextDensity;
   elements: TemplateElements;
+  // Indicaciones de la marca para todos los flyers de esta plantilla, hasta 300 caracteres.
+  instructions: string | null;
+  // Solo lectura: se cambian con sus propios endpoints, no al guardar el diseño.
+  styleReferenceAssetIds: string[];
 }
 
 export const FORMAT_SIZES: Record<TemplateFormat, { width: number; height: number }> = {
@@ -67,6 +71,8 @@ export function defaultTemplateDesign(): TemplateDesign {
       contact: false,
       legalText: false,
     },
+    instructions: null,
+    styleReferenceAssetIds: [],
   };
 }
 

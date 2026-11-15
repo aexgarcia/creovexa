@@ -33,7 +33,7 @@ export class TemplateMapper {
     template: TemplateRecord;
     // Un tipo concreto que sirve tanto para escribir como para volver a leer la fila.
     revision: Omit<RevisionRecord, 'design'> & {
-      design: Record<string, string | Record<string, boolean | number>>;
+      design: Record<string, string | null | string[] | Record<string, boolean | number>>;
     };
   } {
     const revision = template.currentRevision;
@@ -53,7 +53,11 @@ export class TemplateMapper {
         number: BigInt(revision.number),
         width: revision.dimensions.width,
         height: revision.dimensions.height,
-        design: { ...revision.design, elements: { ...revision.design.elements } },
+        design: {
+          ...revision.design,
+          elements: { ...revision.design.elements },
+          styleReferenceAssetIds: [...revision.design.styleReferenceAssetIds],
+        },
         createdAt: revision.createdAt,
       },
     };

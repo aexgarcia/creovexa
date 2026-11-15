@@ -11,13 +11,16 @@ Plantillas de flyer de una organización: nombre y dirección de arte, versionad
 | Tabla | Contenido |
 | --- | --- |
 | `templates` | `name` y `currentRevisionId` |
+| `template_style_assets` | Imágenes de referencia de estilo; inmutables |
 | `template_revisions` | `number`, `width`, `height` y `design` (JSON); inmutables. Las dimensiones salen del formato y una restricción exige que coincidan |
 
 `design` es el value object compartido `FlyerDesign` (`src/domain/value-objects/flyer-design.ts`):
 
 - `format`: `SQUARE` 1080 × 1080, `PORTRAIT` 1080 × 1350 o `STORY` 1080 × 1920;
 - `composition`, `style`, `mode`, `background`, `logoPosition` y `textDensity`;
-- `elements`: `logo`, `headline`, `subheadline`, `productName`, `regularPrice`, `promotionPrice`, `validity`, `cta`, `contact` y `legalText`, más `keyAttributes` (de 0 a 4).
+- `elements`: `logo`, `headline`, `subheadline`, `productName`, `regularPrice`, `promotionPrice`, `validity`, `cta`, `contact` y `legalText`, más `keyAttributes` (de 0 a 4);
+- `instructions`: indicaciones fijas, hasta 300 caracteres;
+- `styleReferenceAssetIds`: hasta 2 referencias de estilo. Solo cambian con sus endpoints; crear o editar el diseño las conserva.
 
 No lleva colores: salen del kit de marca. Las plantillas base viven en el código (`application/base-templates.ts`), no en tablas ([ADR-0023](adr/0023-direccion-de-arte-y-plantillas-base.md)).
 
@@ -26,6 +29,9 @@ No lleva colores: salen del kit de marca. Las plantillas base viven en el códig
 | Método y ruta | Descripción | Respuesta |
 | --- | --- | --- |
 | `POST /templates` | Crear plantilla con su revisión inicial (`name` y `design` opcional; sin `dimensions`) | `201` |
+| `POST /templates/:id/style-references` | Subir una referencia (multipart: `image` y `expectedRevisionId`); crea una revisión | `201` |
+| `DELETE /templates/:id/style-references/:assetId?expectedRevisionId=` | Quitarla; crea una revisión y el archivo sigue legible | `200` |
+| `GET /templates/:id/style-references/:assetId` | Leer los bytes | `200` imagen |
 | `GET /templates/base` | Listar las plantillas base del sistema | `200` |
 | `POST /templates/base/:key` | Crear en la organización una copia de una plantilla base (`name` opcional) | `201` |
 | `GET /templates` | Listar, paginado | `200` |
@@ -40,6 +46,8 @@ No lleva colores: salen del kit de marca. Las plantillas base viven en el códig
 | `ORGANIZATION_NOT_FOUND` | 404 | La organización activa no existe |
 | `INVALID_INPUT` | 400 | Nombre o diseño inválidos |
 | `CONFLICT` | 409 | Edición concurrente de la revisión |
+| `TEMPLATE_STYLE_REFERENCE_LIMIT` | 409 | Ya tiene 2 referencias |
+| `TEMPLATE_STYLE_REFERENCE_INVALID_IMAGE` / `_TOO_LARGE` / `_NOT_FOUND` / `_UNAVAILABLE` | 400 / 413 / 404 / 503 | Imagen inválida, más de 10 MB, inexistente o storage no configurado |
 
 Formato de respuestas y errores: [ADR-0004](../../adr/0004-contrato-http-y-errores.md).
 

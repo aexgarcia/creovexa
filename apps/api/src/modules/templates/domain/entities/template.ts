@@ -5,6 +5,17 @@ import {
   InvalidTemplateRevisionError,
 } from '../errors/template.errors.js';
 import { TemplateRevision } from './template-revision.js';
+import {
+  FlyerDesign,
+  InvalidFlyerDesignError,
+  MAX_STYLE_REFERENCES,
+} from '#app/domain/value-objects/flyer-design';
+
+// Las referencias de estilo solo cambian con withStyleReferences: crear o editar el diseño no
+// puede apuntar a imágenes que no se subieron a esta plantilla.
+function withReferences(design: unknown, ids: readonly string[]) {
+  return { ...FlyerDesign.create(design).data, styleReferenceAssetIds: ids };
+}
 
 export interface TemplateDetails {
   name: string;
@@ -43,7 +54,13 @@ export class Template {
       id: templateId,
       organizationId: ownerId,
       name: input.name.trim(),
-      currentRevision: TemplateRevision.initial(revisionId, templateId, ownerId, at, input.design),
+      currentRevision: TemplateRevision.initial(
+        revisionId,
+        templateId,
+        ownerId,
+        at,
+        input.design === undefined ? undefined : withReferences(input.design, []),
+      ),
       createdAt,
       updatedAt: createdAt,
     });
@@ -51,7 +68,12 @@ export class Template {
 
   createRevision(id: string, at: Date, design?: unknown): Template {
     const updatedAt = timestamp(at, this.#state.updatedAt);
-    const currentRevision = this.currentRevision.next(id, at, design);
+    const current = this.currentRevision.design;
+    const currentRevision = this.currentRevision.next(
+      id,
+      at,
+      withReferences(design ?? current, current.styleReferenceAssetIds),
+    );
     return new Template({ ...this.#state, currentRevision, updatedAt });
   }
 
@@ -59,6 +81,18 @@ export class Template {
     if (typeof name !== 'string' || !name.trim()) throw new InvalidTemplateNameError();
     const revised = this.createRevision(id, at, design);
     return new Template({ ...revised.#state, name: name.trim() });
+  }
+
+  /** Revisión nueva con el mismo diseño y otras referencias de estilo (hasta 2). */
+  withStyleReferences(id: string, at: Date, ids: readonly string[]): Template {
+    if (ids.length > MAX_STYLE_REFERENCES)
+      throw new InvalidFlyerDesignError('styleReferenceAssetIds');
+    const updatedAt = timestamp(at, this.#state.updatedAt);
+    const currentRevision = this.currentRevision.next(id, at, {
+      ...this.currentRevision.design,
+      styleReferenceAssetIds: ids,
+    });
+    return new Template({ ...this.#state, currentRevision, updatedAt });
   }
 
   static restore(

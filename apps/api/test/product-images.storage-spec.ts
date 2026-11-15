@@ -96,6 +96,39 @@ describe('One product image (HTTP, PostgreSQL and MinIO)', () => {
       .attach('image', bytes, { filename: 'photo.png', contentType: 'image/png' });
   }
 
+  // Las referencias de estilo de las plantillas usan el mismo almacenamiento.
+  it('adds up to two style references to a template, each in a new revision, and removes one', async () => {
+    await fixture();
+    const created = await request(app.getHttpServer())
+      .post('/templates')
+      .send({ name: 'Con referencias' })
+      .expect(201);
+    const id: string = created.body.data.id;
+    const references = `/templates/${id}/style-references`;
+    const add = (revision: string) =>
+      request(app.getHttpServer())
+        .post(references)
+        .field('expectedRevisionId', revision)
+        .attach('image', png, { filename: 'ref.png', contentType: 'image/png' });
+    const first = await add(created.body.data.currentRevision.id).expect(201);
+    const second = await add(first.body.data.currentRevision.id).expect(201);
+    const [a, b] = second.body.data.currentRevision.design.styleReferenceAssetIds;
+    expect(second.body.data.currentRevision.number).toBe(3);
+    expect([a, b].every(Boolean)).toBe(true);
+    const limit = await add(second.body.data.currentRevision.id).expect(409);
+    expect(limit.body.error.code).toBe('TEMPLATE_STYLE_REFERENCE_LIMIT');
+    await add(first.body.data.currentRevision.id).expect(409);
+    const read = await request(app.getHttpServer()).get(`${references}/${a}`).expect(200);
+    expect(read.body).toEqual(png);
+    const removed = await request(app.getHttpServer())
+      .delete(`${references}/${a}`)
+      .query({ expectedRevisionId: second.body.data.currentRevision.id })
+      .expect(200);
+    expect(removed.body.data.currentRevision.design.styleReferenceAssetIds).toEqual([b]);
+    // La revisión anterior la sigue usando: el archivo queda legible.
+    await request(app.getHttpServer()).get(`${references}/${a}`).expect(200);
+  });
+
   it('uploads one real image and exposes a private API read URL', async () => {
     const f = await fixture();
     const response = await upload(f.productId).expect(201);

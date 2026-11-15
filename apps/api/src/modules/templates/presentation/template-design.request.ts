@@ -1,6 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
+  IsString,
+  IsUUID,
+  MaxLength,
+  ValidateIf,
   IsBoolean,
   IsDefined,
   IsIn,
@@ -74,4 +80,27 @@ export class TemplateDesignRequest {
   @ValidateNested()
   @Type(() => TemplateElementsRequest)
   elements!: TemplateElementsRequest;
+  @ApiProperty({
+    type: String,
+    maxLength: 300,
+    nullable: true,
+    required: false,
+    description: 'Indicaciones fijas de la marca para todos los flyers de esta plantilla.',
+  })
+  @ValidateIf((_o, value: unknown) => value !== undefined && value !== null)
+  @IsString()
+  @MaxLength(300)
+  instructions?: string | null;
+  @ApiProperty({
+    type: [String],
+    maxItems: 2,
+    required: false,
+    description:
+      'Solo lectura: se cambian con /templates/:id/style-references. Al editar se conservan.',
+  })
+  @ValidateIf((_o, value: unknown) => value !== undefined)
+  @IsArray()
+  @ArrayMaxSize(2)
+  @IsUUID('all', { each: true })
+  styleReferenceAssetIds?: string[];
 }
