@@ -8,75 +8,112 @@ const CORNER: Record<TemplateDesign['logoPosition'], string> = {
   BOTTOM_RIGHT: 'bottom-[4%] right-[5%]',
 };
 
-/**
- * Solo una muestra visual; no es un archivo de campaña guardado ni compuesto. Es un esquema:
- * con IA, cada flyer se diseña distinto, así que muestra el formato, el modo, dónde va el
- * logo y qué textos lleva, no el diseño final.
- */
+// Esquema local con textos y colores de ejemplo; nunca representa el archivo final de una campaña.
 export function TemplateDesignPreview({
   design = defaultTemplateDesign(),
+  compact = false,
 }: {
   design?: TemplateDesign;
+  compact?: boolean;
 }) {
   const { width, height } = FORMAT_SIZES[design.format];
   const dark = design.mode === 'DARK';
   const e = design.elements;
   const texts = [
-    e.headline && ['Titular', 'text-[5cqw] font-extrabold'],
-    e.subheadline && ['Subtítulo', 'text-[3cqw]'],
-    e.productName && ['Nombre del producto', 'text-[3cqw] font-semibold'],
-    e.keyAttributes > 0 && [`${e.keyAttributes} características`, 'text-[2.4cqw]'],
-    e.regularPrice && [e.promotionPrice ? 'Precio regular' : 'Precio', 'text-[3cqw]'],
-    e.promotionPrice && ['Precio de oferta', 'text-[5cqw] font-extrabold'],
-    e.validity && ['Fechas de la promoción', 'text-[2.2cqw]'],
-    e.cta && ['Llamada a la acción', 'text-[2.6cqw] font-bold'],
-    e.contact && ['Contacto', 'text-[2.2cqw]'],
-    e.legalText && ['Texto legal', 'text-[1.8cqw] opacity-70'],
+    e.headline && ['Titular', 'text-[5cqw] font-bold tracking-tight'],
+    e.subheadline && ['Subtítulo', 'text-[2.8cqw] opacity-75'],
+    e.productName && ['Nombre del producto', 'text-[3cqw] font-medium'],
+    e.keyAttributes > 0 && [`${e.keyAttributes} características`, 'text-[2.2cqw] opacity-70'],
+    e.regularPrice && [
+      'Precio regular',
+      `text-[2.5cqw] ${e.promotionPrice ? 'line-through opacity-60' : 'font-medium'}`,
+    ],
+    e.promotionPrice && ['Precio de oferta', 'text-[4.5cqw] font-bold'],
+    e.validity && ['Fechas de la promoción', 'text-[2cqw] opacity-70'],
+    e.cta && [
+      'Llamada a la acción',
+      'w-fit rounded-full border border-current/25 px-[2cqw] py-[1cqw] text-[2.3cqw] font-semibold',
+    ],
+    e.contact && ['Contacto', 'text-[2cqw] opacity-75'],
+    e.legalText && ['Texto legal', 'text-[1.7cqw] opacity-60'],
   ].filter(Boolean) as [string, string][];
+  const typeStyle =
+    design.style === 'ELEGANT'
+      ? 'font-serif'
+      : design.style === 'PLAYFUL'
+        ? 'font-sans tracking-wide'
+        : 'font-sans';
+  const image = (
+    <div
+      className={`flex min-h-0 items-center justify-center overflow-hidden rounded-[3cqw] border border-dashed border-current/20 ${design.composition === 'PRODUCT_PANEL' ? 'bg-current/10' : 'bg-current/5'}`}
+    >
+      <div className="flex flex-col items-center gap-[1cqw] opacity-40">
+        <ImageIcon aria-hidden="true" className="h-[9cqw] w-[9cqw]" />
+        <span className="text-[2cqw]">Foto del producto</span>
+      </div>
+    </div>
+  );
+  const textBlock = (
+    <ul
+      className={`min-w-0 ${design.textDensity === 'MINIMAL' ? 'space-y-[1.2cqw]' : 'space-y-[0.8cqw]'}`}
+    >
+      {texts.map(([label, style]) => (
+        <li key={label} className={`break-words leading-tight ${style}`}>
+          {label}
+        </li>
+      ))}
+    </ul>
+  );
   return (
     <div className="space-y-3">
       <div
         data-format={design.format}
         data-mode={design.mode}
-        className={`relative mx-auto w-full max-w-sm overflow-hidden rounded-2xl border shadow-sm ${
-          dark ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-900'
-        }`}
-        style={{ aspectRatio: `${width} / ${height}`, containerType: 'inline-size' }}
+        data-composition={design.composition}
+        className={`relative mx-auto w-full max-w-sm overflow-hidden rounded-xl border shadow-sm ${typeStyle} ${dark ? 'border-white/10 bg-[#19132b] text-white' : 'border-slate-300 bg-[#f1edff] text-[#251c3e]'}`}
+        style={{
+          aspectRatio: `${width} / ${height}`,
+          containerType: 'inline-size',
+          maxWidth: compact ? undefined : Math.min(360, (440 * width) / height),
+        }}
       >
-        {design.composition !== 'TYPOGRAPHIC' && (
+        {design.background === 'GRADIENT' && (
           <div
-            className={`absolute flex items-center justify-center rounded-xl border border-dashed ${
-              dark ? 'border-white/20' : 'border-slate-300'
-            } ${design.composition === 'SPLIT' ? 'inset-y-[18%] left-[5%] w-[42%]' : 'inset-x-[15%] top-[30%] h-[35%]'}`}
-          >
-            <ImageIcon aria-label="Foto del producto" className="size-10 opacity-40" />
-          </div>
+            aria-hidden="true"
+            className="absolute inset-0 bg-gradient-to-br from-cyan-400/10 via-blue-500/20 to-violet-600/30"
+          />
         )}
-        {e.logo && (
+        {design.background === 'SCENE' && (
           <div
-            className={`absolute ${CORNER[design.logoPosition]} rounded-md border border-dashed px-2 py-1 text-[2.4cqw] ${
-              dark ? 'border-white/40' : 'border-slate-400'
-            }`}
+            aria-hidden="true"
+            className="absolute -top-[20%] -right-[20%] size-[90%] rounded-full border-[10cqw] border-current/5"
+          />
+        )}
+        {design.background === 'STUDIO' && (
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-[10%] bottom-[10%] h-[40%] rounded-[50%] bg-current/5 blur-xl"
+          />
+        )}
+        <div
+          className={`absolute inset-x-[7%] top-[17%] bottom-[12%] ${design.composition === 'SPLIT' ? 'grid grid-cols-[42%_1fr] items-center gap-[5%] [&>div]:h-full' : design.composition === 'TYPOGRAPHIC' ? 'flex items-center' : 'flex flex-col gap-[3cqw] [&>div]:flex-1'}`}
+        >
+          {design.composition !== 'TYPOGRAPHIC' && image}
+          {textBlock}
+        </div>
+        {e.logo && (
+          <span
+            className={`absolute ${CORNER[design.logoPosition]} rounded border border-current/30 px-[2cqw] py-[0.7cqw] text-[2.1cqw] font-medium`}
           >
             Logo
-          </div>
+          </span>
         )}
-        <ul
-          className={`absolute bottom-[12%] space-y-[1.2cqw] ${
-            design.composition === 'SPLIT' ? 'left-[52%] right-[5%]' : 'left-[8%] right-[8%]'
-          }`}
-        >
-          {texts.map(([label, style]) => (
-            <li key={label} className={`leading-tight ${style}`}>
-              {label}
-            </li>
-          ))}
-        </ul>
       </div>
-      <p className="text-center text-xs text-muted-foreground">
-        Esquema orientativo: la IA diseña cada flyer con estas indicaciones, la foto y los colores
-        de tu marca.
-      </p>
+      {!compact && (
+        <p className="text-center text-xs leading-relaxed text-muted-foreground">
+          Esquema orientativo. Textos y colores de ejemplo; no es el diseño final generado.
+        </p>
+      )}
     </div>
   );
 }

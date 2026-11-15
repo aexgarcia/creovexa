@@ -15,7 +15,15 @@ const MAX = 2;
  * Hasta 2 flyers de ejemplo. La IA los usa solo como estilo, nunca copia sus textos ni sus
  * productos. Subir o quitar uno crea una revisión nueva al momento.
  */
-export function StyleReferencesField({ template }: { template: StoredTemplate }) {
+export function StyleReferencesField({
+  template,
+  disabled = false,
+  onPendingChange,
+}: {
+  template: StoredTemplate;
+  disabled?: boolean;
+  onPendingChange?: (pending: boolean) => void;
+}) {
   const client = useQueryClient();
   const [error, setError] = useState('');
   const revision = template.currentRevision;
@@ -29,6 +37,8 @@ export function StyleReferencesField({ template }: { template: StoredTemplate })
   const add = useMutation({
     mutationFn: (file: File) => templateService.addStyleReference(template.id, revision.id, file),
     retry: false,
+    onMutate: () => onPendingChange?.(true),
+    onSettled: () => onPendingChange?.(false),
     onSuccess: refresh,
     onError: fail,
   });
@@ -36,12 +46,14 @@ export function StyleReferencesField({ template }: { template: StoredTemplate })
     mutationFn: (assetId: string) =>
       templateService.removeStyleReference(template.id, revision.id, assetId),
     retry: false,
+    onMutate: () => onPendingChange?.(true),
+    onSettled: () => onPendingChange?.(false),
     onSuccess: refresh,
     onError: fail,
   });
   const busy = add.isPending || remove.isPending;
   return (
-    <section className="space-y-3 rounded-xl border bg-card p-6">
+    <section className="space-y-4 rounded-2xl border bg-card p-5 sm:p-6">
       <div>
         <h2 className="font-semibold">Referencias de estilo</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -49,6 +61,14 @@ export function StyleReferencesField({ template }: { template: StoredTemplate })
           productos.
         </p>
       </div>
+      <p className="text-xs text-muted-foreground">
+        Subir o quitar una referencia guarda una nueva revisión al momento.
+      </p>
+      {disabled && !busy && (
+        <p className="text-xs text-[#7fa0ff]">
+          Guarda los cambios de la plantilla antes de modificar sus referencias.
+        </p>
+      )}
       <div className="flex flex-wrap gap-3">
         {ids.map((assetId) => (
           <div key={assetId} className="space-y-2">
@@ -64,7 +84,7 @@ export function StyleReferencesField({ template }: { template: StoredTemplate })
               type="button"
               variant="outline"
               size="sm"
-              disabled={busy}
+              disabled={busy || disabled}
               onClick={() => remove.mutate(assetId)}
             >
               Quitar
@@ -79,7 +99,7 @@ export function StyleReferencesField({ template }: { template: StoredTemplate })
             id="style-reference"
             type="file"
             accept="image/png,image/jpeg,image/webp"
-            disabled={busy}
+            disabled={busy || disabled}
             onChange={(event) => {
               const file = event.target.files?.[0];
               event.target.value = '';

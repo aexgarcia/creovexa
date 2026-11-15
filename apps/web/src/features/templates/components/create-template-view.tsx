@@ -1,33 +1,19 @@
 'use client';
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { toast } from 'sonner';
-import { PageHeader } from '@/components/layout/page-header';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { TemplateVisualSettings } from './template-visual-settings';
-import { TemplateDesignPreview } from './template-design-preview';
 import { useCreateTemplate } from '../hooks/use-create-template';
-import { defaultTemplateDesign } from '../types/template-design';
-import { BaseTemplatePicker } from './base-template-picker';
+import type { TemplateDesign } from '../types/template-design';
+import { TemplateForm } from './template-form';
 
 export function CreateTemplateView() {
   const router = useRouter();
   const createTemplate = useCreateTemplate();
-  const [name, setName] = useState('');
-  const [design, setDesign] = useState(defaultTemplateDesign);
   const [error, setError] = useState('');
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!name.trim() || name.trim().length > 200) {
-      setError('Introduce un nombre de entre 1 y 200 caracteres.');
-      return;
-    }
+  async function submit(input: { name: string; design: TemplateDesign }) {
     setError('');
     try {
-      await createTemplate.mutateAsync({ name: name.trim(), design });
+      await createTemplate.mutateAsync(input);
       toast.success('Plantilla creada correctamente');
       router.push('/templates');
     } catch (cause) {
@@ -35,66 +21,19 @@ export function CreateTemplateView() {
     }
   }
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Nueva plantilla"
-        description="Empieza desde una plantilla base o define la tuya."
-      />
-      <BaseTemplatePicker
-        onChoose={(base) => {
-          setDesign(base.design);
-          if (!name.trim()) setName(base.name);
-        }}
-      />
-      <div className="grid items-start gap-6 xl:grid-cols-[420px_1fr]">
-        <form onSubmit={handleSubmit} className="space-y-5 rounded-xl border bg-card p-6">
-          <div>
-            <h2 className="text-lg font-semibold">Información de la plantilla</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Define el nombre y la dirección de arte de tus flyers.
-            </p>
-          </div>
-          <fieldset disabled={createTemplate.isPending} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="template-name">Nombre</Label>
-              <Input
-                id="template-name"
-                required
-                maxLength={200}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </div>
-            <TemplateVisualSettings
-              design={design}
-              onChange={setDesign}
-              disabled={createTemplate.isPending}
-            />
-            {error && (
-              <p role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
-            )}
-            <div className="flex gap-3">
-              <Button type="submit">
-                {createTemplate.isPending ? 'Guardando…' : 'Crear plantilla'}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                nativeButton={false}
-                render={<Link href="/templates" />}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </fieldset>
-        </form>
-        <aside className="space-y-5 rounded-xl border bg-card p-6">
-          <h2 className="font-semibold">Vista previa</h2>
-          <TemplateDesignPreview design={design} />
-        </aside>
-      </div>
-    </div>
+    <TemplateForm
+      pending={createTemplate.isPending}
+      onSubmit={submit}
+      error={
+        error ? (
+          <p
+            role="alert"
+            className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+          >
+            {error}
+          </p>
+        ) : undefined
+      }
+    />
   );
 }

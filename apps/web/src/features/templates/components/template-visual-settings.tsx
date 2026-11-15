@@ -1,51 +1,17 @@
+import { Palette, Layers } from 'lucide-react';
+import { FormSection } from '@/components/layout/form-section';
+import { ChoiceGroup, type ChoiceOption } from '@/components/ui/choice-group';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import type { TemplateDesign, TemplateElements } from '../types/template-design';
+import { FORMAT_SIZES, type TemplateDesign, type TemplateElements } from '../types/template-design';
+import { FORMAT_LABELS, COMPOSITION_LABELS, STYLE_LABELS } from '../types/template-design-options';
+import { TemplateCompositionSymbol } from './template-composition-symbol';
 
-type Options<K extends keyof TemplateDesign> = [TemplateDesign[K], string][];
-
-const FORMATS: Options<'format'> = [
-  ['SQUARE', 'Cuadrado · 1080 × 1080 (publicación)'],
-  ['PORTRAIT', 'Vertical · 1080 × 1350 (publicación)'],
-  ['STORY', 'Historia · 1080 × 1920'],
-];
-const COMPOSITIONS: Options<'composition'> = [
-  ['PRODUCT_HERO', 'Producto protagonista'],
-  ['PRODUCT_PANEL', 'Producto en panel'],
-  ['SCENE', 'Escena ambientada'],
-  ['SPLIT', 'Dividida: foto y textos'],
-  ['TYPOGRAPHIC', 'Tipográfica, sin foto'],
-];
-const STYLES: Options<'style'> = [
-  ['MINIMALIST', 'Minimalista'],
-  ['BOLD', 'Audaz'],
-  ['ELEGANT', 'Elegante'],
-  ['PLAYFUL', 'Divertido'],
-  ['CORPORATE', 'Corporativo'],
-  ['NATURAL', 'Natural'],
-];
-const MODES: Options<'mode'> = [
-  ['DARK', 'Oscuro'],
-  ['LIGHT', 'Claro'],
-];
-const BACKGROUNDS: Options<'background'> = [
-  ['BRAND_COLOR', 'Color de marca'],
-  ['GRADIENT', 'Degradado'],
-  ['SCENE', 'Escena'],
-  ['STUDIO', 'Estudio'],
-];
-const LOGO_POSITIONS: Options<'logoPosition'> = [
-  ['TOP_LEFT', 'Arriba a la izquierda'],
-  ['TOP_RIGHT', 'Arriba a la derecha'],
-  ['BOTTOM_LEFT', 'Abajo a la izquierda'],
-  ['BOTTOM_RIGHT', 'Abajo a la derecha'],
-];
-const DENSITIES: Options<'textDensity'> = [
-  ['MINIMAL', 'Mínima: pocos textos, más aire'],
-  ['BALANCED', 'Equilibrada'],
-];
-
+type ChoiceField = Exclude<
+  keyof TemplateDesign,
+  'elements' | 'instructions' | 'styleReferenceAssetIds'
+>;
 const ELEMENTS: [Exclude<keyof TemplateElements, 'keyAttributes'>, string][] = [
   ['logo', 'Logo'],
   ['headline', 'Titular'],
@@ -59,40 +25,6 @@ const ELEMENTS: [Exclude<keyof TemplateElements, 'keyAttributes'>, string][] = [
   ['legalText', 'Texto legal'],
 ];
 
-const selectClass = 'w-full rounded-lg border bg-background p-2.5 text-sm';
-
-function Choice<K extends keyof TemplateDesign>({
-  field,
-  label,
-  options,
-  design,
-  onChange,
-}: {
-  field: K;
-  label: string;
-  options: Options<K>;
-  design: TemplateDesign;
-  onChange: (design: TemplateDesign) => void;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={`template-${field}`}>{label}</Label>
-      <select
-        id={`template-${field}`}
-        value={design[field] as string}
-        onChange={(e) => onChange({ ...design, [field]: e.target.value })}
-        className={selectClass}
-      >
-        {options.map(([value, text]) => (
-          <option key={value as string} value={value as string}>
-            {text}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
 export function TemplateVisualSettings({
   design,
   onChange,
@@ -102,68 +34,190 @@ export function TemplateVisualSettings({
   onChange: (design: TemplateDesign) => void;
   disabled?: boolean;
 }) {
-  const props = { design, onChange };
+  const choose = <K extends ChoiceField>(
+    field: K,
+    label: string,
+    options: ChoiceOption<TemplateDesign[K]>[],
+    className?: string,
+  ) => (
+    <ChoiceGroup
+      label={label}
+      value={design[field]}
+      options={options}
+      onValueChange={(value) => onChange({ ...design, [field]: value })}
+      disabled={disabled}
+      className={className}
+    />
+  );
   const setElement = (key: keyof TemplateElements, value: boolean | number) =>
     onChange({ ...design, elements: { ...design.elements, [key]: value } });
   return (
-    <fieldset disabled={disabled} className="space-y-4 border-t pt-5">
-      <legend className="text-sm font-medium">Dirección de arte</legend>
-      <p className="text-xs text-muted-foreground">
-        La IA diseña el flyer con estas indicaciones y los colores de tu marca.
-      </p>
-      <Choice field="format" label="Formato" options={FORMATS} {...props} />
-      <Choice field="composition" label="Composición" options={COMPOSITIONS} {...props} />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Choice field="style" label="Estilo" options={STYLES} {...props} />
-        <Choice field="mode" label="Modo" options={MODES} {...props} />
-        <Choice field="background" label="Fondo" options={BACKGROUNDS} {...props} />
-        <Choice field="textDensity" label="Cantidad de texto" options={DENSITIES} {...props} />
-      </div>
-      <Choice field="logoPosition" label="Posición del logo" options={LOGO_POSITIONS} {...props} />
-      <div className="space-y-2">
-        <Label htmlFor="template-instructions">Indicaciones fijas (opcional)</Label>
-        <Textarea
-          id="template-instructions"
-          rows={3}
-          maxLength={300}
-          placeholder="Ej. fondo con textura de papel kraft; nada de rojo"
-          value={design.instructions ?? ''}
-          onChange={(e) => onChange({ ...design, instructions: e.target.value || null })}
-        />
-        <p className="text-xs text-muted-foreground">
-          Valen para todos los flyers de esta plantilla. Orientan el diseño; no agregan textos.
-        </p>
-      </div>
-      <p className="pt-2 text-sm font-medium">Elementos del flyer</p>
-      {ELEMENTS.map(([key, label]) => (
-        <div key={key} className="flex items-center justify-between gap-4 rounded-lg border p-3">
-          <Label id={'template-element-label-' + key} htmlFor={'template-element-' + key}>
-            {label}
-          </Label>
-          <Switch
-            aria-labelledby={'template-element-label-' + key}
-            id={'template-element-' + key}
-            disabled={disabled}
-            checked={design.elements[key]}
-            onCheckedChange={(checked) => setElement(key, checked)}
-          />
+    <>
+      <FormSection
+        title="Dirección de arte"
+        description="La IA diseña el flyer con estas indicaciones y los colores de tu marca."
+        icon={Palette}
+      >
+        {choose(
+          'format',
+          'Formato',
+          (Object.keys(FORMAT_LABELS) as TemplateDesign['format'][]).map((value) => ({
+            value,
+            label: FORMAT_LABELS[value],
+            description: `${FORMAT_SIZES[value].width} × ${FORMAT_SIZES[value].height}`,
+            visual: (
+              <span aria-hidden="true" className="grid h-11 place-items-center">
+                <span
+                  className="block border-2 border-current/60 bg-current/5"
+                  style={{
+                    width: value === 'STORY' ? 22 : value === 'PORTRAIT' ? 30 : 34,
+                    height: value === 'STORY' ? 40 : value === 'PORTRAIT' ? 38 : 34,
+                  }}
+                />
+              </span>
+            ),
+          })),
+          'grid grid-cols-1 sm:grid-cols-3 [&>label]:flex-col [&>label]:py-3',
+        )}
+        {choose(
+          'composition',
+          'Composición',
+          (Object.keys(COMPOSITION_LABELS) as TemplateDesign['composition'][]).map((value) => ({
+            value,
+            label: COMPOSITION_LABELS[value],
+            visual: <TemplateCompositionSymbol composition={value} />,
+          })),
+          'grid grid-cols-2 sm:grid-cols-3 [&>label]:flex-col [&>label]:py-3',
+        )}
+        {choose(
+          'style',
+          'Estilo',
+          (Object.keys(STYLE_LABELS) as TemplateDesign['style'][]).map((value) => ({
+            value,
+            label: STYLE_LABELS[value],
+          })),
+        )}
+        <div className="grid gap-5 sm:grid-cols-2">
+          {choose(
+            'mode',
+            'Modo',
+            [
+              { value: 'DARK', label: 'Oscuro' },
+              { value: 'LIGHT', label: 'Claro' },
+            ],
+            'grid grid-cols-2',
+          )}
+          {choose(
+            'textDensity',
+            'Cantidad de texto',
+            [
+              { value: 'MINIMAL', label: 'Mínima' },
+              { value: 'BALANCED', label: 'Equilibrada' },
+            ],
+            'grid grid-cols-2',
+          )}
         </div>
-      ))}
-      <div className="space-y-2">
-        <Label htmlFor="template-element-keyAttributes">Características del producto</Label>
-        <select
-          id="template-element-keyAttributes"
-          value={design.elements.keyAttributes}
-          onChange={(e) => setElement('keyAttributes', Number(e.target.value))}
-          className={selectClass}
-        >
-          {[0, 1, 2, 3, 4].map((n) => (
-            <option key={n} value={n}>
-              {n === 0 ? 'No mostrar' : `Mostrar hasta ${n}`}
-            </option>
+        {choose(
+          'background',
+          'Fondo',
+          [
+            { value: 'BRAND_COLOR', label: 'Color de marca' },
+            { value: 'GRADIENT', label: 'Degradado' },
+            { value: 'SCENE', label: 'Escena' },
+            { value: 'STUDIO', label: 'Estudio' },
+          ],
+          'grid grid-cols-2',
+        )}
+        {choose(
+          'logoPosition',
+          'Posición del logo',
+          [
+            { value: 'TOP_LEFT', label: 'Arriba a la izquierda' },
+            { value: 'TOP_RIGHT', label: 'Arriba a la derecha' },
+            { value: 'BOTTOM_LEFT', label: 'Abajo a la izquierda' },
+            { value: 'BOTTOM_RIGHT', label: 'Abajo a la derecha' },
+          ],
+          'grid grid-cols-2',
+        )}
+        <div className="space-y-2">
+          <Label htmlFor="template-instructions">
+            Indicaciones fijas{' '}
+            <span className="ml-auto text-xs font-normal text-muted-foreground">Opcional</span>
+          </Label>
+          <Textarea
+            id="template-instructions"
+            rows={3}
+            maxLength={300}
+            disabled={disabled}
+            placeholder="Ej. fondo con textura de papel kraft; nada de rojo"
+            value={design.instructions ?? ''}
+            onChange={(event) => onChange({ ...design, instructions: event.target.value || null })}
+            aria-describedby="template-instructions-help"
+            className="rounded-[10px] bg-control px-3.5 py-3 text-sm md:text-sm dark:bg-control"
+          />
+          <p
+            id="template-instructions-help"
+            className="flex justify-between gap-3 text-xs text-muted-foreground"
+          >
+            <span>
+              Valen para todos los flyers de esta plantilla. Orientan el diseño; no agregan textos.
+            </span>
+            <span className="shrink-0 font-mono">{design.instructions?.length ?? 0}/300</span>
+          </p>
+        </div>
+      </FormSection>
+      <FormSection
+        title="Elementos del flyer"
+        description="Marca lo que debe aparecer. Lo que no marques, no se muestra."
+        icon={Layers}
+      >
+        <p className="text-xs text-muted-foreground">
+          {ELEMENTS.filter(([key]) => design.elements[key]).length} de {ELEMENTS.length} elementos
+          seleccionados
+        </p>
+        <div className="grid gap-x-5 sm:grid-cols-2">
+          {ELEMENTS.map(([key, label]) => (
+            <div
+              key={key}
+              className="flex items-center justify-between gap-3 border-b py-3 last:border-0"
+            >
+              <Label
+                id={'template-element-label-' + key}
+                htmlFor={'template-element-' + key}
+                className="text-[13px] font-normal"
+              >
+                {label}
+              </Label>
+              <Switch
+                aria-labelledby={'template-element-label-' + key}
+                id={'template-element-' + key}
+                disabled={disabled}
+                checked={design.elements[key]}
+                onCheckedChange={(checked) => setElement(key, checked)}
+              />
+            </div>
           ))}
-        </select>
-      </div>
-    </fieldset>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="template-element-keyAttributes">Características del producto</Label>
+          <select
+            id="template-element-keyAttributes"
+            disabled={disabled}
+            value={design.elements.keyAttributes}
+            onChange={(event) => setElement('keyAttributes', Number(event.target.value))}
+            className="h-11 w-full rounded-[10px] border border-input bg-control px-3 text-sm"
+          >
+            {[0, 1, 2, 3, 4].map((n) => (
+              <option key={n} value={n}>
+                {n === 0 ? 'No mostrar' : `Mostrar hasta ${n}`}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Se toman de la ficha de cada producto, en el orden que las guardaste.
+          </p>
+        </div>
+      </FormSection>
+    </>
   );
 }

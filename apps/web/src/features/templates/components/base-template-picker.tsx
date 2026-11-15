@@ -1,44 +1,88 @@
 'use client';
+import { Sparkles, Check } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { FormSection } from '@/components/layout/form-section';
 import { templateService } from '../services/template.service';
 import type { BaseTemplate } from '../types/template-design';
+import { FORMAT_LABELS } from '../types/template-design-options';
+import { TemplateCompositionSymbol } from './template-composition-symbol';
 
-const FORMAT_LABEL = { SQUARE: 'Cuadrado', PORTRAIT: 'Vertical', STORY: 'Historia' } as const;
-
-/**
- * Plantillas base del sistema. Elegir una carga su diseño en el formulario; al guardar, la
- * empresa tiene su propia copia y puede ajustarla.
- */
-export function BaseTemplatePicker({ onChoose }: { onChoose: (base: BaseTemplate) => void }) {
+export function BaseTemplatePicker({
+  onChoose,
+  disabled = false,
+  selectedKey = null,
+}: {
+  onChoose: (base: BaseTemplate) => void;
+  disabled?: boolean;
+  selectedKey?: string | null;
+}) {
   const query = useQuery({
     queryKey: ['templates', 'base'],
     queryFn: ({ signal }) => templateService.findBase(signal),
     retry: false,
     staleTime: Infinity,
   });
-  if (query.isLoading) return <p role="status">Cargando plantillas base…</p>;
-  if (query.error || !query.data) return null;
   return (
-    <section className="space-y-3 rounded-xl border bg-card p-6">
-      <div>
-        <h2 className="text-lg font-semibold">Empezar desde una plantilla base</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Usan los colores de tu marca. Elige una y ajústala abajo antes de guardar.
+    <FormSection
+      title="Empieza desde una base"
+      description="Usan los colores de tu marca. Elige una y ajústala abajo."
+      icon={Sparkles}
+    >
+      {query.isPending ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          Cargando plantillas base…
         </p>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        {query.data.map((base) => (
-          <div key={base.key} className="flex flex-col gap-2 rounded-lg border p-4">
-            <p className="font-medium">{base.name}</p>
-            <p className="flex-1 text-xs text-muted-foreground">{base.intendedFor}</p>
-            <p className="text-xs text-muted-foreground">{FORMAT_LABEL[base.design.format]}</p>
-            <Button type="button" variant="outline" size="sm" onClick={() => onChoose(base)}>
-              Usar esta
-            </Button>
-          </div>
-        ))}
-      </div>
-    </section>
+      ) : query.error ? (
+        <div role="alert" className="space-y-2 text-sm">
+          <p>No se pudieron cargar las bases. Puedes continuar definiendo tu propia plantilla.</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={query.isFetching || disabled}
+            onClick={() => void query.refetch()}
+          >
+            Reintentar bases
+          </Button>
+        </div>
+      ) : !query.data?.length ? (
+        <p className="text-sm text-muted-foreground">
+          No hay bases disponibles. Puedes definir la tuya abajo.
+        </p>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          {query.data.map((base) => (
+            <button
+              type="button"
+              key={base.key}
+              disabled={disabled}
+              aria-pressed={selectedKey === base.key}
+              onClick={() => onChoose(base)}
+              className={`relative flex min-w-0 items-start gap-3 rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${selectedKey === base.key ? 'border-primary bg-primary/10' : 'border-input bg-control hover:border-primary/50'}`}
+            >
+              <span className="mt-0.5 shrink-0 text-brand-cyan">
+                <TemplateCompositionSymbol composition={base.design.composition} />
+              </span>
+              <span className="min-w-0 space-y-1">
+                <span className="block text-[13px] font-medium">{base.name}</span>
+                <span className="block text-[11px] text-muted-foreground">
+                  {FORMAT_LABELS[base.design.format]}
+                </span>
+                <span className="block text-[11px] leading-relaxed text-muted-foreground">
+                  {base.intendedFor}
+                </span>
+              </span>
+              {selectedKey === base.key && (
+                <Check
+                  aria-hidden="true"
+                  className="absolute top-1 right-1 size-3 text-brand-cyan"
+                />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </FormSection>
   );
 }

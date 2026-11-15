@@ -1,123 +1,82 @@
 'use client';
-import { TemplateVisualSettings } from './template-visual-settings';
-import { TemplateDesignPreview } from './template-design-preview';
-import { StyleReferencesField } from './style-references-field';
 import { toast } from 'sonner';
-import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import Link from 'next/link';
-import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useTemplate } from '../hooks/use-template';
 import { templateService } from '../services/template.service';
 import type { StoredTemplate } from '../types/stored-template.types';
-import { defaultTemplateDesign } from '../types/template-design';
+import type { TemplateDesign } from '../types/template-design';
+import { TemplateForm } from './template-form';
+
 export function EditTemplateView({ templateId }: { templateId: string }) {
   const query = useTemplate(templateId);
-  if (query.isLoading) return <p role="status">Cargando plantilla…</p>;
+  if (query.isPending)
+    return (
+      <div role="status" aria-label="Cargando plantilla">
+        <Skeleton className="h-12 w-64" />
+        <Skeleton className="mt-6 h-[500px] w-full rounded-2xl" />
+      </div>
+    );
   if (query.error || !query.data)
     return (
-      <div role="alert">
+      <div role="alert" className="space-y-3 rounded-2xl border bg-card p-6">
         <p>{query.error?.message ?? 'Plantilla no encontrada.'}</p>
-        <Button onClick={() => void query.refetch()}>Reintentar</Button>
+        <Button variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}>
+          Reintentar
+        </Button>
       </div>
     );
   return <TemplateProfile key={query.data.currentRevision.id} template={query.data} />;
 }
+
 function TemplateProfile({ template }: { template: StoredTemplate }) {
   const client = useQueryClient();
-  const [name, setName] = useState(template.name);
-  const [design, setDesign] = useState(template.currentRevision.design ?? defaultTemplateDesign());
-  const [invalid, setInvalid] = useState(false);
   const mutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (input: { name: string; design: TemplateDesign }) =>
       templateService.update(template.id, {
-        name: name.trim(),
+        ...input,
         expectedRevisionId: template.currentRevision.id,
-        design,
       }),
     retry: false,
-    onSuccess: async () => {
-      toast.success('Revisión guardada correctamente.');
+    onSuccess: async (updated) => {
+      client.setQueryData(['templates', updated.id], updated);
       await client.invalidateQueries({ queryKey: ['templates'] });
+      toast.success('Revisión guardada correctamente.');
     },
   });
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setInvalid(!name.trim());
-    if (!name.trim() || mutation.isPending) return;
+  async function submit(input: { name: string; design: TemplateDesign }) {
     try {
-      await mutation.mutateAsync();
+      await mutation.mutateAsync(input);
     } catch {
-      /* El error se muestra abajo, sin detalles internos. */
+      /* El error se muestra en el formulario. */
     }
   }
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Editar plantilla"
-        description={`Revisión ${template.currentRevision.number}`}
-      />
-      <div className="grid items-start gap-6 xl:grid-cols-[420px_1fr]">
-        <form onSubmit={submit} className="space-y-5 rounded-xl border bg-card p-6">
-          <h2 className="text-lg font-semibold">Información de la plantilla</h2>
-          <Label htmlFor="template-name">Nombre</Label>
-          <Input
-            id="template-name"
-            value={name}
-            required
-            maxLength={200}
-            disabled={mutation.isPending}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <p className="text-sm">
-            Guardar crea una nueva revisión. Las campañas existentes conservan su revisión anterior.
-          </p>
-          <TemplateVisualSettings
-            design={design}
-            onChange={setDesign}
-            disabled={mutation.isPending}
-          />
-          {invalid && <p role="alert">Introduce un nombre.</p>}
-          {mutation.error && (
-            <div role="alert">
-              <p>{mutation.error.message}</p>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() =>
-                  void client.invalidateQueries({ queryKey: ['templates', template.id] })
-                }
-              >
-                Recargar revisión
-              </Button>
-            </div>
-          )}
-          <Button
-            type="submit"
-            disabled={
-              mutation.isPending ||
-              (name.trim() === template.name &&
-                JSON.stringify(design) ===
-                  JSON.stringify(template.currentRevision.design ?? defaultTemplateDesign()))
-            }
+    <TemplateForm
+      template={template}
+      pending={mutation.isPending}
+      onSubmit={submit}
+      error={
+        mutation.error ? (
+          <div
+            role="alert"
+            className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
           >
-            {mutation.isPending ? 'Guardando…' : 'Guardar revisión'}
-          </Button>
-        </form>
-        <aside className="space-y-5 rounded-xl border bg-card p-6">
-          <h2 className="font-semibold">Vista previa</h2>
-          <TemplateDesignPreview design={design} />
-        </aside>
-      </div>
-      <div className="xl:max-w-[420px]">
-        <StyleReferencesField template={template} />
-      </div>
-      <Button variant="outline" nativeButton={false} render={<Link href="/templates" />}>
-        Volver a plantillas
-      </Button>
-    </div>
+            <p>{mutation.error.message}</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                void client.invalidateQueries({ queryKey: ['templates', template.id] })
+              }
+            >
+              Recargar revisión
+            </Button>
+          </div>
+        ) : undefined
+      }
+    />
   );
 }
