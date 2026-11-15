@@ -1,15 +1,8 @@
 import { OpenAICopyGenerator } from '#app/modules/content-generation/infrastructure/openai-copy-generator';
 import { domainFixture } from '../../../support/campaign-fakes.js';
-import { copyChoices } from '#app/modules/content-generation/application/copy-policy';
+import { validCopy } from '../../../support/generation-fakes.js';
 const input = domainFixture().snapshot.data;
-const options = copyChoices(input);
-const copy = {
-  headline: options.headline[0],
-  caption: options.caption[0],
-  cta: options.cta[0],
-  hashtags: [],
-  imagePrompt: options.imagePrompt[0],
-};
+const copy = validCopy(input);
 const config = { apiKey: 'test-secret', model: 'test-model', timeoutMs: 100 };
 const response = () =>
   new Response(
@@ -39,20 +32,28 @@ describe('OpenAICopyGenerator', () => {
     expect(JSON.stringify(logs.log.mock.calls)).not.toContain('test-secret');
     expect(JSON.stringify(logs.log.mock.calls)).not.toContain(input.product.description);
   });
-  it('provides canonical prices alongside minor units for GPT-5-mini', async () => {
+  it('sends formatted prices and local dates, without IDs or minor units', async () => {
     const http = vi.fn<typeof fetch>().mockResolvedValue(response());
     await new OpenAICopyGenerator(config, http).generate(input);
     const sent = JSON.parse(http.mock.calls[0]![1]!.body as string);
     const facts = JSON.parse(sent.input);
-    expect(facts.requiredPriceTexts).toEqual(['PEN 20.00', 'PEN 15.00']);
+    expect(facts.requiredPriceTexts).toEqual(['S/ 20.00', 'S/ 15.00']);
+    expect(facts.validity).toBe('Hasta el 19 de setiembre');
     expect(facts.cta).toBe(input.cta);
-    expect(facts.product.regularPrice.amountMinor).toBe(2000);
-    expect(facts.promotion.amountMinor).toBe(1500);
+    expect(sent.input).not.toContain('amountMinor');
+    expect(sent.input).not.toContain(input.product.id);
+    expect(Object.keys(sent.text.format.schema.properties)).toEqual([
+      'headline',
+      'subheadline',
+      'caption',
+      'cta',
+      'hashtags',
+    ]);
     expect(sent.text.format.schema.properties.caption.pattern).toBeUndefined();
   });
   it('does not require a nonexistent promotion', async () => {
     const snapshot = { ...input, promotion: null };
-    const content = { ...copy, caption: `${input.product.name}: PEN 20.00.` };
+    const content = { ...copy, caption: `${input.product.name}: S/ 20.00.` };
     const http = vi.fn<typeof fetch>().mockResolvedValue(
       Response.json({
         status: 'completed',
@@ -63,7 +64,7 @@ describe('OpenAICopyGenerator', () => {
     );
     await new OpenAICopyGenerator(config, http).generate(snapshot);
     const sent = JSON.parse(http.mock.calls[0]![1]!.body as string);
-    expect(JSON.parse(sent.input).requiredPriceTexts).toEqual(['PEN 20.00']);
+    expect(JSON.parse(sent.input).requiredPriceTexts).toEqual(['S/ 20.00']);
   });
   it('still rejects wrong prices instead of silently replacing provider values', async () => {
     const http = vi.fn<typeof fetch>().mockResolvedValue(
@@ -77,7 +78,7 @@ describe('OpenAICopyGenerator', () => {
                 type: 'output_text',
                 text: JSON.stringify({
                   ...copy,
-                  caption: `${input.product.name}: PEN 2000.00 y PEN 1500.00`,
+                  caption: `${input.product.name}: S/ 2000.00 y S/ 1500.00`,
                 }),
               },
             ],

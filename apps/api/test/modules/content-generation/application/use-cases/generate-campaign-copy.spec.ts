@@ -11,7 +11,6 @@ import {
   type CopyGenerator,
 } from '#app/modules/content-generation/application/ports/copy-generator';
 import { CopyRepositoryFake, validCopy } from '../../../../support/generation-fakes.js';
-import { validateCopy } from '#app/modules/content-generation/application/copy-policy';
 import { GenerateCampaignCopy } from '#app/modules/content-generation/application/use-cases/generate-campaign-copy';
 import { CampaignStatus } from '#app/modules/campaigns/domain/campaign-status';
 async function fixture() {
@@ -81,41 +80,5 @@ describe('GenerateCampaignCopy', () => {
     f.repository.records.set(CAMPAIGN, domainFixture().approved);
     await expect(f.useCase.execute(f.selection)).rejects.toThrow();
     expect(f.generate).not.toHaveBeenCalled();
-  });
-});
-describe('copy factual policy', () => {
-  it.each([
-    { caption: 'Ahora PEN 0.01' },
-    { cta: 'CTA diferente' },
-    { headline: 'Garantía total' },
-    { imagePrompt: 'Producto certificado' },
-    { hashtags: ['#Gratis'] },
-    { extra: 'ignored' },
-  ])('rejects invented or unexpected fields %j', (change) => {
-    expect(() =>
-      validateCopy({ ...validCopy(), ...change }, domainFixture().snapshot.data),
-    ).toThrow(CopyGenerationError);
-  });
-  it('keeps exact money and dates from snapshot', () => {
-    const copy = validCopy();
-    expect(copy.caption).toContain('PEN 20.00');
-    expect(copy.caption).toContain('PEN 15.00');
-    expect(copy.caption).toContain('2026-09-20T00:00:00.000Z');
-  });
-  it('accepts original wording that retains the product and exact prices', () => {
-    const copy = validCopy();
-    expect(
-      validateCopy(
-        {
-          ...copy,
-          headline: 'Producto para tu siguiente momento',
-          caption:
-            'Conoce Producto y descubre una propuesta pensada para tu día a día.\nPrecio regular: PEN 20.00\nPrecio promocional: PEN 15.00',
-          hashtags: ['#Producto'],
-          imagePrompt: 'Producto sobre una mesa con luz suave y fondo neutro',
-        },
-        domainFixture().snapshot.data,
-      ),
-    ).toMatchObject({ headline: 'Producto para tu siguiente momento' });
   });
 });

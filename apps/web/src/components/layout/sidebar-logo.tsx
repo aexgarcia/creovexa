@@ -1,19 +1,22 @@
-import { Sparkles } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
-
-export function SidebarLogo() {
+export function SidebarLogo({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <div className="flex h-16 items-center border-b px-5">
-      <Link href="/dashboard" className="flex items-center gap-3">
-        <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-          <Sparkles className="size-5" />
-        </div>
-
-        <div className="leading-tight">
-          <p className="font-semibold tracking-tight">Creovexa</p>
-
-          <p className="text-xs text-muted-foreground">AI Marketing</p>
-        </div>
+    <div className="flex h-16 shrink-0 items-center border-b border-sidebar-border px-[22px]">
+      <Link
+        href="/dashboard"
+        onClick={onNavigate}
+        aria-label="Creovexa, ir al dashboard"
+        className="rounded-lg"
+      >
+        <Image
+          src="/brand/creovexa.png"
+          alt="Creovexa"
+          width={480}
+          height={119}
+          priority
+          className="h-auto w-[156px]"
+        />
       </Link>
     </div>
   );

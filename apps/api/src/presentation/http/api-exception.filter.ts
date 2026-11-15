@@ -1,4 +1,7 @@
-import { CopyGenerationError } from '#app/modules/content-generation/application/ports/copy-generator';
+import {
+  CopyGenerationError,
+  InvalidFlyerTextError,
+} from '#app/modules/content-generation/application/ports/copy-generator';
 import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
 import { InvalidFlyerDesignError } from '#app/domain/value-objects/flyer-design';
 import { ProductImageError } from '#app/modules/products/application/errors/product-image.error';
@@ -170,6 +173,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
       message = error.message;
     } else if (
       error instanceof InvalidOrganizationProfileError ||
+      error instanceof InvalidFlyerTextError ||
       error instanceof InvalidFlyerDesignError ||
       error instanceof InvalidEntityIdError ||
       error instanceof InvalidCampaignError ||

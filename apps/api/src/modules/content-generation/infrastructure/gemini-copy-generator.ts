@@ -2,7 +2,13 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { GeminiCopyConfig } from '#app/config/copy-generation.config';
 import type { GenerationSnapshotData } from '#app/modules/campaigns/contract';
 import { CopyGenerationError, type CopyGenerator } from '../application/ports/copy-generator.js';
-import { copyChoices, validateCopy } from '../application/copy-policy.js';
+import {
+  COPY_INSTRUCTIONS,
+  HEADLINE_MAX_LENGTH,
+  SUBHEADLINE_MAX_LENGTH,
+  copyBrief,
+  validateCopy,
+} from '../application/copy-policy.js';
 interface CopyLogger {
   log(event: { event: string; provider: string; attempt: number; code?: string }): void;
 }
@@ -59,19 +65,28 @@ export class GeminiCopyGenerator implements CopyGenerator {
   }
   async generate(input: GenerationSnapshotData) {
     this.assertAvailable();
-    const choices = copyChoices(input);
     const properties = {
-      headline: { type: 'string' },
-      caption: { type: 'string' },
-      cta: { type: 'string', enum: [choices.cta[0]] },
+      headline: {
+        type: 'string',
+        description: `Main flyer text, at most ${HEADLINE_MAX_LENGTH} characters`,
+      },
+      subheadline: {
+        type: 'string',
+        description: `Supporting flyer line, at most ${SUBHEADLINE_MAX_LENGTH} characters, or an empty string`,
+      },
+      caption: {
+        type: 'string',
+        description:
+          'Post caption. Include product.name exactly and every requiredPriceTexts entry verbatim.',
+      },
+      cta: { type: 'string', enum: [input.cta] },
       hashtags: { type: 'array', items: { type: 'string' }, maxItems: 5 },
-      imagePrompt: { type: 'string' },
     };
     const body = JSON.stringify({
       systemInstruction: {
         parts: [
           {
-            text: 'Write original Spanish marketing copy from the supplied facts. Mention the exact product name and every price in the caption. You may naturally rephrase the description and dates, but never invent benefits, prices, dates or conditions. Preserve the CTA exactly. Use only neutral or product-related hashtags; never claim free shipping, discounts, guarantees or certification.',
+            text: COPY_INSTRUCTIONS,
           },
         ],
       },
@@ -80,13 +95,7 @@ export class GeminiCopyGenerator implements CopyGenerator {
           role: 'user',
           parts: [
             {
-              text: JSON.stringify({
-                product: input.product,
-                business: input.organization.name,
-                brandTone: input.organization.brandTone,
-                promotion: input.promotion,
-                additionalInstructions: input.instructions,
-              }),
+              text: JSON.stringify(copyBrief(input)),
             },
           ],
         },

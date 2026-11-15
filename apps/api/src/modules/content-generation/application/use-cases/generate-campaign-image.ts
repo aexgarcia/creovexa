@@ -108,8 +108,7 @@ export class GenerateCampaignImage {
         ...selection,
         operationId: lease.token,
         referenceImage,
-        imagePrompt: copy.imagePrompt,
-        copy: { ...visualCopy, hashtags: [...visualCopy.hashtags] },
+        headline: copy.headline,
         snapshot,
       });
       assertArtifact(base);

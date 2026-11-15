@@ -15,6 +15,7 @@ import {
 import type { GenerateImageInput } from '#app/modules/content-generation/application/ports/image-generator';
 import { LocalImageArtifacts } from '#app/modules/content-generation/infrastructure/local-image-artifacts';
 import { GeminiImageGenerator } from '#app/modules/content-generation/infrastructure/gemini-image-generator';
+import { baseImageContext } from '#app/modules/content-generation/application/base-image-context';
 
 describe('GeminiImageGenerator', () => {
   let directory: string;
@@ -54,13 +55,7 @@ describe('GeminiImageGenerator', () => {
         width: 16,
         height: 16,
       },
-      imagePrompt: 'Composición de producto con luz suave, sin textos.',
-      copy: {
-        headline: 'Descubre el producto',
-        caption: 'Datos exactos de la campaña.',
-        cta: snapshot.cta,
-        hashtags: ['#Producto'],
-      },
+      headline: 'Descubre el producto',
       snapshot,
     };
   });
@@ -105,11 +100,10 @@ describe('GeminiImageGenerator', () => {
       mimeType: 'image/png',
       data: source.toString('base64'),
     });
-    expect(JSON.parse(body.contents[0].parts[0].text)).toEqual({
-      imagePrompt: input.imagePrompt,
-      copy: input.copy,
-      snapshot: input.snapshot,
-    });
+    expect(JSON.parse(body.contents[0].parts[0].text)).toEqual(
+      baseImageContext(input.snapshot, input.headline),
+    );
+    expect(body.contents[0].parts[0].text).not.toContain(input.snapshot.product.id);
     expect(body.generationConfig).toEqual({
       candidateCount: 1,
       responseModalities: ['TEXT', 'IMAGE'],
@@ -119,7 +113,6 @@ describe('GeminiImageGenerator', () => {
     expect(body.systemInstruction.parts[0].text).toContain('Do not draw text');
     const logs = JSON.stringify(f.logger.log.mock.calls);
     expect(logs).not.toContain(config.apiKey);
-    expect(logs).not.toContain(input.imagePrompt);
     expect(logs).not.toContain(source.toString('base64'));
     expect(logs).not.toContain(input.snapshot.product.description);
   });
@@ -323,17 +316,6 @@ describe('GeminiImageGenerator', () => {
                 },
               };
       await expect(f.adapter.generate({ ...input, ...change })).rejects.toMatchObject({
-        code: 'INVALID_OUTPUT',
-      });
-      expect(f.http).not.toHaveBeenCalled();
-    },
-  );
-
-  it.each(['', 'x'.repeat(4001)])(
-    'rejects invalid prompt length before networking',
-    async (imagePrompt) => {
-      const f = fixture();
-      await expect(f.adapter.generate({ ...input, imagePrompt })).rejects.toMatchObject({
         code: 'INVALID_OUTPUT',
       });
       expect(f.http).not.toHaveBeenCalled();

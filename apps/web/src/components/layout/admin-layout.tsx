@@ -9,15 +9,15 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   return (
-    <div className="min-h-screen bg-muted/30">
+    <div className="min-h-screen bg-background">
       <div className="flex">
         <AdminSidebar />
 
-        <div className="flex min-h-screen flex-1 flex-col">
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           <AdminHeader />
 
-          <main className="flex-1 p-4 md:p-6 lg:p-8">
-            <div className="mx-auto w-full max-w-[1600px]">{children}</div>
+          <main id="main-content" className="flex-1 px-4 pt-6 pb-16 md:px-6 lg:px-10 lg:pt-8">
+            <div className="mx-auto w-full max-w-[1200px]">{children}</div>
           </main>
         </div>
       </div>

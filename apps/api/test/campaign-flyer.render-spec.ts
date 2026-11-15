@@ -176,11 +176,11 @@ describe('Flyer composition with real Chromium', () => {
     for (const fact of [
       'Mouse gamer 502',
       'Creovexa Store',
-      'PEN 150.00',
-      'PEN 120.00',
+      'S/ 150.00',
+      'S/ 120.00',
       'Obtenlo ya',
-      '30 de setiembre de 2026',
-      '1 de octubre de 2026',
+      'Del 30 de setiembre',
+      'al 1 de octubre',
     ])
       expect(observed.observation.text).toContain(fact);
     expect(observed.observation.images).toBe(2);
@@ -230,7 +230,7 @@ describe('Flyer composition with real Chromium', () => {
     expect(observed.observation.layout).toContain('product-focus');
     expect(observed.observation.accent).toBe('rgb(199, 67, 53)');
     expect(observed.observation.heroWidth).toBe(952);
-    expect(observed.observation.text).toContain('PEN 120.00');
+    expect(observed.observation.text).toContain('S/ 120.00');
     expect(observed.observation.overflow).toBe(false);
     await mkdir('.local', { recursive: true });
     await writeFile(
@@ -264,10 +264,10 @@ describe('Flyer composition with real Chromium', () => {
       observed.launch,
     ).render(f.input);
     expect(observed.observation.images).toBe(0);
-    for (const hidden of ['PEN 150.00', 'PEN 120.00', f.input.copy.headline, f.input.copy.cta])
+    for (const hidden of ['S/ 150.00', 'S/ 120.00', f.input.copy.headline, f.input.copy.cta])
       expect(observed.observation.text).not.toContain(hidden);
     expect(observed.observation.text).toContain('Mouse gamer 502');
-    expect(observed.observation.text).not.toContain('30 de setiembre de 2026');
+    expect(observed.observation.text).not.toContain('Del 30 de setiembre');
   });
   it('keeps the regular price unstruck when the promotional price is hidden', async () => {
     const f = fixture();
@@ -285,8 +285,8 @@ describe('Flyer composition with real Chromium', () => {
       { timeoutMs: 20000 },
       observed.launch,
     ).render(f.input);
-    expect(observed.observation.text).toContain('PEN 150.00');
-    expect(observed.observation.text).not.toContain('PEN 120.00');
+    expect(observed.observation.text).toContain('S/ 150.00');
+    expect(observed.observation.text).not.toContain('S/ 120.00');
     expect(observed.observation.regularDecoration).toBe('none');
   });
 
@@ -300,8 +300,8 @@ describe('Flyer composition with real Chromium', () => {
       { timeoutMs: 20000 },
       observed.launch,
     ).render(f.input);
-    expect(observed.observation.text).toContain('PEN 150.00');
-    expect(observed.observation.text).not.toContain('PEN 120.00');
+    expect(observed.observation.text).toContain('S/ 150.00');
+    expect(observed.observation.text).not.toContain('S/ 120.00');
     expect(observed.observation.text).not.toContain('Promoción');
     expect(observed.observation.text).not.toContain('setiembre');
   });

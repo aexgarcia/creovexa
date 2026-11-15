@@ -1,21 +1,26 @@
 import type {
   CampaignCopyRepository,
+  CopyEditResult,
   CopyLease,
   CopySelection,
 } from '#app/modules/content-generation/application/ports/campaign-copy-repository';
 import type { CampaignCopy } from '#app/modules/content-generation/application/ports/copy-generator';
-import { copyChoices } from '#app/modules/content-generation/application/copy-policy';
+import {
+  copyBrief,
+  type FlyerTexts,
+} from '#app/modules/content-generation/application/copy-policy';
 import type { GenerationJobState } from '#app/modules/content-generation/application/generation-job';
 import { domainFixture } from './campaign-fakes.js';
 
+// Copy que la política acepta: nombre del producto y precios exactos en el caption.
 export function validCopy(input = domainFixture().snapshot.data): CampaignCopy {
-  const options = copyChoices(input);
+  const brief = copyBrief(input);
   return {
-    headline: options.headline[0]!,
-    caption: options.caption[0]!,
-    cta: options.cta[0]!,
+    headline: input.product.name,
+    subheadline: null,
+    caption: [input.product.name, ...brief.requiredPriceTexts].join('\n'),
+    cta: input.cta,
     hashtags: [],
-    imagePrompt: options.imagePrompt[0]!,
   };
 }
 
@@ -26,6 +31,8 @@ export class CopyRepositoryFake implements CampaignCopyRepository {
   queued = false;
   failure: string | null = null;
   releases = 0;
+  // Lo que responde editFlyerTexts cuando no corresponde editar.
+  editResult: CopyEditResult = 'UPDATED';
   find(_selection: CopySelection) {
     return Promise.resolve(this.saved);
   }
@@ -59,6 +66,12 @@ export class CopyRepositoryFake implements CampaignCopyRepository {
       this.failure = null;
     }
     return Promise.resolve();
+  }
+  editFlyerTexts(_selection: CopySelection, texts: FlyerTexts): Promise<CopyEditResult> {
+    if (this.editResult !== 'UPDATED') return Promise.resolve(this.editResult);
+    if (!this.saved) return Promise.resolve('COPY_NOT_READY');
+    this.saved = { ...this.saved, ...texts };
+    return Promise.resolve('UPDATED');
   }
   fail(_selection: CopySelection, failureCode: string) {
     if (!this.saved) this.failure = failureCode;

@@ -12,14 +12,15 @@ import { cn } from '@/lib/utils';
 interface NavGroupProps {
   title: string;
   items: NavigationItem[];
+  onNavigate?: () => void;
 }
 
-function NavGroup({ title, items }: NavGroupProps) {
+function NavGroup({ title, items, onNavigate }: NavGroupProps) {
   const pathname = usePathname();
 
   return (
     <div className="space-y-1">
-      <p className="px-3 pb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <p className="px-3 pt-4 pb-2 text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
         {title}
       </p>
 
@@ -32,14 +33,22 @@ function NavGroup({ title, items }: NavGroupProps) {
           <Link
             key={item.href}
             href={item.href}
+            aria-current={active ? 'page' : undefined}
+            onClick={onNavigate}
             className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+              'group flex h-10 items-center gap-3 rounded-[10px] border px-3 text-sm transition-colors',
               active
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                ? 'border-primary/35 bg-[linear-gradient(90deg,rgba(47,91,245,.22),rgba(107,40,235,.06))] font-medium text-foreground'
+                : 'border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-foreground',
             )}
           >
-            <Icon className="size-4 shrink-0" />
+            <Icon
+              aria-hidden="true"
+              className={cn(
+                'size-[18px] shrink-0',
+                active ? 'text-brand-cyan' : 'text-muted-foreground group-hover:text-foreground',
+              )}
+            />
 
             <span>{item.title}</span>
           </Link>
@@ -49,12 +58,12 @@ function NavGroup({ title, items }: NavGroupProps) {
   );
 }
 
-export function SidebarNav() {
+export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <nav className="flex flex-col gap-6">
-      <NavGroup title="Gestión" items={dashboardNavigation} />
+    <nav aria-label="Secciones" className="flex flex-col gap-2">
+      <NavGroup title="Gestión" items={dashboardNavigation} onNavigate={onNavigate} />
 
-      <NavGroup title="Sistema" items={secondaryNavigation} />
+      <NavGroup title="Sistema" items={secondaryNavigation} onNavigate={onNavigate} />
     </nav>
   );
 }

@@ -55,6 +55,7 @@ import {
 } from './application/use-cases/generate-campaign-copy.js';
 import { GenerateCampaignImage } from './application/use-cases/generate-campaign-image.js';
 import { RequestCampaignCopy } from './application/use-cases/request-campaign-copy.js';
+import { UpdateCampaignCopy } from './application/use-cases/update-campaign-copy.js';
 import {
   GetCampaignImage,
   RequestCampaignImage,
@@ -124,6 +125,15 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
         copies: PrismaCampaignCopyRepository,
         clock: Clock,
       ) => new GetCampaignCopy(generations, copies, clock),
+    },
+    {
+      provide: UpdateCampaignCopy,
+      inject: [CAMPAIGN_GENERATIONS, PrismaCampaignCopyRepository, CLOCK],
+      useFactory: (
+        generations: CampaignGenerations,
+        copies: PrismaCampaignCopyRepository,
+        clock: Clock,
+      ) => new UpdateCampaignCopy(generations, copies, clock),
     },
     {
       provide: RequestCampaignCopy,

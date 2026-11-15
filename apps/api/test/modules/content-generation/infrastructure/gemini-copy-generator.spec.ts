@@ -1,15 +1,8 @@
 import { GeminiCopyGenerator } from '#app/modules/content-generation/infrastructure/gemini-copy-generator';
 import { domainFixture } from '../../../support/campaign-fakes.js';
-import { copyChoices } from '#app/modules/content-generation/application/copy-policy';
+import { validCopy } from '../../../support/generation-fakes.js';
 const input = domainFixture().snapshot.data;
-const choices = copyChoices(input);
-const copy = {
-  headline: choices.headline[0],
-  caption: choices.caption[0],
-  cta: choices.cta[0],
-  hashtags: [],
-  imagePrompt: choices.imagePrompt[0],
-};
+const copy = validCopy(input);
 const config = { apiKey: 'test-gemini-secret', model: 'gemini-test', timeoutMs: 100 };
 const envelope = (text = JSON.stringify(copy)) => ({
   candidates: [{ finishReason: 'STOP', content: { parts: [{ text }] } }],

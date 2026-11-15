@@ -56,8 +56,6 @@ export async function checkImagePreconditions(
   if (!copy) throw new CampaignImageError('COPY_REQUIRED');
   // El copy se validó y congeló en la fase 5. No se reinterpreta con una política de copy más nueva.
   if (copy.cta !== generation.snapshot.cta) throw new CampaignImageError('INVALID_OUTPUT');
-  if (typeof copy.imagePrompt !== 'string' || !copy.imagePrompt.trim())
-    throw new CampaignImageError('INVALID_OUTPUT');
   const snapshot = generation.snapshot;
   if (snapshot.product.imageAssetIds.length === 0)
     throw new CampaignImageError('PRODUCT_IMAGE_REQUIRED');

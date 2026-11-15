@@ -47,7 +47,7 @@ test('requesting copy returns the pending job without waiting for the provider',
   };
   assert.deepEqual(await campaignCopyService.generate('campaign'), data);
 });
-test('copy status preserves the generation identity, the failure and the image prompt', async () => {
+test('copy status preserves the generation identity, the failure and the flyer texts', async () => {
   for (const data of [
     {
       generationId: 'generation',
@@ -55,10 +55,10 @@ test('copy status preserves the generation identity, the failure and the image p
       failureCode: null,
       copy: {
         headline: 'Producto',
-        caption: 'PEN 10.00',
+        subheadline: 'Hecho para ti',
+        caption: 'S/ 10.00',
         cta: 'Comprar',
         hashtags: [],
-        imagePrompt: 'Fondo neutro',
       },
     },
     { generationId: 'generation', status: 'FAILED', failureCode: 'TIMEOUT', copy: null },
@@ -66,4 +66,18 @@ test('copy status preserves the generation identity, the failure and the image p
     globalThis.fetch = async () => Response.json({ data });
     assert.deepEqual(await campaignCopyService.get('campaign'), data);
   }
+});
+test('correcting flyer texts sends one PATCH with the generation it applies to', async () => {
+  const input = { generationId: 'generation', headline: 'Tu café', subheadline: null };
+  const data = { generationId: 'generation', status: 'READY', failureCode: null, copy: null };
+  let calls = 0;
+  globalThis.fetch = async (url, options) => {
+    calls++;
+    assert.ok(url.endsWith('/campaigns/a%2Fb/copy'));
+    assert.equal(options.method, 'PATCH');
+    assert.deepEqual(JSON.parse(options.body), input);
+    return Response.json({ data });
+  };
+  assert.deepEqual(await campaignCopyService.updateFlyerTexts('a/b', input), data);
+  assert.equal(calls, 1);
 });

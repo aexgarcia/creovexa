@@ -48,7 +48,11 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
   const [loadedFlyer, setLoadedFlyer] = useState<string | null>(null);
   const [failedFlyer, setFailedFlyer] = useState<string | null>(null);
   const [previewAttempt, setPreviewAttempt] = useState(0);
-  const { query: copy, generate } = useCampaignCopy(
+  const {
+    query: copy,
+    generate,
+    updateTexts,
+  } = useCampaignCopy(
     campaign && !campaign.candidateContent ? campaign.id : '',
     campaign?.version ?? 0,
   );
@@ -325,7 +329,17 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
               )}
             </CardContent>
           </Card>
-          {!content && <CampaignCopyCard query={copy} />}
+          {!content && (
+            <CampaignCopyCard
+              query={copy}
+              updateTexts={updateTexts}
+              editable={
+                campaign.status === 'GENERATING' &&
+                !flyer.request.isPending &&
+                (!flyerJob || flyerJob.status === 'FAILED')
+              }
+            />
+          )}
           <div className="rounded-xl border bg-card p-6">
             <CampaignPublications key={campaign.id} campaignId={campaign.id} />
           </div>

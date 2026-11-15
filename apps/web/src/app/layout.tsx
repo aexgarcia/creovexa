@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 
-import { JetBrains_Mono, Inter } from 'next/font/google';
+import { Geist, Geist_Mono } from 'next/font/google';
 
 import { ThemeProvider } from '@/components/providers/theme-provider';
 import { cn } from '@/lib/utils';
@@ -9,14 +9,14 @@ import { QueryProvider } from '@/components/providers/query-provider';
 
 import { Toaster } from '@/components/ui/sonner';
 
-const inter = Inter({
+const geist = Geist({
   subsets: ['latin'],
-  variable: '--font-sans',
+  variable: '--font-geist-sans',
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const geistMono = Geist_Mono({
   subsets: ['latin'],
-  variable: '--font-mono',
+  variable: '--font-geist-mono',
 });
 
 export const metadata: Metadata = {
@@ -29,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
     <html
       lang="es"
       suppressHydrationWarning
-      className={cn('h-full antialiased', inter.variable, jetbrainsMono.variable, 'font-sans')}
+      className={cn('h-full antialiased', geist.variable, geistMono.variable, 'font-sans')}
     >
       <body className="flex min-h-full flex-col">
         <ThemeProvider>

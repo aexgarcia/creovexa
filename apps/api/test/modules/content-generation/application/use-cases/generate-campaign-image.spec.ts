@@ -22,7 +22,6 @@ import {
 } from '#app/modules/campaigns/domain/errors/campaign.errors';
 import { GenerationSnapshot } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
 import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
-import { copyChoices } from '#app/modules/content-generation/application/copy-policy';
 import type { CampaignCopyRepository } from '#app/modules/content-generation/application/ports/campaign-copy-repository';
 import type {
   CampaignImageRepository,
@@ -37,6 +36,7 @@ import type { TemplateRenderer } from '#app/modules/content-generation/applicati
 import { GenerateCampaignImage } from '#app/modules/content-generation/application/use-cases/generate-campaign-image';
 import type { CampaignGenerations } from '#app/modules/campaigns/contract';
 import type { GenerationJobState } from '#app/modules/content-generation/application/generation-job';
+import { validCopy } from '../../../../support/generation-fakes.js';
 
 // Adapters solo para pruebas: sin llamadas al proveedor, navegador, servicio de almacenamiento ni cableado de producción.
 class ImageRepositoryFake implements CampaignImageRepository {
@@ -120,13 +120,10 @@ function fixture() {
   const domain = domainFixture();
   const campaigns = new CampaignRepositoryFake();
   campaigns.records.set(CAMPAIGN, domain.generating);
-  const options = copyChoices(domain.snapshot.data);
   const savedCopy = {
-    headline: options.headline[0]!,
-    caption: options.caption[0]!,
-    cta: domain.generating.cta,
+    ...validCopy(domain.snapshot.data),
+    subheadline: 'Subtítulo del flyer',
     hashtags: ['#Producto'],
-    imagePrompt: options.imagePrompt[0]!,
   };
   const copies = {
     find: vi.fn<CampaignCopyRepository['find']>().mockResolvedValue(savedCopy),
@@ -136,6 +133,7 @@ function fixture() {
     state: vi.fn<CampaignCopyRepository['state']>(),
     queue: vi.fn<CampaignCopyRepository['queue']>(),
     fail: vi.fn<CampaignCopyRepository['fail']>(),
+    editFlyerTexts: vi.fn<CampaignCopyRepository['editFlyerTexts']>(),
   } satisfies CampaignCopyRepository;
   const referenceImage: ImageArtifact = {
     reference: 'test:product-photo',
@@ -238,20 +236,6 @@ describe('GenerateCampaignImage', () => {
     }
   });
 
-  it.each(['', '   '])(
-    'requires a visual AI prompt before starting work: %j',
-    async (imagePrompt) => {
-      const f = fixture();
-      f.copies.find.mockResolvedValue({ ...f.savedCopy, imagePrompt });
-      await expect(f.useCase.execute(f.selection)).rejects.toMatchObject({
-        code: 'INVALID_OUTPUT',
-      });
-      expect(f.productImages.load).not.toHaveBeenCalled();
-      expect(f.generator.generate).not.toHaveBeenCalled();
-      expect(f.images.active).toBeNull();
-    },
-  );
-
   it('composes the frozen commercial data and records only the stored final asset for approval', async () => {
     const f = fixture();
     const content = await f.useCase.execute(f.selection);
@@ -262,18 +246,11 @@ describe('GenerateCampaignImage', () => {
         imageAssetId: f.snapshot.data.product.imageAssetIds[0],
       }),
     );
-    const copy = {
-      headline: f.savedCopy.headline,
-      caption: f.savedCopy.caption,
-      cta: f.savedCopy.cta,
-      hashtags: f.savedCopy.hashtags,
-    };
     expect(f.generator.generate).toHaveBeenCalledWith({
       ...f.selection,
       operationId: f.productImages.load.mock.calls[0]![0].operationId,
       referenceImage: f.referenceImage,
-      imagePrompt: f.savedCopy.imagePrompt,
-      copy,
+      headline: f.savedCopy.headline,
       snapshot: f.snapshot.data,
     });
     expect(f.storage.store.mock.calls[0]![0].source).toBe(f.base);
@@ -511,8 +488,7 @@ describe('GenerateCampaignImage', () => {
   it('keeps renderer copy exact even if a visual adapter changes its input', async () => {
     const f = fixture();
     f.generator.generate.mockImplementation(async (input) => {
-      input.copy.cta = 'CTA inventado';
-      input.copy.hashtags.push('#Inventado');
+      input.headline = 'Titular inventado';
       return f.base;
     });
     const content = await f.useCase.execute(f.selection);

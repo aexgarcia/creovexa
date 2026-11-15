@@ -1,7 +1,7 @@
 import { COPY_GENERATOR } from '#app/modules/content-generation/application/ports/copy-generator';
 import { CAMPAIGN_FINAL_ASSETS } from '#app/modules/campaigns/application/ports/campaign-final-assets';
 import { finalAssetsFake } from './support/final-assets-fake.js';
-import { copyChoices } from '#app/modules/content-generation/application/copy-policy';
+import { validCopy } from './support/generation-fakes.js';
 import type { GenerationSnapshotData } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
 import { PrismaCampaignCopyRepository } from '#app/modules/content-generation/infrastructure/persistence/prisma/prisma-campaign-copy.repository';
 import { CAMPAIGN_GENERATIONS } from '#app/modules/campaigns/contract';
@@ -57,16 +57,7 @@ describe('Catalog HTTP with PostgreSQL', () => {
   const queue = new JobQueueFake();
   const copyGenerator = {
     assertAvailable() {},
-    generate: vi.fn(async (snapshot: GenerationSnapshotData) => {
-      const c = copyChoices(snapshot);
-      return {
-        headline: c.headline[0],
-        caption: c.caption[0],
-        cta: c.cta[0],
-        hashtags: [],
-        imagePrompt: c.imagePrompt[0],
-      };
-    }),
+    generate: vi.fn(async (snapshot: GenerationSnapshotData) => validCopy(snapshot)),
   };
   beforeAll(async () => {
     const schema = process.env.CREOVEXA_TEST_SCHEMA ?? '';
@@ -402,7 +393,7 @@ describe('Catalog HTTP with PostgreSQL', () => {
     await queue.drain();
     const result = await request(app.getHttpServer()).get(path).expect(200);
     expect(result.body.data.status).toBe('READY');
-    expect(result.body.data.copy.caption).toContain('PEN 10.00');
+    expect(result.body.data.copy.caption).toContain('S/ 10.00');
     const again = await request(app.getHttpServer()).post(path).expect(202);
     expect(again.body.data).toEqual(result.body.data);
     await queue.drain();
@@ -419,6 +410,87 @@ describe('Catalog HTTP with PostgreSQL', () => {
     await request(app.getHttpServer()).get(path).expect(404);
     await request(app.getHttpServer()).post(path).expect(404);
   });
+  it('lets the user correct the flyer texts until the image is requested', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/campaigns')
+      .send(await campaignInput())
+      .expect(201);
+    const path = '/campaigns/' + created.body.data.id + '/copy';
+    const { generationId } = (await request(app.getHttpServer()).post(path).expect(202)).body.data;
+    await queue.drain();
+    const before = (await request(app.getHttpServer()).get(path).expect(200)).body.data.copy;
+    const edited = await request(app.getHttpServer())
+      .patch(path)
+      .send({ generationId, headline: ' Tu producto  favorito ', subheadline: 'Hecho para ti' })
+      .expect(200);
+    expect(edited.body.data.copy).toEqual({
+      ...before,
+      headline: 'Tu producto favorito',
+      subheadline: 'Hecho para ti',
+    });
+    expect((await request(app.getHttpServer()).get(path).expect(200)).body.data.copy).toEqual(
+      edited.body.data.copy,
+    );
+    const invalid = await request(app.getHttpServer())
+      .patch(path)
+      .send({ generationId, headline: 'Envío gratis', subheadline: null })
+      .expect(400);
+    expect(invalid.body.error.code).toBe('INVALID_INPUT');
+    const shape = await request(app.getHttpServer())
+      .patch(path)
+      .send({ generationId, headline: 'x'.repeat(46) })
+      .expect(400);
+    expect(shape.body.error.code).toBe('VALIDATION_ERROR');
+    const stale = await request(app.getHttpServer())
+      .patch(path)
+      .send({ generationId: randomUUID(), headline: 'Tu producto favorito', subheadline: null })
+      .expect(409);
+    expect(stale.body.error.code).toBe('STALE_GENERATION');
+    // Con la imagen pedida, corregir el texto ya no tendría efecto en el flyer.
+    await database.campaignImageJob.create({
+      data: {
+        organizationId: context.organizationId!,
+        campaignId: created.body.data.id,
+        generationId,
+        token: randomUUID(),
+        expectedVersion: 0n,
+        status: 'QUEUED',
+        expiresAt: NOW,
+      },
+    });
+    const late = await request(app.getHttpServer())
+      .patch(path)
+      .send({ generationId, headline: 'Otro titular', subheadline: null })
+      .expect(409);
+    expect(late.body.error.code).toBe('INVALID_CAMPAIGN_STATE');
+  });
+
+  it('reads copies stored before the subheadline existed', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/campaigns')
+      .send(await campaignInput())
+      .expect(201);
+    const path = '/campaigns/' + created.body.data.id + '/copy';
+    const { generationId } = (await request(app.getHttpServer()).post(path).expect(202)).body.data;
+    await queue.drain();
+    const legacy = {
+      headline: 'Antes',
+      caption: 'Producto de campaña PEN 20.00',
+      cta: 'Comprar',
+      hashtags: [],
+      imagePrompt: 'Escena',
+    };
+    await database.campaignCopy.update({ where: { generationId }, data: { content: legacy } });
+    const read = await request(app.getHttpServer()).get(path).expect(200);
+    expect(read.body.data.copy).toEqual({
+      headline: 'Antes',
+      subheadline: null,
+      caption: 'Producto de campaña PEN 20.00',
+      cta: 'Comprar',
+      hashtags: [],
+    });
+  });
+
   it('serializes copy leases, recovers expired work and fences stale completion', async () => {
     const created = await request(app.getHttpServer())
       .post('/campaigns')
@@ -449,14 +521,7 @@ describe('Catalog HTTP with PostgreSQL', () => {
       expiresAt: new Date(LATER.getTime() + 120000),
     };
     expect(await repo.claim(recovered)).toBe(true);
-    const c = copyChoices(campaign.generation!.snapshot);
-    const content = {
-      headline: c.headline[0]!,
-      caption: c.caption[0]!,
-      cta: c.cta[0]!,
-      hashtags: [],
-      imagePrompt: c.imagePrompt[0]!,
-    };
+    const content = validCopy(campaign.generation!.snapshot);
     await expect(repo.complete(first, content)).rejects.toMatchObject({ code: 'BUSY' });
     await repo.complete(recovered, content);
     await repo.release(first);

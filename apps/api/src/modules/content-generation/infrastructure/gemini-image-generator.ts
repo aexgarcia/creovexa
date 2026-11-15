@@ -8,6 +8,7 @@ import {
 import { CampaignImageError } from '#app/modules/campaigns/contract';
 import type { GenerateImageInput, ImageGenerator } from '../application/ports/image-generator.js';
 import type { ImageArtifact } from '../application/ports/image-artifact.js';
+import { baseImageContext } from '../application/base-image-context.js';
 import { LocalImageArtifacts } from './local-image-artifacts.js';
 
 const MAX_BASE64_LENGTH = 4 * Math.ceil(MAX_IMAGE_BYTES / 3);
@@ -131,8 +132,6 @@ export class GeminiImageGenerator implements ImageGenerator {
     this.assertAvailable();
     const config = this.config!;
     try {
-      if (!input.imagePrompt.trim() || input.imagePrompt.length > 4000)
-        throw new CampaignImageError('INVALID_OUTPUT');
       if (input.snapshot.template.width !== 1080 || input.snapshot.template.height !== 1080)
         throw new CampaignImageError('UNSUPPORTED_DIMENSIONS');
       const reference = await this.artifacts.read({ ...input, source: input.referenceImage });
@@ -156,11 +155,7 @@ export class GeminiImageGenerator implements ImageGenerator {
             role: 'user',
             parts: [
               {
-                text: JSON.stringify({
-                  imagePrompt: input.imagePrompt,
-                  copy: input.copy,
-                  snapshot: input.snapshot,
-                }),
+                text: JSON.stringify(baseImageContext(input.snapshot, input.headline)),
               },
               {
                 inlineData: { mimeType: metadata.contentType, data: reference.toString('base64') },

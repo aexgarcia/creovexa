@@ -1,5 +1,6 @@
 import type { RenderCampaignTemplateInput } from '../application/ports/template-renderer.js';
 import { FlyerDesign, type FlyerDesignData } from '#app/domain/value-objects/flyer-design';
+import { formatPrice, formatValidity } from '../application/display-texts.js';
 
 function escape(value: string): string {
   return value.replace(
@@ -9,18 +10,9 @@ function escape(value: string): string {
   );
 }
 
+// Mismo formato que el copy, para que el caption y el flyer digan lo mismo.
 function money(price: { amountMinor: number; currency: string }): string {
-  const minor = BigInt(price.amountMinor);
-  return `${escape(price.currency)} ${minor / 100n}.${(minor % 100n).toString().padStart(2, '0')}`;
-}
-
-function date(value: string): string {
-  return new Intl.DateTimeFormat('es-PE', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'America/Lima',
-  }).format(new Date(value));
+  return escape(formatPrice(price));
 }
 
 // Diseño cuadrado de confianza v1. Sin HTML ni CSS del cliente, fuentes externas, URLs ni valores ejecutables.
@@ -53,13 +45,8 @@ export function campaignFlyerHtml(
     (settings.showRegularPrice
       ? `<div class="${showOffer ? 'regular' : 'price'}" data-fit>${showOffer ? 'Precio regular: ' : ''}${money(snapshot.product.regularPrice)}</div>`
       : '') + (showOffer ? `<div class="price" data-fit>${money(promotion!)}</div>` : '');
-  const dates = !elements.validity
-    ? ''
-    : promotion?.endsAt
-      ? `${promotion.startsAt ? `Del ${escape(date(promotion.startsAt))} al ` : 'Hasta el '}${escape(date(promotion.endsAt))}`
-      : promotion?.startsAt
-        ? `Desde el ${escape(date(promotion.startsAt))}`
-        : '';
+  const validity = formatValidity(promotion, snapshot.organization.region);
+  const dates = elements.validity && validity ? escape(validity) : '';
   return `<!doctype html><html lang="es"><head><meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'none'; base-uri 'none'; form-action 'none'; connect-src 'none'; frame-src 'none'">
 <style>

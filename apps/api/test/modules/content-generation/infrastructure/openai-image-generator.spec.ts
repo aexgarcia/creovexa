@@ -13,6 +13,7 @@ import {
 import type { GenerateImageInput } from '#app/modules/content-generation/application/ports/image-generator';
 import { LocalImageArtifacts } from '#app/modules/content-generation/infrastructure/local-image-artifacts';
 import { OpenAIImageGenerator } from '#app/modules/content-generation/infrastructure/openai-image-generator';
+import { baseImageContext } from '#app/modules/content-generation/application/base-image-context';
 describe('OpenAIImageGenerator', () => {
   let directory: string;
   let artifacts: LocalImageArtifacts;
@@ -47,8 +48,7 @@ describe('OpenAIImageGenerator', () => {
     input = {
       ...scope,
       snapshot,
-      imagePrompt: 'Producto iluminado sin texto',
-      copy: { headline: 'Oferta', caption: 'Descripción', cta: snapshot.cta, hashtags: [] },
+      headline: 'Tu producto favorito',
       referenceImage: {
         reference: await artifacts.write(scope, source),
         contentType: 'image/png',
@@ -78,7 +78,11 @@ describe('OpenAIImageGenerator', () => {
       expect(body.get('response_format')).toBeNull();
       expect(body.getAll('image[]')).toHaveLength(1);
       expect(Buffer.from(await (body.get('image[]') as File).arrayBuffer())).toEqual(source);
-      expect(String(body.get('prompt'))).toContain(input.imagePrompt);
+      const prompt = String(body.get('prompt'));
+      expect(prompt).toContain(JSON.stringify(baseImageContext(input.snapshot, input.headline)));
+      // Sin IDs internos ni unidades menores.
+      expect(prompt).not.toContain(input.snapshot.product.id);
+      expect(prompt).not.toContain('amountMinor');
       return Response.json(envelope(generated));
     }) as unknown as typeof fetch;
     const result = await new OpenAIImageGenerator(config, artifacts, http).generate(input);

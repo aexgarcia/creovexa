@@ -5,9 +5,11 @@ import { prismaTransaction } from '#app/infrastructure/persistence/prisma/transa
 import type { GenerationJobState } from '../../../application/generation-job.js';
 import type {
   CampaignCopyRepository,
+  CopyEditResult,
   CopyLease,
   CopySelection,
 } from '../../../application/ports/campaign-copy-repository.js';
+import type { FlyerTexts } from '../../../application/copy-policy.js';
 import {
   CopyGenerationError,
   type CampaignCopy,
@@ -31,7 +33,7 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
         status: 'READY',
       },
     });
-    return row?.content ? (row.content as unknown as CampaignCopy) : null;
+    return row?.content ? readCopy(row.content) : null;
   }
   async claim(lease: CopyLease) {
     return this.client.$transaction(async (tx) => {
@@ -133,6 +135,38 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
       });
     });
   }
+  async editFlyerTexts(
+    selection: CopySelection,
+    texts: FlyerTexts,
+    now: Date,
+  ): Promise<CopyEditResult> {
+    return this.client.$transaction(async (tx) => {
+      // El mismo bloqueo que toma la reserva de la imagen: una corrección y el inicio de la
+      // imagen no se cruzan.
+      if (!(await this.generations.lock(selectionOf(selection), transactionContext(tx))))
+        throw new StaleGenerationResultError();
+      const image = await tx.campaignImageJob.findUnique({
+        where: { generationId: selection.generationId },
+      });
+      if (
+        image &&
+        (image.status === 'READY' ||
+          image.status === 'QUEUED' ||
+          (image.status === 'RUNNING' && image.expiresAt > now))
+      )
+        return 'IMAGE_STARTED';
+      const row = await tx.campaignCopy.findFirst({
+        where: { ...selectionOf(selection), status: 'READY' },
+      });
+      if (!row?.content) return 'COPY_NOT_READY';
+      const content: CampaignCopy = { ...readCopy(row.content), ...texts };
+      await tx.campaignCopy.update({
+        where: { generationId: selection.generationId },
+        data: { content: { ...content } },
+      });
+      return 'UPDATED';
+    });
+  }
   async release(lease: CopyLease) {
     await this.client.campaignCopy.updateMany({
       where: {
@@ -145,6 +179,18 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
       data: { status: 'FAILED' },
     });
   }
+}
+
+// Los copies guardados antes del subtítulo traen imagePrompt y no tienen subheadline.
+function readCopy(content: unknown): CampaignCopy {
+  const row = content as CampaignCopy & { imagePrompt?: string };
+  return {
+    headline: row.headline,
+    subheadline: row.subheadline ?? null,
+    caption: row.caption,
+    cta: row.cta,
+    hashtags: [...row.hashtags],
+  };
 }
 
 function selectionOf(value: CopySelection): CopySelection {

@@ -1,6 +1,6 @@
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { campaignCopyService } from '../services/campaign-copy.service';
+import { campaignCopyService, type FlyerTextsInput } from '../services/campaign-copy.service';
 import { GENERATION_POLL_MS, isInProgress } from '../types/generation-job';
 
 export function useCampaignCopy(id: string, version: number) {
@@ -28,5 +28,12 @@ export function useCampaignCopy(id: string, version: number) {
       ]);
     },
   });
-  return { query, generate };
+  const updateTexts = useMutation({
+    mutationFn: (input: FlyerTextsInput) => campaignCopyService.updateFlyerTexts(id, input),
+    retry: false,
+    onSuccess: (status) => {
+      client.setQueryData(queryKey, status);
+    },
+  });
+  return { query, generate, updateTexts };
 }

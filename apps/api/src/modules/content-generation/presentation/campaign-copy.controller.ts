@@ -1,6 +1,8 @@
 import {
+  Body,
   Controller,
   Get,
+  Patch,
   Post,
   Param,
   ParseUUIDPipe,
@@ -10,6 +12,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiAcceptedResponse,
+  ApiBody,
   ApiTags,
   ApiOperation,
   ApiOkResponse,
@@ -23,17 +26,34 @@ import {
   OrganizationId,
 } from '#app/presentation/http/request-context';
 import { ApiErrors } from '#app/presentation/http/api-errors.decorator';
+import { validateRequest } from '#app/presentation/http/request-validation';
+import { IsString, IsUUID, MaxLength, ValidateIf } from 'class-validator';
+import { HEADLINE_MAX_LENGTH, SUBHEADLINE_MAX_LENGTH } from '../application/copy-policy.js';
+import { UpdateCampaignCopy } from '../application/use-cases/update-campaign-copy.js';
 import { GetCampaignCopy } from '../application/use-cases/generate-campaign-copy.js';
 import { RequestCampaignCopy } from '../application/use-cases/request-campaign-copy.js';
 
 const STATUSES = ['PENDING', 'RUNNING', 'READY', 'FAILED'];
 
 class CampaignCopyContent {
-  @ApiProperty() headline!: string;
-  @ApiProperty() caption!: string;
+  @ApiProperty({ description: 'Titular del flyer' }) headline!: string;
+  @ApiProperty({ type: String, nullable: true, description: 'Subtítulo del flyer' })
+  subheadline!: string | null;
+  @ApiProperty({ description: 'Texto de la publicación' }) caption!: string;
   @ApiProperty() cta!: string;
   @ApiProperty({ type: [String] }) hashtags!: string[];
-  @ApiProperty() imagePrompt!: string;
+}
+export class UpdateCampaignCopyRequest {
+  @ApiProperty({ type: String, format: 'uuid' }) @IsUUID() generationId!: string;
+  @ApiProperty({ maxLength: HEADLINE_MAX_LENGTH })
+  @IsString()
+  @MaxLength(HEADLINE_MAX_LENGTH)
+  headline!: string;
+  @ApiProperty({ type: String, nullable: true, maxLength: SUBHEADLINE_MAX_LENGTH })
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  @MaxLength(SUBHEADLINE_MAX_LENGTH)
+  subheadline!: string | null;
 }
 class CampaignCopyResponse {
   @ApiProperty({ format: 'uuid' }) generationId!: string;
@@ -55,6 +75,7 @@ export class CampaignCopyController {
   constructor(
     @Inject(RequestCampaignCopy) private readonly requestCopy: RequestCampaignCopy,
     @Inject(GetCampaignCopy) private readonly getCopy: GetCampaignCopy,
+    @Inject(UpdateCampaignCopy) private readonly updateCopy: UpdateCampaignCopy,
   ) {}
   @Post()
   @HttpCode(202)
@@ -77,5 +98,26 @@ export class CampaignCopyController {
     @Param('id', new ParseUUIDPipe()) campaignId: string,
   ): Promise<CampaignCopyEnvelope> {
     return { data: await this.getCopy.execute({ organizationId, campaignId }) };
+  }
+  @Patch()
+  @ApiOperation({
+    summary: 'Corregir el titular y el subtítulo del flyer antes de pedir la imagen',
+  })
+  @ApiBody({ type: UpdateCampaignCopyRequest })
+  @ApiOkResponse({ type: CampaignCopyEnvelope })
+  async update(
+    @OrganizationId() organizationId: string,
+    @Param('id', new ParseUUIDPipe()) campaignId: string,
+    @Body(validateRequest(UpdateCampaignCopyRequest)) body: UpdateCampaignCopyRequest,
+  ): Promise<CampaignCopyEnvelope> {
+    return {
+      data: await this.updateCopy.execute({
+        organizationId,
+        campaignId,
+        generationId: body.generationId,
+        headline: body.headline,
+        subheadline: body.subheadline,
+      }),
+    };
   }
 }
