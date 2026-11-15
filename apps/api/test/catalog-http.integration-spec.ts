@@ -130,6 +130,50 @@ describe('Catalog HTTP with PostgreSQL', () => {
     expect(untouched.body.data.name).toBe('Other organization');
   });
 
+  it('saves the brand kit, changes only the region fields sent and resets the colors', async () => {
+    const colors = {
+      primary: '#5b3a29',
+      secondary: '#C98B4E',
+      accent: '#E4572E',
+      lightBackground: '#F7F1E8',
+      darkBackground: '#1E120D',
+    };
+    const saved = await request(app.getHttpServer())
+      .patch('/organization')
+      .send({ industry: 'Cafetería', region: { currency: 'USD' }, brandColors: colors })
+      .expect(200);
+    expect(saved.body.data).toMatchObject({
+      industry: 'Cafetería',
+      region: { country: 'PE', locale: 'es-PE', timeZone: 'America/Lima', currency: 'USD' },
+      brandColors: { ...colors, primary: '#5B3A29' },
+      effectiveBrandColors: { ...colors, primary: '#5B3A29' },
+      logoTraits: null,
+    });
+
+    const reset = await request(app.getHttpServer())
+      .patch('/organization')
+      .send({ brandColors: null })
+      .expect(200);
+    expect(reset.body.data).toMatchObject({ brandColors: null, effectiveBrandColors: null });
+    const read = await request(app.getHttpServer()).get('/organization').expect(200);
+    expect(read.body.data.region.currency).toBe('USD');
+  });
+
+  // La forma la rechaza la validación de la petición; lo que exige conocer las zonas horarias
+  // o los locales, el dominio.
+  it.each([
+    [{ region: { timeZone: 'Mars/Olympus' } }, 'INVALID_INPUT'],
+    [{ region: { country: 'PER' } }, 'VALIDATION_ERROR'],
+    [{ brandColors: { primary: '#000000' } }, 'VALIDATION_ERROR'],
+    [{ industry: 'x'.repeat(81) }, 'VALIDATION_ERROR'],
+  ])('rejects an invalid brand kit %j', async (body, code) => {
+    const response = await request(app.getHttpServer())
+      .patch('/organization')
+      .send(body)
+      .expect(400);
+    expect(response.body.error.code).toBe(code);
+  });
+
   it('returns real scoped totals including empty organizations', async () => {
     const empty = await request(app.getHttpServer()).get('/dashboard').expect(200);
     expect(empty.body.data.totals).toEqual({

@@ -38,3 +38,50 @@ describe('OrganizationMapper', () => {
     ).toThrow(InvalidTimestampError);
   });
 });
+
+describe('OrganizationMapper brand kit', () => {
+  const colors = {
+    primary: '#5B3A29',
+    secondary: '#C98B4E',
+    accent: '#E4572E',
+    lightBackground: '#F7F1E8',
+    darkBackground: '#1E120D',
+  };
+  const row = () =>
+    OrganizationMapper.toPersistence(
+      Organization.create(
+        ORGANIZATION_ID,
+        { name: 'Empresa', industry: 'Cafetería', brandColors: colors, logoAssetId: ASSET_ID },
+        new Date(CREATED_AT),
+      ),
+    );
+
+  it('keeps the industry, region and colors through persistence', () => {
+    const restored = OrganizationMapper.toDomain(row());
+    expect(OrganizationMapper.toPersistence(restored)).toEqual(row());
+    expect(row()).toMatchObject({ country: 'PE', locale: 'es-PE', defaultCurrency: 'PEN' });
+  });
+
+  it('reads the current logo traits and ignores logos uploaded before the analysis', () => {
+    const withTraits = OrganizationMapper.toDomain(row(), {
+      isDark: false,
+      suggestedColors: colors,
+    });
+    expect(withTraits.logoTraits).toEqual({ isDark: false, suggestedColors: colors });
+    expect(
+      OrganizationMapper.toDomain(row(), { isDark: null, suggestedColors: null }).logoTraits,
+    ).toBeNull();
+  });
+
+  it('rejects stored colors that are not valid hexadecimal', () => {
+    expect(() =>
+      OrganizationMapper.toDomain({ ...row(), brandColors: { ...colors, accent: 'red' } }),
+    ).toThrow(InvalidOrganizationProfileError);
+    expect(() =>
+      OrganizationMapper.toDomain(row(), {
+        isDark: true,
+        suggestedColors: { ...colors, primary: '#12' },
+      }),
+    ).toThrow(InvalidOrganizationProfileError);
+  });
+});

@@ -21,17 +21,23 @@ enum Currency {
 }
 
 model Organization {
-  id          String     @id @db.Uuid
-  name        String
-  description String
-  brandTone   String?    @map("brand_tone")
-  logoAssetId String?    @map("logo_asset_id") @db.Uuid
-  createdAt   DateTime   @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime   @map("updated_at") @db.Timestamptz(3)
-  products    Product[]
-  templates   Template[]
-  campaigns   Campaign[]
-  logos       OrganizationLogoAsset[]
+  id              String                  @id @db.Uuid
+  name            String
+  description     String
+  brandTone       String?                 @map("brand_tone")
+  industry        String?
+  country         String                  @default("PE")
+  locale          String                  @default("es-PE")
+  timeZone        String                  @default("America/Lima") @map("time_zone")
+  defaultCurrency Currency                @default(PEN) @map("default_currency")
+  brandColors     Json?                   @map("brand_colors")
+  logoAssetId     String?                 @map("logo_asset_id") @db.Uuid
+  createdAt       DateTime                @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime                @map("updated_at") @db.Timestamptz(3)
+  products        Product[]
+  templates       Template[]
+  campaigns       Campaign[]
+  logos           OrganizationLogoAsset[]
 
   @@index([createdAt])
   @@map("organizations")
@@ -368,17 +374,19 @@ model ProductImageAsset {
 }
 
 model OrganizationLogoAsset {
-  id             String       @id @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
-  bucket         String
-  objectKey      String       @unique @map("object_key")
-  sha256         String
-  byteLength     Int          @map("byte_length")
-  contentType    String       @map("content_type")
-  width          Int
-  height         Int
-  createdAt      DateTime     @map("created_at") @db.Timestamptz(3)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  id              String       @id @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  bucket          String
+  objectKey       String       @unique @map("object_key")
+  sha256          String
+  byteLength      Int          @map("byte_length")
+  contentType     String       @map("content_type")
+  width           Int
+  height          Int
+  isDark          Boolean?     @map("is_dark")
+  suggestedColors Json?        @map("suggested_colors")
+  createdAt       DateTime     @map("created_at") @db.Timestamptz(3)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([organizationId, id])
   @@map("organization_logo_assets")

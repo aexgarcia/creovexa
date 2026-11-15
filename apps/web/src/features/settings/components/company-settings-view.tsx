@@ -11,7 +11,12 @@ import { Button } from '@/components/ui/button';
 import { useCompanySettings } from '../hooks/use-company-settings';
 import { useUpdateCompanySettings } from '../hooks/use-update-company-settings';
 import { useUploadOrganizationLogo } from '../hooks/use-upload-organization-logo';
-import type { OrganizationSettings } from '../services/company-settings.service';
+import type {
+  BrandColors,
+  OrganizationSettings,
+  Region,
+} from '../services/company-settings.service';
+import { BrandColorFields, RegionFields } from './brand-kit-fields';
 
 export function CompanySettingsView() {
   const query = useCompanySettings();
@@ -37,6 +42,9 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
   const [name, setName] = useState(settings.name);
   const [description, setDescription] = useState(settings.description);
   const [tone, setTone] = useState(settings.brandTone ?? '');
+  const [industry, setIndustry] = useState(settings.industry ?? '');
+  const [region, setRegion] = useState<Region>(settings.region);
+  const [colors, setColors] = useState<BrandColors | null>(settings.brandColors);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -56,6 +64,7 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
   const update = useUpdateCompanySettings();
   const upload = useUploadOrganizationLogo();
   const logoUrl = logoFile ? preview : settings.logoUrl;
+  const flyerColors = colors ?? settings.logoTraits?.suggestedColors ?? null;
   function chooseLogo(file: File | null) {
     if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
     previewUrl.current = null;
@@ -96,10 +105,16 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
         name: name.trim(),
         description: description.trim(),
         brandTone: tone.trim() || null,
+        industry: industry.trim() || null,
+        region,
+        brandColors: colors,
       });
       setName(saved.name);
       setDescription(saved.description);
       setTone(saved.brandTone ?? '');
+      setIndustry(saved.industry ?? '');
+      setRegion(saved.region);
+      setColors(saved.brandColors);
       profileSaved = true;
       if (logoFile) {
         await upload.mutateAsync(logoFile);
@@ -153,6 +168,17 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
           />
         </div>
         <div className="space-y-2">
+          <Label htmlFor="organization-industry">Rubro (opcional)</Label>
+          <Input
+            id="organization-industry"
+            maxLength={80}
+            placeholder="Ej. cafetería, tienda de tecnología, clínica dental"
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">Orienta el estilo visual de tus flyers.</p>
+        </div>
+        <div className="space-y-2">
           <Label htmlFor="organization-tone">Tono de marca (opcional)</Label>
           <Input
             id="organization-tone"
@@ -161,6 +187,10 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
             value={tone}
             onChange={(e) => setTone(e.target.value)}
           />
+        </div>
+        <div className="space-y-4 border-t pt-5">
+          <h3 className="text-sm font-medium">Región</h3>
+          <RegionFields region={region} onChange={setRegion} />
         </div>
         <div className="space-y-2 border-t pt-5">
           <Label htmlFor="brand-logo">Logo de empresa</Label>
@@ -195,23 +225,26 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
             </p>
           )}
         </div>
+        <div className="border-t pt-5">
+          <BrandColorFields
+            custom={colors}
+            suggested={settings.logoTraits?.suggestedColors ?? null}
+            onChange={setColors}
+          />
+        </div>
+        <fieldset disabled className="space-y-4 border-t pt-5">
+          <legend className="text-sm text-muted-foreground">Próximamente</legend>
+          <div className="space-y-2">
+            <Label htmlFor="brand-cta">CTA predeterminado</Label>
+            <Input id="brand-cta" placeholder="Próximamente" />
+          </div>
+        </fieldset>
         {error && (
           <p role="alert" className="text-destructive">
             {error}
           </p>
         )}
         {message && <p role="status">{message}</p>}
-        <fieldset disabled className="space-y-4 border-t pt-5">
-          <legend className="text-sm text-muted-foreground">Identidad visual · Próximamente</legend>
-          <div className="space-y-2">
-            <Label htmlFor="brand-color">Color principal</Label>
-            <Input id="brand-color" placeholder="Personalización próximamente" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="brand-cta">CTA predeterminado</Label>
-            <Input id="brand-cta" placeholder="Próximamente" />
-          </div>
-        </fieldset>
         <Button type="submit" disabled={saving || Boolean(fileError)}>
           <Save className="mr-2 size-4" />
           {saving ? 'Guardando…' : 'Guardar cambios'}
@@ -239,6 +272,16 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
         <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">
           {description}
         </p>
+        {flyerColors && (
+          <div
+            className="flex h-8 overflow-hidden rounded-md border"
+            aria-label="Colores de marca que usará el flyer"
+          >
+            {Object.values(flyerColors).map((color, i) => (
+              <span key={i} className="flex-1" style={{ backgroundColor: color }} />
+            ))}
+          </div>
+        )}
         <div className="flex items-center gap-3 border-t pt-4 text-sm text-muted-foreground">
           <ImageIcon className="size-5 shrink-0" />
           {logoUrl && failedLogo === logoUrl

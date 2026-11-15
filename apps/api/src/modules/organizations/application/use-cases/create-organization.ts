@@ -2,12 +2,17 @@ import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
 import { Organization } from '../../domain/entities/organization.js';
 import type { OrganizationRepository } from '../../domain/repositories/organization.repository.js';
+import type { BrandColors } from '../../domain/value-objects/brand-colors.js';
+import type { RegionInput } from '../../domain/value-objects/region.js';
 import { organizationResult, type OrganizationResult } from '../organization-result.js';
 
 export interface CreateOrganizationInput {
   name: string;
   description?: string;
   brandTone?: string | null;
+  industry?: string | null;
+  region?: RegionInput;
+  brandColors?: BrandColors | null;
   logoAssetId?: string | null;
 }
 

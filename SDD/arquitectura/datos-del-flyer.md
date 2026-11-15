@@ -1,6 +1,6 @@
 # Datos para generar el flyer
 
-- **Estado:** Propuesta con sus decisiones cerradas el 2026-11-14 (ver [Decisiones](#decisiones)). No hay nada implementado.
+- **Estado:** Decisiones cerradas el 2026-11-14 (ver [Decisiones](#decisiones)). En implementación: el kit de marca de la fase 1 (rubro, región, colores y `esOscuro`) está hecho ([ADR-0022](../modulos/organizations/adr/0022-kit-de-marca.md)); el resto, pendiente.
 - **Fecha:** 2026-11-14
 - **Relacionado:** [ADR-0009](../adr/0009-estrategia-de-generacion-del-flyer.md), [datos que se envían hoy](../modulos/content-generation/datos-enviados-a-la-ia.md)
 

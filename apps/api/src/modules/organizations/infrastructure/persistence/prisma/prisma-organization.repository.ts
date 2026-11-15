@@ -1,5 +1,5 @@
 import type { EntityId } from '#app/domain/entity-id';
-import type { PrismaClient } from '#app/infrastructure/persistence/prisma/generated/client';
+import { Prisma, type PrismaClient } from '#app/infrastructure/persistence/prisma/generated/client';
 import { translatePrismaError } from '#app/infrastructure/persistence/prisma/translate-prisma-error';
 import type { Organization } from '../../../domain/entities/organization.js';
 import type { OrganizationRepository } from '../../../domain/repositories/organization.repository.js';
@@ -14,13 +14,21 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
 
   async findById(id: EntityId): Promise<Organization | null> {
     const row = await this.client.organization.findUnique({ where: { id } });
-    return row ? OrganizationMapper.toDomain(row) : null;
+    if (!row) return null;
+    const logo = row.logoAssetId
+      ? await this.client.organizationLogoAsset.findFirst({
+          where: { id: row.logoAssetId, organizationId: row.id },
+          select: { isDark: true, suggestedColors: true },
+        })
+      : null;
+    return OrganizationMapper.toDomain(row, logo);
   }
 
   async add(organization: Organization): Promise<void> {
     try {
+      const row = OrganizationMapper.toPersistence(organization);
       await this.client.organization.create({
-        data: OrganizationMapper.toPersistence(organization),
+        data: { ...row, brandColors: row.brandColors ?? Prisma.DbNull },
       });
     } catch (error) {
       translatePrismaError(error);
@@ -35,6 +43,12 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
         name: row.name,
         description: row.description,
         brandTone: row.brandTone,
+        industry: row.industry,
+        country: row.country,
+        locale: row.locale,
+        timeZone: row.timeZone,
+        defaultCurrency: row.defaultCurrency,
+        brandColors: row.brandColors ?? Prisma.DbNull,
         logoAssetId: row.logoAssetId,
         updatedAt: row.updatedAt,
       },

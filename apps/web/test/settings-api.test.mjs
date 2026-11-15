@@ -93,3 +93,18 @@ test('updates editable profile fields without sending organization selection or 
   );
   assert.equal(calls, 1);
 });
+test('sends the brand kit and null to go back to the logo colors', async () => {
+  const region = {
+    country: 'MX',
+    locale: 'es-MX',
+    timeZone: 'America/Mexico_City',
+    currency: 'USD',
+  };
+  const bodies = [];
+  globalThis.fetch = async (_url, options) => {
+    bodies.push(JSON.parse(options.body));
+    return Response.json({ data: { id: 'organization-1' } });
+  };
+  await companySettingsService.update({ industry: 'Cafetería', region, brandColors: null });
+  assert.deepEqual(bodies[0], { industry: 'Cafetería', region, brandColors: null });
+});

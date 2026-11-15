@@ -13,6 +13,7 @@ import type {
   SavedOrganizationLogo,
 } from '../application/ports/organization-logos.js';
 import { OrganizationLogoError } from '../application/errors/organization-logo.error.js';
+import { analyzeLogo } from './logo-analysis.js';
 
 export class MinioOrganizationLogos implements OrganizationLogos {
   constructor(
@@ -28,6 +29,7 @@ export class MinioOrganizationLogos implements OrganizationLogos {
     try {
       const bytes = await prepareUploadedImage(input.bytes);
       const metadata = await inspectImageBytes(bytes);
+      const { isDark, suggestedColors } = await analyzeLogo(bytes);
       const objectKey = `logos/${input.organizationId}/${input.assetId}`;
       const sha256 = digest(bytes);
       const created = await this.storage.putIfAbsent({
@@ -53,6 +55,8 @@ export class MinioOrganizationLogos implements OrganizationLogos {
             sha256,
             byteLength: bytes.byteLength,
             ...metadata,
+            isDark,
+            suggestedColors: { ...suggestedColors },
             createdAt: input.at,
           },
         });

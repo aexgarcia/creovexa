@@ -2,6 +2,8 @@ import type { Clock } from '#app/application/ports/clock';
 import { entityId } from '#app/domain/entity-id';
 import { OrganizationNotFoundError } from '../../domain/errors/organization.errors.js';
 import type { OrganizationRepository } from '../../domain/repositories/organization.repository.js';
+import type { BrandColors } from '../../domain/value-objects/brand-colors.js';
+import type { RegionInput } from '../../domain/value-objects/region.js';
 import { organizationResult, type OrganizationResult } from '../organization-result.js';
 
 export interface UpdateOrganizationProfileInput {
@@ -9,6 +11,9 @@ export interface UpdateOrganizationProfileInput {
   name?: string;
   description?: string;
   brandTone?: string | null;
+  industry?: string | null;
+  region?: RegionInput;
+  brandColors?: BrandColors | null;
   logoAssetId?: string | null;
 }
 
@@ -28,6 +33,9 @@ export class UpdateOrganizationProfile {
         name: input.name,
         description: input.description,
         brandTone: input.brandTone,
+        industry: input.industry,
+        region: input.region,
+        brandColors: input.brandColors,
         logoAssetId: input.logoAssetId,
       },
       new Date(Math.max(this.clock.now().getTime(), organization.updatedAt.getTime() + 1)),

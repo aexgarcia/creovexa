@@ -43,6 +43,7 @@
 | [0018](../modulos/publications/adr/0018-publicacion-por-destino-con-intentos.md) | `publications` | Una publicación por destino con intentos independientes | Aceptado (retroactivo) |
 | [0019](../modulos/organizations/adr/0019-perfil-de-marca-en-la-organizacion.md) | `organizations` | Perfil de marca y logo en la organización | Aceptado (retroactivo) |
 | [0020](../modulos/dashboard/adr/0020-dashboard-como-modelo-de-lectura.md) | `dashboard` | Dashboard como modelo de lectura sin dominio | Aceptado (retroactivo) |
+| [0022](../modulos/organizations/adr/0022-kit-de-marca.md) | `organizations` | Kit de marca: rubro, región y colores propuestos desde el logo | Aceptado, implementado |
 
 ## Plantilla
 

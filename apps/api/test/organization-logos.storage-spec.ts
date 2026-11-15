@@ -113,6 +113,14 @@ describe('Organization logos (HTTP, PostgreSQL, MinIO and flyer)', () => {
     await fixture();
     const saved = await upload().expect(201);
     expect(saved.body.data.logoAssetId).toBeTruthy();
+    // El logo de prueba es blanco translúcido: sin tinta propia, propone la paleta neutra.
+    expect(saved.body.data.logoTraits).toMatchObject({
+      isDark: false,
+      suggestedColors: { primary: '#111827' },
+    });
+    expect(saved.body.data.effectiveBrandColors).toEqual(
+      saved.body.data.logoTraits.suggestedColors,
+    );
     const read = await request(app.getHttpServer()).get(saved.body.data.logoUrl).expect(200);
     expect(read.body).toEqual(png);
     expect((await sharp(read.body).metadata()).hasAlpha).toBe(true);

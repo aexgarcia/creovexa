@@ -51,7 +51,12 @@ describe('Organization use cases', () => {
       name: 'Empresa',
       description: '',
       brandTone: 'Cercano',
+      industry: null,
+      region: { country: 'PE', locale: 'es-PE', timeZone: 'America/Lima', currency: 'PEN' },
+      brandColors: null,
+      effectiveBrandColors: null,
       logoAssetId: ASSET_ID,
+      logoTraits: null,
       createdAt: CREATED_AT,
       updatedAt: CREATED_AT,
     });
