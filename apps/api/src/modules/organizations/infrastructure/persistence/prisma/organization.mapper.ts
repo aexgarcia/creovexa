@@ -1,18 +1,37 @@
-import type { Organization as OrganizationRecord } from '#app/infrastructure/persistence/prisma/generated/client';
+import type {
+  Organization as OrganizationRecord,
+  OrganizationLogoAsset,
+} from '#app/infrastructure/persistence/prisma/generated/client';
+import type { Currency } from '#app/domain/value-objects/money';
 import { Organization } from '../../../domain/entities/organization.js';
+import { brandColors, logoTraits } from '../../../domain/value-objects/brand-colors.js';
+
+export type LogoTraitsRecord = Pick<OrganizationLogoAsset, 'isDark' | 'suggestedColors'>;
 
 export class OrganizationMapper {
-  static toDomain(row: OrganizationRecord): Organization {
+  /** logo: la fila del logo actual; los logos subidos antes del kit de marca no tienen rasgos. */
+  static toDomain(row: OrganizationRecord, logo: LogoTraitsRecord | null = null): Organization {
     return Organization.restore(
       row.id,
       {
         name: row.name,
         description: row.description,
         brandTone: row.brandTone,
+        industry: row.industry,
+        region: {
+          country: row.country,
+          locale: row.locale,
+          timeZone: row.timeZone,
+          currency: row.defaultCurrency as Currency,
+        },
+        brandColors: row.brandColors == null ? null : brandColors(row.brandColors),
         logoAssetId: row.logoAssetId,
       },
       row.createdAt,
       row.updatedAt,
+      logo?.isDark == null
+        ? null
+        : logoTraits({ isDark: logo.isDark, suggestedColors: logo.suggestedColors }),
     );
   }
 
@@ -22,6 +41,12 @@ export class OrganizationMapper {
       name: organization.name,
       description: organization.description,
       brandTone: organization.brandTone,
+      industry: organization.industry,
+      country: organization.region.country,
+      locale: organization.region.locale,
+      timeZone: organization.region.timeZone,
+      defaultCurrency: organization.region.currency,
+      brandColors: organization.brandColors ? { ...organization.brandColors } : null,
       logoAssetId: organization.logoAssetId,
       createdAt: organization.createdAt,
       updatedAt: organization.updatedAt,

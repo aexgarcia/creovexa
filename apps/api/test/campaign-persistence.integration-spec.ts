@@ -34,6 +34,8 @@ import { RequestCampaignRegeneration } from '#app/modules/campaigns/application/
 import { RecordGeneratedCampaign } from '#app/modules/campaigns/application/use-cases/record-generated-campaign';
 import { RecordCampaignGenerationFailure } from '#app/modules/campaigns/application/use-cases/record-campaign-generation-failure';
 import { ApproveCampaign } from '#app/modules/campaigns/application/use-cases/approve-campaign';
+import { CAMPAIGN_FINAL_ASSETS } from '#app/modules/campaigns/application/ports/campaign-final-assets';
+import { finalAssetsFake } from './support/final-assets-fake.js';
 import { CampaignResourceNotFoundError } from '#app/modules/campaigns/application/errors/campaign-resource-not-found.error';
 import { campaignResult } from '#app/modules/campaigns/application/campaign-result';
 import { loadCampaignResources } from '#app/modules/campaigns/application/load-campaign-resources';
@@ -74,6 +76,8 @@ describe('Campaign persistence (PostgreSQL)', () => {
     if (!/^creovexa_test_[0-9a-f]{32}$/.test(schema) || config.schema !== schema)
       throw new Error('Usa pnpm test:integration para crear el esquema aislado.');
     module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(CAMPAIGN_FINAL_ASSETS)
+      .useValue(finalAssetsFake)
       .overrideProvider(DATABASE_CONFIG)
       .useValue(config)
       .overrideProvider(CLOCK)

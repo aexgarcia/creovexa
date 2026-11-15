@@ -1,13 +1,17 @@
 'use client';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { useCampaignCopy } from '../hooks/use-campaign-copy';
-import type { StoredCampaign } from '../types/stored-campaign.types';
-export function CampaignCopyCard({ campaign }: { campaign: StoredCampaign }) {
-  const { query, generate } = useCampaignCopy(campaign.id, campaign.version);
-  const eligible = ['DRAFT', 'GENERATING'].includes(campaign.status);
+import type { useCampaignCopy } from '../hooks/use-campaign-copy';
+import { failureMessage, isInProgress } from '../types/generation-job';
+export function CampaignCopyCard({
+  query,
+}: {
+  query: ReturnType<typeof useCampaignCopy>['query'];
+}) {
+  const job = query.data;
+  const copy = job?.copy ?? null;
   return (
     <Card>
       <CardHeader>
@@ -16,7 +20,7 @@ export function CampaignCopyCard({ campaign }: { campaign: StoredCampaign }) {
             <Sparkles className="size-5 text-primary" />
             Texto de campaña
           </CardTitle>
-          {query.data && <Badge variant="secondary">Texto preparado</Badge>}
+          {copy && <Badge variant="secondary">Texto preparado</Badge>}
         </div>
         <CardDescription>
           Prepara el mensaje usando los datos guardados de tu producto y promoción.
@@ -32,7 +36,7 @@ export function CampaignCopyCard({ campaign }: { campaign: StoredCampaign }) {
             </Button>
           </div>
         )}
-        {!query.isLoading && !query.error && !query.data && (
+        {!query.isLoading && !query.error && !job && (
           <div className="rounded-xl border border-dashed bg-muted/20 p-6 text-center">
             <Sparkles className="mx-auto size-8 text-muted-foreground" />
             <p className="mt-3 text-sm text-muted-foreground">
@@ -40,41 +44,33 @@ export function CampaignCopyCard({ campaign }: { campaign: StoredCampaign }) {
             </p>
           </div>
         )}
-        {query.data && !query.error && (
-          <div className="space-y-4 rounded-xl bg-muted/20 p-5">
-            <h3 className="break-words text-lg font-semibold">{query.data.headline}</h3>
-            <p className="whitespace-pre-wrap break-words text-sm">{query.data.caption}</p>
-            <p className="break-words font-medium text-primary">{query.data.cta}</p>
-            <p className="text-sm text-muted-foreground">{query.data.hashtags.join(' ')}</p>
-            <p className="border-t pt-3 text-xs text-muted-foreground">
-              La imagen y la pieza final se incorporarán en el siguiente módulo. Este texto todavía
-              no se puede aprobar ni publicar.
-            </p>
-          </div>
-        )}
-        {generate.error && (
-          <div role="alert" className="space-y-2 text-sm">
-            <p className="text-destructive">{generate.error.message}</p>
-            <p className="text-muted-foreground">
-              Si otra solicitud está en curso, espera y actualiza la consulta.
-            </p>
-            <Button variant="outline" onClick={() => void query.refetch()}>
-              Actualizar consulta
-            </Button>
-          </div>
-        )}
-        {eligible && !query.data && (
-          <Button
-            disabled={generate.isPending || query.isLoading || Boolean(query.error)}
-            onClick={() => generate.mutate()}
+        {!query.error && isInProgress(job) && (
+          <div
+            role="status"
+            className="flex items-center justify-center gap-3 rounded-xl border border-dashed bg-muted/20 p-6 text-sm text-muted-foreground"
           >
-            {generate.isPending ? (
-              <Loader2 className="mr-2 size-4 animate-spin" />
-            ) : (
-              <Sparkles className="mr-2 size-4" />
-            )}
-            {generate.isPending ? 'Preparando texto…' : 'Generar texto'}
-          </Button>
+            <Loader2 className="size-5 animate-spin text-primary" />
+            {job?.status === 'RUNNING'
+              ? 'Escribiendo el texto de tu campaña…'
+              : 'Solicitud recibida. El texto empezará a prepararse en un momento…'}
+          </div>
+        )}
+        {!query.error && job?.status === 'FAILED' && (
+          <p role="alert" className="text-sm text-destructive">
+            {failureMessage(job)}
+          </p>
+        )}
+        {copy && !query.error && (
+          <div className="space-y-4 rounded-xl bg-muted/20 p-5">
+            <h3 className="break-words text-lg font-semibold">{copy.headline}</h3>
+            <p className="whitespace-pre-wrap break-words text-sm">{copy.caption}</p>
+            <p className="break-words font-medium text-primary">{copy.cta}</p>
+            <p className="text-sm text-muted-foreground">{copy.hashtags.join(' ')}</p>
+            <p className="border-t pt-3 text-xs text-muted-foreground">
+              El texto está preparado. Genera el flyer para revisar la publicidad completa antes de
+              aprobarla.
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>

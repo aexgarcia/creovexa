@@ -15,6 +15,10 @@ export interface CreateProductInput {
   name: string;
   description?: string;
   regularPrice: { amountMinor: number; currency: string };
+  shortName?: string | null;
+  productBrand?: string | null;
+  keyAttributes?: readonly string[];
+  unit?: string | null;
   imageAssetIds?: readonly string[];
 }
 
@@ -43,6 +47,10 @@ export class CreateProduct {
           input.regularPrice.amountMinor,
           input.regularPrice.currency,
         ),
+        shortName: input.shortName,
+        productBrand: input.productBrand,
+        keyAttributes: input.keyAttributes,
+        unit: input.unit,
         imageAssetIds: input.imageAssetIds,
       },
       this.clock.now(),

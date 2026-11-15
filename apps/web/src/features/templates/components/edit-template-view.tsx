@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { useTemplate } from '../hooks/use-template';
 import { templateService } from '../services/template.service';
 import type { StoredTemplate } from '../types/stored-template.types';
+import { defaultTemplateDesign } from '../types/template-design';
 export function EditTemplateView({ templateId }: { templateId: string }) {
   const query = useTemplate(templateId);
   if (query.isLoading) return <p role="status">Cargando plantilla…</p>;
@@ -27,12 +28,14 @@ export function EditTemplateView({ templateId }: { templateId: string }) {
 function TemplateProfile({ template }: { template: StoredTemplate }) {
   const client = useQueryClient();
   const [name, setName] = useState(template.name);
+  const [design, setDesign] = useState(template.currentRevision.design ?? defaultTemplateDesign());
   const [invalid, setInvalid] = useState(false);
   const mutation = useMutation({
     mutationFn: () =>
       templateService.update(template.id, {
         name: name.trim(),
         expectedRevisionId: template.currentRevision.id,
+        design,
       }),
     retry: false,
     onSuccess: async () => {
@@ -71,7 +74,11 @@ function TemplateProfile({ template }: { template: StoredTemplate }) {
           <p className="text-sm">
             Guardar crea una nueva revisión. Las campañas existentes conservan su revisión anterior.
           </p>
-          <TemplateVisualSettings />
+          <TemplateVisualSettings
+            design={design}
+            onChange={setDesign}
+            disabled={mutation.isPending}
+          />
           {invalid && <p role="alert">Introduce un nombre.</p>}
           {mutation.error && (
             <div role="alert">
@@ -87,13 +94,22 @@ function TemplateProfile({ template }: { template: StoredTemplate }) {
               </Button>
             </div>
           )}
-          <Button type="submit" disabled={mutation.isPending || name.trim() === template.name}>
+          <Button
+            type="submit"
+            disabled={
+              mutation.isPending ||
+              (name.trim() === template.name &&
+                JSON.stringify(design) ===
+                  JSON.stringify(template.currentRevision.design ?? defaultTemplateDesign()))
+            }
+          >
             {mutation.isPending ? 'Guardando…' : 'Guardar revisión'}
           </Button>
         </form>
         <aside className="space-y-5 rounded-xl border bg-card p-6">
           <h2 className="font-semibold">Vista previa</h2>
           <TemplateDesignPreview
+            design={design}
             width={template.currentRevision.dimensions.width}
             height={template.currentRevision.dimensions.height}
           />

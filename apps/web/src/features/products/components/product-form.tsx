@@ -1,5 +1,7 @@
 'use client';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Package, ImageIcon } from 'lucide-react';
 import { useForm, useWatch } from 'react-hook-form';
@@ -9,12 +11,20 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { productSchema, type ProductFormValues } from '../schemas/product.schema';
 import { decimalPrice } from '../schemas/product-price';
-import type { Product } from '../types/product.types';
+import type { PhotoType, Product } from '../types/product.types';
+
+const PHOTO_TYPES: { value: PhotoType; label: string }[] = [
+  { value: 'CUTOUT', label: 'Producto recortado, sin fondo' },
+  { value: 'STUDIO', label: 'Producto sobre fondo liso' },
+  { value: 'SCENE', label: 'Producto en un ambiente o escena' },
+  { value: 'PLACE', label: 'Un local o espacio' },
+  { value: 'PERSON', label: 'Una o varias personas' },
+];
 
 interface ProductFormProps {
   product?: Product;
   isSubmitting?: boolean;
-  onSubmit: (values: ProductFormValues) => Promise<void>;
+  onSubmit: (values: ProductFormValues, image: File | null) => Promise<void>;
 }
 export function ProductForm({ product, isSubmitting = false, onSubmit }: ProductFormProps) {
   const router = useRouter();
@@ -22,6 +32,7 @@ export function ProductForm({ product, isSubmitting = false, onSubmit }: Product
     register,
     control,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting: saving },
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -31,11 +42,61 @@ export function ProductForm({ product, isSubmitting = false, onSubmit }: Product
       kind: product?.kind ?? 'PRODUCT',
       price: product ? decimalPrice(product.regularPrice.amountMinor) : '',
       currency: product?.regularPrice.currency ?? 'PEN',
+      shortName: product?.shortName ?? '',
+      productBrand: product?.productBrand ?? '',
+      keyAttributes: product?.keyAttributes.join('\n') ?? '',
+      unit: product?.unit ?? '',
+      photoType: product?.image?.photoType ?? '',
     },
   });
   const preview = useWatch({ control });
+  const [image, setImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [imageError, setImageError] = useState('');
+  const temporaryUrl = useRef<string | null>(null);
+  useEffect(
+    () => () => {
+      if (temporaryUrl.current) URL.revokeObjectURL(temporaryUrl.current);
+    },
+    [],
+  );
+  function selectImage(file: File | undefined) {
+    setImageError('');
+    if (
+      file &&
+      (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
+        file.size > 10 * 1024 * 1024 ||
+        !file.size)
+    ) {
+      if (temporaryUrl.current) URL.revokeObjectURL(temporaryUrl.current);
+      temporaryUrl.current = null;
+      setPreviewUrl(null);
+      setImage(null);
+      setImageError(
+        file.size > 10 * 1024 * 1024
+          ? 'La imagen supera el máximo de 10 MB.'
+          : 'Selecciona una imagen PNG, JPEG o WebP válida.',
+      );
+      return;
+    }
+    if (temporaryUrl.current) URL.revokeObjectURL(temporaryUrl.current);
+    temporaryUrl.current = file ? URL.createObjectURL(file) : null;
+    setPreviewUrl(temporaryUrl.current);
+    setImage(file ?? null);
+  }
+  const imageUrl = previewUrl ?? product?.imageUrl;
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form
+      onSubmit={handleSubmit((values) => {
+        // Sin el tipo de foto, la IA no sabe qué conservar de la imagen.
+        if (image && !values.photoType) {
+          setError('photoType', { message: 'Indica qué muestra la foto' });
+          return;
+        }
+        return onSubmit(values, image);
+      })}
+      className="space-y-6"
+    >
       <div className="grid items-start gap-6 xl:grid-cols-[1fr_360px]">
         <fieldset
           disabled={isSubmitting || saving}
@@ -74,6 +135,62 @@ export function ProductForm({ product, isSubmitting = false, onSubmit }: Product
             <p id="name-error" role="alert" className="text-sm text-destructive">
               {errors.name?.message}
             </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="shortName">Nombre para el flyer (opcional)</Label>
+              <Input
+                id="shortName"
+                maxLength={40}
+                placeholder="Ej. Pack BAO Café 3 × 500 g"
+                {...register('shortName')}
+                aria-invalid={Boolean(errors.shortName)}
+                aria-describedby="shortName-help"
+              />
+              <p id="shortName-help" className="text-xs text-muted-foreground">
+                Hasta 40 caracteres. Si lo dejas vacío, el flyer usa el nombre completo.
+              </p>
+              {errors.shortName && (
+                <p role="alert" className="text-sm text-destructive">
+                  {errors.shortName.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="productBrand">Marca del producto (opcional)</Label>
+              <Input
+                id="productBrand"
+                maxLength={80}
+                placeholder="Si vendes una marca de otra empresa"
+                {...register('productBrand')}
+                aria-invalid={Boolean(errors.productBrand)}
+              />
+              {errors.productBrand && (
+                <p role="alert" className="text-sm text-destructive">
+                  {errors.productBrand.message}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="keyAttributes">Características clave (opcional)</Label>
+            <Textarea
+              id="keyAttributes"
+              rows={4}
+              placeholder={'Una por línea, de la más a la menos importante.\nEj. 100 % arábica'}
+              {...register('keyAttributes')}
+              aria-invalid={Boolean(errors.keyAttributes)}
+              aria-describedby="keyAttributes-help"
+            />
+            <p id="keyAttributes-help" className="text-xs text-muted-foreground">
+              Hasta 5. El flyer solo muestra estas, nunca inventa otras; la plantilla decide
+              cuántas.
+            </p>
+            {errors.keyAttributes && (
+              <p role="alert" className="text-sm text-destructive">
+                {errors.keyAttributes.message}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Descripción</Label>
@@ -117,16 +234,42 @@ export function ProductForm({ product, isSubmitting = false, onSubmit }: Product
                 <option value="EUR">EUR — Euros</option>
               </select>
             </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="unit">Unidad (opcional)</Label>
+              <Input
+                id="unit"
+                maxLength={30}
+                placeholder="Ej. por kg, por sesión, c/u"
+                {...register('unit')}
+                aria-invalid={Boolean(errors.unit)}
+              />
+              {errors.unit && (
+                <p role="alert" className="text-sm text-destructive">
+                  {errors.unit.message}
+                </p>
+              )}
+            </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            Las ofertas se configuran en cada campaña. La carga de imágenes estará disponible más
-            adelante.
+            Las ofertas se configuran en cada campaña. La imagen guardada se usará automáticamente
+            para componer tu publicidad.
           </p>
         </fieldset>
         <aside className="space-y-5 rounded-xl border bg-card p-6">
           <h2 className="font-semibold">Vista previa del producto</h2>
           <div className="flex aspect-square items-center justify-center rounded-xl border border-dashed bg-muted/20">
-            <Package className="size-16 text-muted-foreground/50" />
+            {imageUrl ? (
+              <Image
+                src={imageUrl}
+                alt={preview.name || 'Producto o servicio'}
+                width={1080}
+                height={1080}
+                unoptimized
+                className="h-full w-full rounded-xl object-contain"
+              />
+            ) : (
+              <Package className="size-16 text-muted-foreground/50" />
+            )}
           </div>
           <div>
             <p className="text-xs text-muted-foreground">
@@ -147,9 +290,65 @@ export function ProductForm({ product, isSubmitting = false, onSubmit }: Product
               <ImageIcon className="size-4" />
               Imagen del producto
             </p>
-            <Button type="button" disabled variant="outline" className="w-full">
-              Subir imagen · Próximamente
-            </Button>
+            <Label htmlFor="product-image">
+              {product?.imageAssetIds.length ? 'Reemplazar imagen' : 'Subir imagen'}
+            </Label>
+            <Input
+              id="product-image"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              disabled={isSubmitting || saving}
+              aria-describedby="product-image-help product-image-error"
+              onChange={(event) => {
+                selectImage(event.target.files?.[0]);
+                event.target.value = '';
+              }}
+            />
+            <p id="product-image-help" className="text-xs text-muted-foreground">
+              Una imagen PNG, JPEG o WebP, máximo 10 MB. Se guardará al confirmar el formulario.
+            </p>
+            {image && (
+              <div className="space-y-2">
+                <Label htmlFor="photoType">¿Qué muestra la foto?</Label>
+                <select
+                  id="photoType"
+                  {...register('photoType')}
+                  className="w-full rounded border bg-background p-2"
+                  aria-invalid={Boolean(errors.photoType)}
+                >
+                  <option value="">Elige una opción</option>
+                  {PHOTO_TYPES.map((type) => (
+                    <option key={type.value} value={type.value}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.photoType && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {errors.photoType.message}
+                  </p>
+                )}
+              </div>
+            )}
+            {!image && product?.image && !product.image.photoType && (
+              <p className="text-xs text-muted-foreground">
+                Esta imagen se subió sin indicar qué muestra. Vuelve a subirla para mejorar el
+                flyer.
+              </p>
+            )}
+            {(image || imageError) && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSubmitting || saving}
+                onClick={() => selectImage(undefined)}
+              >
+                Descartar selección
+              </Button>
+            )}
+            <p id="product-image-error" role="alert" className="text-sm text-destructive">
+              {imageError}
+            </p>
           </div>
         </aside>
       </div>
@@ -162,7 +361,7 @@ export function ProductForm({ product, isSubmitting = false, onSubmit }: Product
         >
           Cancelar
         </Button>
-        <Button type="submit" disabled={isSubmitting || saving}>
+        <Button type="submit" disabled={isSubmitting || saving || Boolean(imageError)}>
           {isSubmitting || saving ? 'Guardando…' : product ? 'Guardar cambios' : 'Crear producto'}
         </Button>
       </div>

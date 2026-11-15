@@ -39,15 +39,31 @@ test('copy mutation sends one request and never retries provider failures', asyn
   );
   assert.equal(calls, 1);
 });
-test('copy preserves the persisted generation identity and image prompt', async () => {
-  const data = {
-    generationId: 'generation',
-    headline: 'Producto',
-    caption: 'PEN 10.00',
-    cta: 'Comprar',
-    hashtags: [],
-    imagePrompt: 'Fondo neutro',
+test('requesting copy returns the pending job without waiting for the provider', async () => {
+  const data = { generationId: 'generation', status: 'PENDING', failureCode: null, copy: null };
+  globalThis.fetch = async (url, options) => {
+    assert.equal(options.method, 'POST');
+    return Response.json({ data }, { status: 202 });
   };
-  globalThis.fetch = async () => Response.json({ data });
   assert.deepEqual(await campaignCopyService.generate('campaign'), data);
+});
+test('copy status preserves the generation identity, the failure and the image prompt', async () => {
+  for (const data of [
+    {
+      generationId: 'generation',
+      status: 'READY',
+      failureCode: null,
+      copy: {
+        headline: 'Producto',
+        caption: 'PEN 10.00',
+        cta: 'Comprar',
+        hashtags: [],
+        imagePrompt: 'Fondo neutro',
+      },
+    },
+    { generationId: 'generation', status: 'FAILED', failureCode: 'TIMEOUT', copy: null },
+  ]) {
+    globalThis.fetch = async () => Response.json({ data });
+    assert.deepEqual(await campaignCopyService.get('campaign'), data);
+  }
 });

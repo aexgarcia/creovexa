@@ -14,6 +14,14 @@ enum ProductKind {
   SERVICE
 }
 
+enum PhotoType {
+  CUTOUT
+  STUDIO
+  SCENE
+  PLACE
+  PERSON
+}
+
 enum Currency {
   PEN
   USD
@@ -21,34 +29,46 @@ enum Currency {
 }
 
 model Organization {
-  id          String     @id @db.Uuid
-  name        String
-  description String
-  brandTone   String?    @map("brand_tone")
-  logoAssetId String?    @map("logo_asset_id") @db.Uuid
-  createdAt   DateTime   @map("created_at") @db.Timestamptz(3)
-  updatedAt   DateTime   @map("updated_at") @db.Timestamptz(3)
-  products    Product[]
-  templates   Template[]
-  campaigns   Campaign[]
+  id              String                  @id @db.Uuid
+  name            String
+  description     String
+  brandTone       String?                 @map("brand_tone")
+  industry        String?
+  country         String                  @default("PE")
+  locale          String                  @default("es-PE")
+  timeZone        String                  @default("America/Lima") @map("time_zone")
+  defaultCurrency Currency                @default(PEN) @map("default_currency")
+  brandColors     Json?                   @map("brand_colors")
+  logoAssetId     String?                 @map("logo_asset_id") @db.Uuid
+  createdAt       DateTime                @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime                @map("updated_at") @db.Timestamptz(3)
+  products        Product[]
+  templates       Template[]
+  campaigns       Campaign[]
+  logos           OrganizationLogoAsset[]
 
   @@index([createdAt])
   @@map("organizations")
 }
 
 model Product {
-  id             String       @id @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
+  id             String              @id @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
   kind           ProductKind
   name           String
   description    String
-  amountMinor    BigInt       @map("amount_minor")
+  amountMinor    BigInt              @map("amount_minor")
   currency       Currency
-  imageAssetIds  String[]     @default([]) @map("image_asset_ids") @db.Uuid
-  createdAt      DateTime     @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime     @map("updated_at") @db.Timestamptz(3)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  shortName      String?             @map("short_name")
+  productBrand   String?             @map("product_brand")
+  keyAttributes  String[]            @default([]) @map("key_attributes")
+  unit           String?
+  imageAssetIds  String[]            @default([]) @map("image_asset_ids") @db.Uuid
+  createdAt      DateTime            @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime            @map("updated_at") @db.Timestamptz(3)
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   campaigns      Campaign[]
+  images         ProductImageAsset[]
 
   @@unique([organizationId, id])
   @@index([organizationId, createdAt])
@@ -78,6 +98,7 @@ model TemplateRevision {
   number         BigInt
   width          Int
   height         Int
+  design         Json       @default("{\"layout\":\"CLASSIC\",\"palette\":\"BLUE\",\"settings\":{\"showLogo\":true,\"showRegularPrice\":true,\"showPromotionPrice\":true,\"showHeadline\":true,\"showCta\":true,\"showMainImage\":true}}")
   createdAt      DateTime   @map("created_at") @db.Timestamptz(3)
   template       Template   @relation("TemplateRevisions", fields: [organizationId, templateId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
   currentFor     Template[] @relation("CurrentRevision")
@@ -157,6 +178,8 @@ model CampaignGeneration {
   currentFor     Campaign[]                 @relation("CurrentGeneration")
   content        GeneratedContent?
   copy           CampaignCopy?
+  imageJob       CampaignImageJob?
+  assets         CampaignAsset[]
   failure        CampaignGenerationFailure?
 
   @@unique([organizationId, campaignId, id])
@@ -271,6 +294,7 @@ model PublicationAttemptResult {
 }
 
 enum CampaignCopyStatus {
+  QUEUED
   RUNNING
   READY
   FAILED
@@ -284,9 +308,100 @@ model CampaignCopy {
   status         CampaignCopyStatus
   expiresAt      DateTime           @map("expires_at") @db.Timestamptz(3)
   content        Json?
+  failureCode    String?            @map("failure_code")
   generation     CampaignGeneration @relation(fields: [organizationId, campaignId, generationId], references: [organizationId, campaignId, id], onDelete: Restrict, onUpdate: Restrict, map: "campaign_copies_generation_fkey")
 
   @@unique([organizationId, campaignId, generationId], map: "campaign_copies_owner_generation_key")
   @@index([organizationId, campaignId], map: "campaign_copies_owner_idx")
   @@map("campaign_copies")
+}
+
+enum CampaignImageJobStatus {
+  QUEUED
+  RUNNING
+  READY
+  FAILED
+}
+
+enum CampaignAssetPurpose {
+  BASE_IMAGE
+  FINAL_PIECE
+}
+
+model CampaignImageJob {
+  generationId    String                 @id @map("generation_id") @db.Uuid
+  organizationId  String                 @map("organization_id") @db.Uuid
+  campaignId      String                 @map("campaign_id") @db.Uuid
+  token           String                 @db.Uuid
+  expectedVersion BigInt                 @map("expected_version")
+  status          CampaignImageJobStatus
+  expiresAt       DateTime               @map("expires_at") @db.Timestamptz(3)
+  failureCode     String?                @map("failure_code")
+  generation      CampaignGeneration     @relation(fields: [organizationId, campaignId, generationId], references: [organizationId, campaignId, id], onDelete: Restrict, onUpdate: Restrict, map: "campaign_image_jobs_generation_fkey")
+
+  @@unique([organizationId, campaignId, generationId], map: "campaign_image_jobs_owner_generation_key")
+  @@index([status, expiresAt])
+  @@map("campaign_image_jobs")
+}
+
+model CampaignAsset {
+  id             String               @id @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  campaignId     String               @map("campaign_id") @db.Uuid
+  generationId   String               @map("generation_id") @db.Uuid
+  operationId    String               @map("operation_id") @db.Uuid
+  purpose        CampaignAssetPurpose
+  bucket         String
+  objectKey      String               @map("object_key")
+  sha256         String
+  byteLength     Int                  @map("byte_length")
+  contentType    String               @map("content_type")
+  width          Int
+  height         Int
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  generation     CampaignGeneration   @relation(fields: [organizationId, campaignId, generationId], references: [organizationId, campaignId, id], onDelete: Restrict, onUpdate: Restrict, map: "campaign_assets_generation_fkey")
+
+  @@unique([organizationId, campaignId, generationId, operationId, purpose], map: "campaign_assets_operation_key")
+  @@unique([bucket, objectKey])
+  @@index([organizationId, id])
+  @@map("campaign_assets")
+}
+
+model ProductImageAsset {
+  id              String     @id @db.Uuid
+  organizationId  String     @map("organization_id") @db.Uuid
+  productId       String     @map("product_id") @db.Uuid
+  bucket          String
+  objectKey       String     @unique @map("object_key")
+  sha256          String
+  byteLength      Int        @map("byte_length")
+  contentType     String     @map("content_type")
+  width           Int
+  height          Int
+  photoType       PhotoType? @map("photo_type")
+  hasTransparency Boolean?   @map("has_transparency")
+  createdAt       DateTime   @map("created_at") @db.Timestamptz(3)
+  product         Product    @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([organizationId, productId, id])
+  @@map("product_image_assets")
+}
+
+model OrganizationLogoAsset {
+  id              String       @id @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  bucket          String
+  objectKey       String       @unique @map("object_key")
+  sha256          String
+  byteLength      Int          @map("byte_length")
+  contentType     String       @map("content_type")
+  width           Int
+  height          Int
+  isDark          Boolean?     @map("is_dark")
+  suggestedColors Json?        @map("suggested_colors")
+  createdAt       DateTime     @map("created_at") @db.Timestamptz(3)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([organizationId, id])
+  @@map("organization_logo_assets")
 }

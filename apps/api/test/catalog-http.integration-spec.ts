@@ -1,8 +1,15 @@
-import { COPY_GENERATOR } from '#app/modules/campaigns/infrastructure/openai-copy-generator';
-import { copyChoices } from '#app/modules/campaigns/application/copy-policy';
+import { COPY_GENERATOR } from '#app/modules/content-generation/application/ports/copy-generator';
+import { CAMPAIGN_FINAL_ASSETS } from '#app/modules/campaigns/application/ports/campaign-final-assets';
+import { finalAssetsFake } from './support/final-assets-fake.js';
+import { copyChoices } from '#app/modules/content-generation/application/copy-policy';
 import type { GenerationSnapshotData } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
-import { PrismaCampaignCopyRepository } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign-copy.repository';
+import { PrismaCampaignCopyRepository } from '#app/modules/content-generation/infrastructure/persistence/prisma/prisma-campaign-copy.repository';
+import { CAMPAIGN_GENERATIONS } from '#app/modules/campaigns/contract';
+import { JOB_QUEUE } from '#app/application/ports/job-queue';
+import { JOBS_CONFIG } from '#app/config/jobs.config';
+import { JobQueueFake } from './support/job-queue-fake.js';
 import { randomUUID } from 'node:crypto';
+import { FlyerDesign } from '#app/domain/value-objects/flyer-design';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -48,6 +55,7 @@ describe('Catalog HTTP with PostgreSQL', () => {
   let database: PrismaService;
   const context: CatalogHttpConfig = { organizationId: null };
   const clock = { value: NOW, now: () => new Date(clock.value) };
+  const queue = new JobQueueFake();
   const copyGenerator = {
     assertAvailable() {},
     generate: vi.fn(async (snapshot: GenerationSnapshotData) => {
@@ -67,6 +75,8 @@ describe('Catalog HTTP with PostgreSQL', () => {
     if (!/^creovexa_test_[0-9a-f]{32}$/.test(schema) || config.schema !== schema)
       throw new Error('Usa pnpm test:integration con un esquema aislado.');
     module = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(CAMPAIGN_FINAL_ASSETS)
+      .useValue(finalAssetsFake)
       .overrideProvider(COPY_GENERATOR)
       .useValue(copyGenerator)
       .overrideProvider(DATABASE_CONFIG)
@@ -77,6 +87,10 @@ describe('Catalog HTTP with PostgreSQL', () => {
       .useValue(clock)
       .overrideProvider(HTTP_LOGGER)
       .useValue({ log() {}, error() {} })
+      .overrideProvider(JOB_QUEUE)
+      .useValue(queue)
+      .overrideProvider(JOBS_CONFIG)
+      .useValue({ worker: true })
       .compile();
     app = module.createNestApplication({ logger: false });
     configureHttp(app);
@@ -114,6 +128,50 @@ describe('Catalog HTTP with PostgreSQL', () => {
     context.organizationId = entityId(other.id);
     const untouched = await request(app.getHttpServer()).get('/organization').expect(200);
     expect(untouched.body.data.name).toBe('Other organization');
+  });
+
+  it('saves the brand kit, changes only the region fields sent and resets the colors', async () => {
+    const colors = {
+      primary: '#5b3a29',
+      secondary: '#C98B4E',
+      accent: '#E4572E',
+      lightBackground: '#F7F1E8',
+      darkBackground: '#1E120D',
+    };
+    const saved = await request(app.getHttpServer())
+      .patch('/organization')
+      .send({ industry: 'Cafetería', region: { currency: 'USD' }, brandColors: colors })
+      .expect(200);
+    expect(saved.body.data).toMatchObject({
+      industry: 'Cafetería',
+      region: { country: 'PE', locale: 'es-PE', timeZone: 'America/Lima', currency: 'USD' },
+      brandColors: { ...colors, primary: '#5B3A29' },
+      effectiveBrandColors: { ...colors, primary: '#5B3A29' },
+      logoTraits: null,
+    });
+
+    const reset = await request(app.getHttpServer())
+      .patch('/organization')
+      .send({ brandColors: null })
+      .expect(200);
+    expect(reset.body.data).toMatchObject({ brandColors: null, effectiveBrandColors: null });
+    const read = await request(app.getHttpServer()).get('/organization').expect(200);
+    expect(read.body.data.region.currency).toBe('USD');
+  });
+
+  // La forma la rechaza la validación de la petición; lo que exige conocer las zonas horarias
+  // o los locales, el dominio.
+  it.each([
+    [{ region: { timeZone: 'Mars/Olympus' } }, 'INVALID_INPUT'],
+    [{ region: { country: 'PER' } }, 'VALIDATION_ERROR'],
+    [{ brandColors: { primary: '#000000' } }, 'VALIDATION_ERROR'],
+    [{ industry: 'x'.repeat(81) }, 'VALIDATION_ERROR'],
+  ])('rejects an invalid brand kit %j', async (body, code) => {
+    const response = await request(app.getHttpServer())
+      .patch('/organization')
+      .send(body)
+      .expect(400);
+    expect(response.body.error.code).toBe(code);
   });
 
   it('returns real scoped totals including empty organizations', async () => {
@@ -178,6 +236,77 @@ describe('Catalog HTTP with PostgreSQL', () => {
       .send({ name: 'Foreign', expectedRevisionId: read.body.data.currentRevision.id })
       .expect(404);
   });
+  it('persists design over HTTP, retains the historical revision and rejects malformed configuration', async () => {
+    const design = {
+      ...FlyerDesign.create().data,
+      layout: 'PRODUCT_FOCUS',
+      palette: 'CORAL',
+      settings: { ...FlyerDesign.create().data.settings, showRegularPrice: false },
+    };
+    const created = await request(app.getHttpServer())
+      .post('/templates')
+      .send({ ...templateBody, design })
+      .expect(201);
+    expect(created.body.data.currentRevision.design).toEqual(design);
+    const revision = created.body.data.currentRevision.id;
+    clock.value = LATER;
+    const edited = await request(app.getHttpServer())
+      .patch('/templates/' + created.body.data.id)
+      .send({
+        name: 'Diseño revisado',
+        expectedRevisionId: revision,
+        design: FlyerDesign.create().data,
+      })
+      .expect(200);
+    expect(edited.body.data.currentRevision.design).toEqual(FlyerDesign.create().data);
+    expect(
+      (await database.templateRevision.findUniqueOrThrow({ where: { id: revision } })).design,
+    ).toEqual(design);
+    const read = await request(app.getHttpServer())
+      .get('/templates/' + created.body.data.id)
+      .expect(200);
+    expect(read.body.data.currentRevision.design).toEqual(FlyerDesign.create().data);
+    await request(app.getHttpServer())
+      .post('/templates')
+      .send({ ...templateBody, design: { ...design, html: '<script>' } })
+      .expect(400);
+    await request(app.getHttpServer())
+      .patch('/templates/' + created.body.data.id)
+      .send({
+        name: 'Inválida',
+        expectedRevisionId: edited.body.data.currentRevision.id,
+        design: { ...design, settings: { ...design.settings, showLogo: 'false' } },
+      })
+      .expect(400);
+    expect(
+      await database.templateRevision.count({ where: { templateId: created.body.data.id } }),
+    ).toBe(2);
+    await expect(
+      database.templateRevision.update({
+        where: { id: revision },
+        data: {
+          design: {
+            ...FlyerDesign.create().data,
+            settings: { ...FlyerDesign.create().data.settings },
+          },
+        },
+      }),
+    ).rejects.toThrow();
+    await expect(
+      database.templateRevision.create({
+        data: {
+          id: randomUUID(),
+          templateId: created.body.data.id,
+          organizationId: context.organizationId!,
+          number: 3n,
+          width: 1080,
+          height: 1080,
+          createdAt: LATER,
+          design: { layout: 'CLASSIC' },
+        },
+      }),
+    ).rejects.toThrow();
+  });
 
   async function campaignInput() {
     const organizationId = context.organizationId!;
@@ -203,10 +332,21 @@ describe('Catalog HTTP with PostgreSQL', () => {
     const created = await request(app.getHttpServer()).post('/campaigns').send(input).expect(201);
     const path = '/campaigns/' + created.body.data.id + '/copy';
     expect((await request(app.getHttpServer()).get(path).expect(200)).body.data).toBeNull();
-    const result = await request(app.getHttpServer()).post(path).expect(200);
-    expect(result.body.data.caption).toContain('PEN 10.00');
-    const again = await request(app.getHttpServer()).post(path).expect(200);
+    const accepted = await request(app.getHttpServer()).post(path).expect(202);
+    expect(accepted.body.data).toMatchObject({ status: 'PENDING', copy: null });
+    expect(copyGenerator.generate).not.toHaveBeenCalled();
+    const pending = await request(app.getHttpServer()).get(path).expect(200);
+    expect(pending.body.data).toMatchObject({
+      generationId: accepted.body.data.generationId,
+      status: 'PENDING',
+    });
+    await queue.drain();
+    const result = await request(app.getHttpServer()).get(path).expect(200);
+    expect(result.body.data.status).toBe('READY');
+    expect(result.body.data.copy.caption).toContain('PEN 10.00');
+    const again = await request(app.getHttpServer()).post(path).expect(202);
     expect(again.body.data).toEqual(result.body.data);
+    await queue.drain();
     expect(copyGenerator.generate).toHaveBeenCalledTimes(1);
     const campaign = await database.campaign.findUniqueOrThrow({
       where: { id: created.body.data.id },
@@ -230,7 +370,7 @@ describe('Catalog HTTP with PostgreSQL', () => {
       campaignId: entityId(created.body.data.id as string),
     };
     const campaign = await module.get(RequestCampaignGeneration).execute(selection);
-    const repo = new PrismaCampaignCopyRepository(database);
+    const repo = new PrismaCampaignCopyRepository(database, module.get(CAMPAIGN_GENERATIONS));
     const first = {
       ...selection,
       generationId: entityId(campaign.generation!.id),
@@ -469,6 +609,46 @@ describe('Catalog HTTP with PostgreSQL', () => {
     expect(
       await database.campaign.count({ where: { organizationId: context.organizationId! } }),
     ).toBe(0);
+  });
+
+  it('persists the flyer data of a product and clears it with null', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/products')
+      .send({
+        ...productBody,
+        shortName: 'Pack BAO Café',
+        productBrand: 'BAO Café',
+        keyAttributes: ['100 % arábica', 'Café de altura'],
+        unit: 'por pack',
+      })
+      .expect(201);
+    expect(created.body.data).toMatchObject({
+      shortName: 'Pack BAO Café',
+      productBrand: 'BAO Café',
+      keyAttributes: ['100 % arábica', 'Café de altura'],
+      unit: 'por pack',
+      image: null,
+    });
+    const id: string = created.body.data.id;
+    clock.value = LATER;
+    await request(app.getHttpServer())
+      .patch(`/products/${id}`)
+      .send({ shortName: null, keyAttributes: ['Tostado medio'] })
+      .expect(200);
+    const read = await request(app.getHttpServer()).get(`/products/${id}`).expect(200);
+    expect(read.body.data).toMatchObject({
+      shortName: null,
+      productBrand: 'BAO Café',
+      keyAttributes: ['Tostado medio'],
+    });
+    await request(app.getHttpServer())
+      .post('/products')
+      .send({ ...productBody, keyAttributes: ['1', '2', '3', '4', '5', '6'] })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/products')
+      .send({ ...productBody, shortName: 'x'.repeat(41) })
+      .expect(400);
   });
 
   it('persists HTTP product creation, retrieval and partial editing', async () => {

@@ -4,7 +4,7 @@ Trabajamos con `main` como base estable y una rama corta por tarea. Cada cambio 
 
 ## Antes de empezar
 
-Consulta [architecture.md](architecture.md), la fase correspondiente en [fases1-4.5.md](fases1-4.5.md) o [fases5-10.md](fases5-10.md), y los archivos `AGENTS.md` aplicables. Esas referencias definen la arquitectura y el alcance; esta guía describe el flujo de GitHub.
+Consulta las [reglas de trabajo](SDD/arquitectura/reglas-de-trabajo.md), el [estado de fases](SDD/fases/estado.md), el contrato del módulo en [SDD/modulos](SDD/modulos/) y los archivos `AGENTS.md` aplicables. Esas referencias definen la arquitectura y el alcance; esta guía describe el flujo de GitHub.
 
 Prepara el entorno siguiendo el [README](README.md#desarrollo-local). Usa la versión de Node indicada en `.node-version` y la versión de pnpm declarada en `package.json`, que también utiliza CI.
 

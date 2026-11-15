@@ -107,7 +107,7 @@ export class Campaign {
     });
   }
 
-  /** Rehydrate a validated state directly, without replaying business transitions. */
+  /** Rehidrata un estado validado directamente, sin repetir las transiciones de negocio. */
   static restore(state: CampaignState): Campaign {
     const base = Campaign.create(state.id, state, new Date(state.createdAt));
     const updatedAt = timestamp(new Date(state.updatedAt), state.createdAt);

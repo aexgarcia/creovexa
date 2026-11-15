@@ -10,7 +10,7 @@ export interface PublicationRepository {
   ): Promise<Page<Publication>>;
   findById(organizationId: EntityId, publicationId: EntityId): Promise<Publication | null>;
   listByCampaign(organizationId: EntityId, campaignId: EntityId): Promise<Publication[]>;
-  /** Insert a new pending destination. Commit together with the campaign summary. */
+  /** Inserta un destino pendiente nuevo. Se confirma junto con el resumen de la campaña. */
   add(organizationId: EntityId, publication: Publication): Promise<void>;
   /** Advance exactly one version; retain immutable attempts/results. Never upsert. */
   save(organizationId: EntityId, publication: Publication, expectedVersion: number): Promise<void>;

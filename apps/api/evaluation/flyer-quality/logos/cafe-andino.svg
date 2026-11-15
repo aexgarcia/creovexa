@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="240" viewBox="0 0 640 240">
+  <!-- Wordmark con tilde y un ícono simple: prueba que la IA no cambie "Café" por "Cafe". -->
+  <circle cx="120" cy="120" r="96" fill="#5b3a29"/>
+  <path d="M40 160 L95 82 L122 118 L146 92 L200 160 Z" fill="#f3e3c3"/>
+  <path d="M95 82 L108 100 L82 100 Z" fill="#ffffff"/>
+  <ellipse cx="120" cy="172" rx="34" ry="12" fill="#c98b4e"/>
+  <text x="240" y="128" font-family="Georgia, 'Times New Roman', serif" font-size="74" font-weight="700" fill="#5b3a29">Café</text>
+  <text x="240" y="196" font-family="Georgia, 'Times New Roman', serif" font-size="58" fill="#c98b4e">Andino</text>
+</svg>

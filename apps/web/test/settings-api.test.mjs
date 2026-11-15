@@ -18,6 +18,43 @@ afterEach(() => {
   globalThis.fetch = originalFetch;
 });
 
+test('uploads exactly one logo as multipart and resolves its private read URL', async () => {
+  const file = new File([new Uint8Array([1, 2, 3])], 'brand.png', { type: 'image/png' });
+  globalThis.fetch = async (url, options) => {
+    assert.ok(url.endsWith('/organization/logo'));
+    assert.equal(options.method, 'POST');
+    assert.equal(options.headers.has('Content-Type'), false);
+    assert.deepEqual([...options.body.keys()], ['logo']);
+    assert.equal(options.body.get('logo').name, 'brand.png');
+    assert.deepEqual(
+      new Uint8Array(await options.body.get('logo').arrayBuffer()),
+      new Uint8Array([1, 2, 3]),
+    );
+    return Response.json({
+      data: { id: 'organization-1', logoAssetId: 'logo-1', logoUrl: '/organization/logos/logo-1' },
+    });
+  };
+  const result = await companySettingsService.uploadLogo(file);
+  assert.ok(result.logoUrl.endsWith('/organization/logos/logo-1'));
+  assert.ok(result.logoUrl.startsWith('http'));
+});
+
+test('does not expose provider errors or retry a failed logo upload', async () => {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    return Response.json(
+      { error: { code: 'ORGANIZATION_LOGO_UNAVAILABLE', message: 'secret provider details' } },
+      { status: 503 },
+    );
+  };
+  await assert.rejects(
+    companySettingsService.uploadLogo(new File(['x'], 'logo.png')),
+    (error) => error.status === 503 && !error.message.includes('secret'),
+  );
+  assert.equal(calls, 1);
+});
+
 test('loads persisted organization settings without demo fallback', async () => {
   const settings = {
     id: 'organization-1',
@@ -55,4 +92,19 @@ test('updates editable profile fields without sending organization selection or 
     'organization-1',
   );
   assert.equal(calls, 1);
+});
+test('sends the brand kit and null to go back to the logo colors', async () => {
+  const region = {
+    country: 'MX',
+    locale: 'es-MX',
+    timeZone: 'America/Mexico_City',
+    currency: 'USD',
+  };
+  const bodies = [];
+  globalThis.fetch = async (_url, options) => {
+    bodies.push(JSON.parse(options.body));
+    return Response.json({ data: { id: 'organization-1' } });
+  };
+  await companySettingsService.update({ industry: 'Cafetería', region, brandColors: null });
+  assert.deepEqual(bodies[0], { industry: 'Cafetería', region, brandColors: null });
 });

@@ -1,0 +1,122 @@
+{
+  "PROMOCION_DESTACADA": {
+    "nombre": "Promoción destacada",
+    "formato": "CUADRADO",
+    "composicion": "PRODUCTO_PROTAGONISTA",
+    "estilo": "AUDAZ",
+    "modo": "OSCURO",
+    "fondo": "COLOR_DE_MARCA",
+    "posicionLogo": "ARRIBA_DERECHA",
+    "densidadDeTexto": "EQUILIBRADA",
+    "elementos": {
+      "logo": true,
+      "titular": true,
+      "subtitulo": false,
+      "nombreProducto": true,
+      "atributos": 0,
+      "precioRegular": true,
+      "precioPromocional": true,
+      "vigencia": true,
+      "cta": true,
+      "contacto": false,
+      "textoLegal": true
+    },
+    "indicacionesFijas": null
+  },
+  "PRODUCTO_EN_VITRINA": {
+    "nombre": "Producto en vitrina",
+    "formato": "CUADRADO",
+    "composicion": "PRODUCTO_EN_PANEL",
+    "estilo": "MINIMALISTA",
+    "modo": "CLARO",
+    "fondo": "ESTUDIO",
+    "posicionLogo": "ARRIBA_IZQUIERDA",
+    "densidadDeTexto": "MINIMA",
+    "elementos": {
+      "logo": true,
+      "titular": true,
+      "subtitulo": false,
+      "nombreProducto": true,
+      "atributos": 3,
+      "precioRegular": true,
+      "precioPromocional": true,
+      "vigencia": false,
+      "cta": true,
+      "contacto": false,
+      "textoLegal": false
+    },
+    "indicacionesFijas": null
+  },
+  "LANZAMIENTO": {
+    "nombre": "Lanzamiento",
+    "formato": "VERTICAL",
+    "composicion": "ESCENA_AMBIENTADA",
+    "estilo": "ELEGANTE",
+    "modo": "OSCURO",
+    "fondo": "ESCENA",
+    "posicionLogo": "ARRIBA_IZQUIERDA",
+    "densidadDeTexto": "MINIMA",
+    "elementos": {
+      "logo": true,
+      "titular": true,
+      "subtitulo": true,
+      "nombreProducto": true,
+      "atributos": 3,
+      "precioRegular": false,
+      "precioPromocional": false,
+      "vigencia": false,
+      "cta": true,
+      "contacto": false,
+      "textoLegal": false
+    },
+    "indicacionesFijas": null
+  },
+  "SERVICIO_PROFESIONAL": {
+    "nombre": "Servicio profesional",
+    "formato": "CUADRADO",
+    "composicion": "DIVIDIDA",
+    "estilo": "CORPORATIVO",
+    "modo": "CLARO",
+    "fondo": "COLOR_DE_MARCA",
+    "posicionLogo": "ARRIBA_IZQUIERDA",
+    "densidadDeTexto": "EQUILIBRADA",
+    "elementos": {
+      "logo": true,
+      "titular": true,
+      "subtitulo": true,
+      "nombreProducto": true,
+      "atributos": 2,
+      "precioRegular": true,
+      "precioPromocional": true,
+      "vigencia": true,
+      "cta": true,
+      "contacto": true,
+      "textoLegal": true
+    },
+    "indicacionesFijas": null
+  },
+  "HISTORIA_DE_TEMPORADA": {
+    "nombre": "Historia de temporada",
+    "formato": "HISTORIA",
+    "composicion": "ESCENA_AMBIENTADA",
+    "estilo": "DIVERTIDO",
+    "modo": "CLARO",
+    "fondo": "ESCENA",
+    "posicionLogo": "ARRIBA_DERECHA",
+    "densidadDeTexto": "MINIMA",
+    "elementos": {
+      "logo": true,
+      "titular": true,
+      "subtitulo": false,
+      "nombreProducto": true,
+      "atributos": 0,
+      "precioRegular": true,
+      "precioPromocional": true,
+      "vigencia": true,
+      "cta": true,
+      "contacto": false,
+      "textoLegal": true
+    },
+    "indicacionesFijas": null
+  }
+}

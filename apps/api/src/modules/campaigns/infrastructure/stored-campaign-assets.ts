@@ -1,0 +1,116 @@
+import { createHash } from 'node:crypto';
+import { entityId, type EntityId } from '#app/domain/entity-id';
+import { inspectImageBytes, MAX_IMAGE_BYTES } from '#app/infrastructure/image-files';
+import type {
+  CampaignAsset,
+  PrismaClient,
+} from '#app/infrastructure/persistence/prisma/generated/client';
+import {
+  ObjectStorageError,
+  type ObjectStorage,
+} from '#app/modules/assets/application/ports/object-storage';
+import { CampaignImageError } from '../application/errors/campaign-image.error.js';
+import type {
+  CampaignFinalAssets,
+  CampaignImageSelection,
+  StoredCampaignAsset,
+} from '../application/ports/campaign-final-assets.js';
+
+// Lee los archivos ya registrados de una campaña. Escribirlos le corresponde a content-generation.
+export class StoredCampaignAssets implements CampaignFinalAssets {
+  constructor(
+    private readonly database: PrismaClient,
+    private readonly storage: ObjectStorage,
+  ) {}
+
+  get bucket(): string {
+    const bucket = this.storage.bucket;
+    if (!bucket) throw new CampaignImageError('UNAVAILABLE');
+    return bucket;
+  }
+
+  assertAvailable(): void {
+    void this.bucket;
+  }
+
+  async readFinal(input: CampaignImageSelection & { assetId: EntityId }) {
+    const row = await this.database.campaignAsset.findFirst({
+      where: {
+        id: input.assetId,
+        organizationId: input.organizationId,
+        campaignId: input.campaignId,
+        generationId: input.generationId,
+        purpose: 'FINAL_PIECE',
+        contentType: 'image/png',
+        width: 1080,
+        height: 1080,
+      },
+    });
+    if (!row) return null;
+    this.assertAvailable();
+    const result = await this.read(input.organizationId, input.assetId);
+    if (!result) return null;
+    try {
+      const actual = await inspectImageBytes(result.bytes);
+      if (
+        actual.contentType !== 'image/png' ||
+        actual.width !== row.width ||
+        actual.height !== row.height
+      )
+        throw new CampaignImageError('INVALID_OUTPUT');
+    } catch {
+      throw new CampaignImageError('INVALID_OUTPUT');
+    }
+    return result;
+  }
+
+  // Lector interno de archivos propios. Los ajenos parecen inexistentes.
+  async read(
+    organizationId: EntityId,
+    assetId: EntityId,
+  ): Promise<{ bytes: Buffer; asset: StoredCampaignAsset } | null> {
+    try {
+      const row = await this.database.campaignAsset.findFirst({
+        where: { id: assetId, organizationId },
+      });
+      if (!row) return null;
+      if (row.bucket !== this.bucket) throw new CampaignImageError('UNAVAILABLE');
+      const bytes = await this.readObject(row.objectKey);
+      if (bytes.length !== row.byteLength || sha256(bytes) !== row.sha256)
+        throw new CampaignImageError('INVALID_OUTPUT');
+      return { bytes, asset: campaignAssetResult(row) };
+    } catch (error) {
+      if (error instanceof CampaignImageError) throw error;
+      throw new CampaignImageError('UNAVAILABLE');
+    }
+  }
+
+  async readObject(key: string): Promise<Buffer> {
+    try {
+      return await this.storage.read(key, MAX_IMAGE_BYTES);
+    } catch (error) {
+      if (!(error instanceof ObjectStorageError)) throw error;
+      if (error.code === 'TIMEOUT') throw new CampaignImageError('TIMEOUT');
+      if (error.code === 'EMPTY' || error.code === 'TOO_LARGE')
+        throw new CampaignImageError('INVALID_OUTPUT');
+      throw new CampaignImageError('UNAVAILABLE');
+    }
+  }
+}
+
+export function sha256(bytes: Uint8Array): string {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+export function campaignAssetResult(row: CampaignAsset): StoredCampaignAsset {
+  return {
+    id: entityId(row.id),
+    organizationId: entityId(row.organizationId),
+    campaignId: entityId(row.campaignId),
+    generationId: entityId(row.generationId),
+    purpose: row.purpose,
+    contentType: row.contentType as StoredCampaignAsset['contentType'],
+    width: row.width,
+    height: row.height,
+  };
+}

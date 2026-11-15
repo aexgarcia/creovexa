@@ -2,7 +2,10 @@ import type { EntityId } from '#app/domain/entity-id';
 import { pagination, type Page, type Pagination } from '#app/domain/pagination';
 import type { PrismaClient } from '#app/infrastructure/persistence/prisma/generated/client';
 import { translatePrismaError } from '#app/infrastructure/persistence/prisma/translate-prisma-error';
-import { PersistenceScopeError } from '#app/infrastructure/persistence/persistence.errors';
+import {
+  PersistenceScopeError,
+  PersistenceConflictError,
+} from '#app/infrastructure/persistence/persistence.errors';
 import type { Product } from '../../../domain/entities/product.js';
 import type { ProductRepository } from '../../../domain/repositories/product.repository.js';
 import { ProductNotFoundError } from '../../../domain/errors/product.errors.js';
@@ -15,7 +18,22 @@ export class PrismaProductRepository implements ProductRepository {
     const row = await this.client.product.findUnique({
       where: { organizationId_id: { organizationId, id: productId } },
     });
-    return row ? ProductMapper.toDomain(row) : null;
+    if (!row) return null;
+    const [image] = await this.currentImages(organizationId, row.imageAssetIds);
+    return ProductMapper.toDomain(row, image ?? null);
+  }
+
+  // Los datos de las imágenes actuales, en una sola consulta.
+  private async currentImages(
+    organizationId: EntityId,
+    ids: readonly string[],
+    client: Pick<PrismaClient, 'productImageAsset'> = this.client,
+  ) {
+    if (!ids.length) return [];
+    return client.productImageAsset.findMany({
+      where: { organizationId, id: { in: [...ids] } },
+      select: { id: true, photoType: true, hasTransparency: true },
+    });
   }
 
   async add(organizationId: EntityId, product: Product): Promise<void> {
@@ -39,26 +57,52 @@ export class PrismaProductRepository implements ProductRepository {
           take: limit,
         });
         const total = await tx.product.count({ where });
-        return { items: rows.map(ProductMapper.toDomain), total };
+        const images = new Map(
+          (
+            await this.currentImages(
+              organizationId,
+              rows.flatMap((row) => row.imageAssetIds),
+              tx,
+            )
+          ).map((image) => [image.id, image]),
+        );
+        return {
+          items: rows.map((row) =>
+            ProductMapper.toDomain(row, images.get(row.imageAssetIds[0] ?? '') ?? null),
+          ),
+          total,
+        };
       },
       { isolationLevel: 'RepeatableRead' },
     );
   }
 
-  async save(organizationId: EntityId, product: Product): Promise<void> {
+  async save(organizationId: EntityId, product: Product, expectedUpdatedAt?: Date): Promise<void> {
     if (product.organizationId !== organizationId) throw new PersistenceScopeError();
     const row = ProductMapper.toPersistence(product);
     const result = await this.client.product.updateMany({
-      where: { id: row.id, organizationId },
+      where: {
+        id: row.id,
+        organizationId,
+        ...(expectedUpdatedAt ? { updatedAt: expectedUpdatedAt } : {}),
+      },
       data: {
         name: row.name,
         description: row.description,
         amountMinor: row.amountMinor,
         currency: row.currency,
+        shortName: row.shortName,
+        productBrand: row.productBrand,
+        keyAttributes: row.keyAttributes,
+        unit: row.unit,
         imageAssetIds: row.imageAssetIds,
         updatedAt: row.updatedAt,
       },
     });
-    if (result.count !== 1) throw new ProductNotFoundError();
+    if (result.count !== 1) {
+      if (expectedUpdatedAt && (await this.findById(organizationId, product.id)))
+        throw new PersistenceConflictError();
+      throw new ProductNotFoundError();
+    }
   }
 }

@@ -18,10 +18,7 @@ infrastructure/
     postgres/             # Inicialización de la base independiente de n8n
     minio/                # Imagen construida desde el código oficial
 scripts/                  # Preparación de entorno y comprobación de salud
-docs/                     # Decisiones y validación de cada fase
-architecture.md           # Reglas de arquitectura
-fases1-4.5.md              # Alcance y orden de fases iniciales
-fases5-10.md               # Alcance y orden de fases posteriores
+SDD/                      # Documentación: arquitectura, ADRs, contratos, fases e historial
 pnpm-workspace.yaml
 pnpm-lock.yaml
 ```
@@ -49,11 +46,11 @@ pnpm dev
 
 `setup:env` crea `.env`, `apps/api/.env` y `apps/web/.env.local` a partir de sus ejemplos. Genera contraseñas y clave de cifrado aleatorias y conserva las variables existentes. Si falta `DATABASE_URL` en la API, la añade usando las credenciales de PostgreSQL del entorno raíz, sin imprimirlas. Estos archivos se ignoran en Git. No uses `pnpm setup`: ese es un comando propio del gestor de paquetes.
 
-`db:migrate` aplica las migraciones versionadas mediante `prisma migrate deploy`; no resetea la base ni modifica la base independiente de n8n. El cliente Prisma se genera automáticamente al comprobar tipos, ejecutar pruebas o compilar. Consulta [persistencia comercial](docs/phase-3-commercial.md), [campañas](docs/phase-3-campaigns.md) y [publicaciones](docs/phase-3-publications.md) para sus límites y pruebas de PostgreSQL.
+`db:migrate` aplica las migraciones versionadas mediante `prisma migrate deploy`; no resetea la base ni modifica la base independiente de n8n. El cliente Prisma se genera automáticamente al comprobar tipos, ejecutar pruebas o compilar. Consulta [persistencia comercial](SDD/historial/fase-3.md), [campañas](SDD/historial/fase-3.md) y [publicaciones](SDD/historial/fase-3.md) para sus límites y pruebas de PostgreSQL.
 
 Las aplicaciones se ejecutan en el host con recarga automática; los tres servicios de infraestructura se ejecutan en Docker. También puedes usar `pnpm dev:web` y `pnpm dev:api` por separado.
 
-`db:seed:dev` prepara una organización local y configura `DEV_ORGANIZATION_ID` en `apps/api/.env`; repetirlo conserva la organización existente. No añade productos ni plantillas. Reinicia la API después de ejecutarlo. Hasta incorporar autenticación en la fase 9, el catálogo funciona con esa organización fija en desarrollo; sin configuración responde 503 y no se permite habilitarla en producción. Swagger está en <http://localhost:3001/docs> y el contrato en <http://localhost:3001/openapi.json>. Consulta [la API de catálogo](docs/phase-4-catalog.md) para ejemplos y límites.
+`db:seed:dev` prepara una organización local y configura `DEV_ORGANIZATION_ID` en `apps/api/.env`; repetirlo conserva la organización existente. No añade productos ni plantillas. Reinicia la API después de ejecutarlo. Hasta incorporar autenticación en la fase 9, el catálogo funciona con esa organización fija en desarrollo; sin configuración responde 503 y no se permite habilitarla en producción. Swagger está en <http://localhost:3001/docs> y el contrato en <http://localhost:3001/openapi.json>. Consulta [la API de catálogo](SDD/historial/fase-4.md) para ejemplos y límites.
 
 | Servicio      | Dirección             | Salud                   |
 | ------------- | --------------------- | ----------------------- |
@@ -92,7 +89,7 @@ pnpm infra:down
 
 `test:integration` requiere PostgreSQL disponible. Crea un esquema aleatorio `creovexa_test_…`, aplica las migraciones y elimina únicamente ese esquema al terminar, incluso si falla una prueba. Usa `TEST_DATABASE_URL` si está definida y, en caso contrario, `DATABASE_URL` de la API. Las pruebas unitarias y HTTP no necesitan una conexión a PostgreSQL.
 
-MinIO se compila desde una versión fija del código oficial; su primer arranque necesita descargar las imágenes base y compilar Go. Consulta la justificación en [las decisiones de la fase 1](docs/phase-1.md).
+MinIO se compila desde una versión fija del código oficial; su primer arranque necesita descargar las imágenes base y compilar Go. Consulta la justificación en [las decisiones de la fase 1](SDD/historial/fase-1.md).
 
 ## Trabajo con GitHub
 
@@ -115,6 +112,6 @@ Los directorios antiguos pueden conservar metadatos Git o cachés protegidos por
 
 ## Reglas y estado
 
-Antes de implementar funcionalidades, revisa [architecture.md](architecture.md), [fases1-4.5.md](fases1-4.5.md), [fases5-10.md](fases5-10.md) y las instrucciones `AGENTS.md` aplicables.
+Antes de implementar funcionalidades, revisa la [documentación en SDD](SDD/README.md), en especial las [reglas de trabajo](SDD/arquitectura/reglas-de-trabajo.md) y el [estado de fases](SDD/fases/estado.md), y las instrucciones `AGENTS.md` aplicables.
 
-El historial de verificación de infraestructura está en [fase 1](docs/phase-1.md), el modelo en [dominio](docs/domain.md) y los incrementos actuales en [fase 4: API de productos y plantillas](docs/phase-4-catalog.md) y [API de campañas](docs/phase-4-campaigns.md) y [aprobación y publicaciones](docs/phase-4-approval-publications.md).
+El historial de verificación de infraestructura está en [fase 1](SDD/historial/fase-1.md), el modelo en [dominio](SDD/arquitectura/dominio.md) y los incrementos actuales en [fase 4: API de productos y plantillas](SDD/historial/fase-4.md) y [API de campañas](SDD/historial/fase-4.md) y [aprobación y publicaciones](SDD/historial/fase-4.md).

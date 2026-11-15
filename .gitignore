@@ -18,3 +18,41 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# --- Secretos y credenciales: nunca versionar ---
+# Variables de entorno reales (solo se versiona .env.example)
+.env
+.env.*
+!.env.example
+*.env
+# Claves, certificados y almacenes
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+# Credenciales de servicios y tokens exportados
+*credentials*.json
+*service-account*.json
+*client_secret*.json
+secrets/
+*.secret
+.npmrc
+# Credenciales exportadas de n8n
+automation/n8n/credentials/
+
+# --- Datos locales ---
+# Volúmenes y respaldos de PostgreSQL / MinIO
+infrastructure/docker/**/data/
+backups/
+*.dump
+*.sql.gz
+*.bak
+# Archivos temporales de generación de imágenes
+tmp/
+.tmp/
+# Configuración local de asistentes y editores
+.claude/settings.local.json

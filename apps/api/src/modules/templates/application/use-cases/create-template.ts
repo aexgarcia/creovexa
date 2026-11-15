@@ -12,6 +12,7 @@ export interface CreateTemplateInput {
   organizationId: string;
   name: string;
   dimensions: { width: number; height: number };
+  design?: unknown;
 }
 
 export class CreateTemplate {
@@ -34,6 +35,7 @@ export class CreateTemplate {
       {
         name: input.name,
         dimensions: TemplateDimensions.create(input.dimensions.width, input.dimensions.height),
+        design: input.design,
       },
       this.clock.now(),
     );

@@ -3,8 +3,8 @@ import type { Organization } from '../entities/organization.js';
 
 export interface OrganizationRepository {
   findById(id: EntityId): Promise<Organization | null>;
-  /** Insert only; an existing identifier must not be overwritten. */
+  /** Solo inserta; un identificador existente no se debe sobrescribir. */
   add(organization: Organization): Promise<void>;
-  /** Update an existing organization only; never an upsert. */
-  save(organization: Organization): Promise<void>;
+  /** Solo actualiza una organización existente; nunca hace upsert. */
+  save(organization: Organization, expectedUpdatedAt?: Date): Promise<void>;
 }

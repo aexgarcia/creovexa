@@ -1,10 +1,11 @@
 import { apiRequest, type ApiPage } from '@/lib/api-client';
 import type { CreateStoredTemplateInput, StoredTemplate } from '../types/stored-template.types';
+import type { TemplateDesign } from '../types/template-design';
 
 class TemplateService {
   async update(
     id: string,
-    input: { name: string; expectedRevisionId: string },
+    input: { name: string; expectedRevisionId: string; design?: TemplateDesign },
   ): Promise<StoredTemplate> {
     return (
       await apiRequest<{ data: StoredTemplate }>(`/templates/${encodeURIComponent(id)}`, {
@@ -27,7 +28,11 @@ class TemplateService {
   async create(input: CreateStoredTemplateInput): Promise<StoredTemplate> {
     const response = await apiRequest<{ data: StoredTemplate }>('/templates', {
       method: 'POST',
-      body: JSON.stringify({ name: input.name.trim(), dimensions: input.dimensions }),
+      body: JSON.stringify({
+        name: input.name.trim(),
+        dimensions: input.dimensions,
+        design: input.design,
+      }),
     });
     return response.data;
   }

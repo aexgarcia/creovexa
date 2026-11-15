@@ -6,7 +6,7 @@ import {
   StalePublicationSummaryError,
 } from '../errors/campaign.errors.js';
 
-/** Consumer-owned read contract. It carries no Publication entity or provider payload. */
+/** Contrato de lectura propio del consumidor. No lleva la entidad Publication ni datos del proveedor. */
 export interface CampaignPublication {
   publicationId: string;
   organizationId: string;

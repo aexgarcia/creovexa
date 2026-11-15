@@ -18,6 +18,7 @@ export class UpdateTemplate {
     templateId: string;
     expectedRevisionId: string;
     name: string;
+    design?: unknown;
   }) {
     const owner = entityId(input.organizationId),
       id = entityId(input.templateId),
@@ -25,7 +26,7 @@ export class UpdateTemplate {
     const current = await this.templates.findById(owner, id);
     if (!current || current.organizationId !== owner) throw new TemplateNotFoundError();
     if (current.currentRevision.id !== expected) throw new TemplateRevisionConflictError();
-    const updated = current.revise(this.ids.next(), input.name, this.clock.now());
+    const updated = current.revise(this.ids.next(), input.name, this.clock.now(), input.design);
     await this.templates.save(owner, updated, expected);
     return templateResult(updated);
   }

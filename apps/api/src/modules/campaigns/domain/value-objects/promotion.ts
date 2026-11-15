@@ -22,7 +22,7 @@ export class Promotion {
     return promotion;
   }
 
-  /** Restore intrinsic values without consulting today's catalog price or clock. */
+  /** Restaura los valores propios sin consultar el precio actual del catálogo ni el reloj. */
   static restore(price: Money, startsAt: Date | null, endsAt: Date | null): Promotion {
     if (!(price instanceof Money)) throw new InvalidPromotionError('price');
     const start = startsAt === null ? null : timestamp(startsAt);

@@ -10,6 +10,7 @@ import { TemplateRevision } from './template-revision.js';
 export interface TemplateDetails {
   name: string;
   dimensions: TemplateDimensions;
+  design?: unknown;
 }
 
 interface TemplateState {
@@ -49,21 +50,22 @@ export class Template {
         ownerId,
         input.dimensions,
         at,
+        input.design,
       ),
       createdAt,
       updatedAt: createdAt,
     });
   }
 
-  createRevision(id: string, dimensions: TemplateDimensions, at: Date): Template {
+  createRevision(id: string, dimensions: TemplateDimensions, at: Date, design?: unknown): Template {
     const updatedAt = timestamp(at, this.#state.updatedAt);
-    const currentRevision = this.currentRevision.next(id, dimensions, at);
+    const currentRevision = this.currentRevision.next(id, dimensions, at, design);
     return new Template({ ...this.#state, currentRevision, updatedAt });
   }
 
-  revise(id: string, name: string, at: Date): Template {
+  revise(id: string, name: string, at: Date, design?: unknown): Template {
     if (typeof name !== 'string' || !name.trim()) throw new InvalidTemplateNameError();
-    const revised = this.createRevision(id, this.currentRevision.dimensions, at);
+    const revised = this.createRevision(id, this.currentRevision.dimensions, at, design);
     return new Template({ ...revised.#state, name: name.trim() });
   }
 

@@ -6,8 +6,8 @@ export interface TemplateRepository {
   findById(organizationId: EntityId, templateId: EntityId): Promise<Template | null>;
   list(organizationId: EntityId, pagination: Pagination): Promise<Page<Template>>;
   /**
-   * Atomically insert a new template and its initial revision, scoped to organizationId.
-   * Reject existing identities; never overwrite a template or revision.
+   * Inserta de forma atómica una plantilla nueva y su revisión inicial, dentro de organizationId.
+   * Rechaza identidades existentes; nunca sobrescribe una plantilla ni una revisión.
    */
   save(organizationId: EntityId, template: Template, expectedRevisionId: EntityId): Promise<void>;
   add(organizationId: EntityId, template: Template): Promise<void>;

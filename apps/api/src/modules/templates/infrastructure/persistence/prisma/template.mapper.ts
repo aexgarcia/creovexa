@@ -22,13 +22,19 @@ export class TemplateMapper {
         Number(revision.number),
         TemplateDimensions.create(revision.width, revision.height),
         revision.createdAt,
+        revision.design,
       ),
       row.createdAt,
       row.updatedAt,
     );
   }
 
-  static toPersistence(template: Template): { template: TemplateRecord; revision: RevisionRecord } {
+  static toPersistence(template: Template): {
+    template: TemplateRecord;
+    revision: Omit<RevisionRecord, 'design'> & {
+      design: { layout: string; palette: string; settings: Record<string, boolean> };
+    };
+  } {
     const revision = template.currentRevision;
     return {
       template: {
@@ -46,6 +52,7 @@ export class TemplateMapper {
         number: BigInt(revision.number),
         width: revision.dimensions.width,
         height: revision.dimensions.height,
+        design: { ...revision.design, settings: { ...revision.design.settings } },
         createdAt: revision.createdAt,
       },
     };

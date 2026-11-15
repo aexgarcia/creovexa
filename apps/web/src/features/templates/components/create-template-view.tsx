@@ -10,11 +10,13 @@ import { Label } from '@/components/ui/label';
 import { TemplateVisualSettings } from './template-visual-settings';
 import { TemplateDesignPreview } from './template-design-preview';
 import { useCreateTemplate } from '../hooks/use-create-template';
+import { defaultTemplateDesign } from '../types/template-design';
 
 export function CreateTemplateView() {
   const router = useRouter();
   const createTemplate = useCreateTemplate();
   const [name, setName] = useState('');
+  const [design, setDesign] = useState(defaultTemplateDesign);
   const [error, setError] = useState('');
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -27,6 +29,7 @@ export function CreateTemplateView() {
       await createTemplate.mutateAsync({
         name: name.trim(),
         dimensions: { width: 1080, height: 1080 },
+        design,
       });
       toast.success('Plantilla creada correctamente');
       router.push('/templates');
@@ -60,10 +63,11 @@ export function CreateTemplateView() {
               />
             </div>
             <p>Formato cuadrado · 1080 × 1080 px</p>
-            <p className="text-sm text-muted-foreground">
-              La personalización visual estará disponible próximamente.
-            </p>
-            <TemplateVisualSettings />
+            <TemplateVisualSettings
+              design={design}
+              onChange={setDesign}
+              disabled={createTemplate.isPending}
+            />
             {error && (
               <p role="alert" className="text-sm text-destructive">
                 {error}
@@ -86,7 +90,7 @@ export function CreateTemplateView() {
         </form>
         <aside className="space-y-5 rounded-xl border bg-card p-6">
           <h2 className="font-semibold">Vista previa</h2>
-          <TemplateDesignPreview />
+          <TemplateDesignPreview design={design} />
         </aside>
       </div>
     </div>

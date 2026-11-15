@@ -1,0 +1,400 @@
+{
+  "version": 2,
+  "nota": "Datos con el modelo propuesto en SDD/arquitectura/datos-del-flyer.md. Los colores y si el logo es oscuro los deriva marca.mjs; no se escriben aquí.",
+  "marcas": {
+    "cafe-andino": {
+      "nombre": "Café Andino",
+      "rubro": "Cafetería y tostaduría de café",
+      "publicoObjetivo": "Adultos jóvenes de Lima que disfrutan el café de especialidad",
+      "tono": "Cálido, cercano y artesanal. Habla de origen y de compartir.",
+      "region": {
+        "pais": "Perú",
+        "idioma": "es-PE",
+        "zonaHoraria": "America/Lima"
+      },
+      "logo": "logos/cafe-andino.svg",
+      "tipografia": "SERIF_ELEGANTE",
+      "estiloVisual": [
+        "artesanal",
+        "cálido",
+        "fotografía natural"
+      ],
+      "contacto": {
+        "whatsapp": "+51 987 654 321",
+        "instagram": "@cafeandino.pe"
+      },
+      "textoLegalPorDefecto": "Imágenes referenciales.",
+      "palabrasProhibidas": []
+    },
+    "sonrisa-plena": {
+      "nombre": "Sonrisa Plena",
+      "rubro": "Clínica dental familiar",
+      "publicoObjetivo": "Familias de San Isidro y distritos cercanos",
+      "tono": "Profesional, tranquilizador y claro.",
+      "region": {
+        "pais": "Perú",
+        "idioma": "es-PE",
+        "zonaHoraria": "America/Lima"
+      },
+      "logo": "logos/sonrisa-plena.svg",
+      "tipografia": "SANS_MODERNA",
+      "estiloVisual": [
+        "limpio",
+        "confiable",
+        "luminoso"
+      ],
+      "contacto": {
+        "whatsapp": "+51 955 111 222",
+        "direccion": "Av. Javier Prado Oeste 456, San Isidro"
+      },
+      "textoLegalPorDefecto": "Previa evaluación.",
+      "palabrasProhibidas": [
+        "garantizado",
+        "sin dolor"
+      ]
+    },
+    "buscaditos": {
+      "nombre": "Buscaditos",
+      "rubro": "Tienda en línea de tecnología y accesorios gamer",
+      "publicoObjetivo": "Gamers y estudiantes de 16 a 30 años",
+      "tono": "Directo, enérgico y técnico, sin exagerar.",
+      "region": {
+        "pais": "Perú",
+        "idioma": "es-PE",
+        "zonaHoraria": "America/Lima"
+      },
+      "logo": "logos/buscaditos.png",
+      "tipografia": "CONDENSADA_AUDAZ",
+      "estiloVisual": [
+        "tecnológico",
+        "enérgico",
+        "limpio"
+      ],
+      "contacto": {
+        "whatsapp": "+51 912 345 678"
+      },
+      "textoLegalPorDefecto": "Precios incluyen IGV. Stock limitado.",
+      "palabrasProhibidas": []
+    }
+  },
+  "casos": [
+    {
+      "id": "01-cafe-promocion-navidad",
+      "prueba": "Promoción con descuento, ocasión, condiciones y producto de otra marca; logo oscuro sobre fondo oscuro",
+      "marca": "cafe-andino",
+      "plantilla": "PROMOCION_DESTACADA",
+      "producto": {
+        "tipo": "PRODUCT",
+        "nombreCorto": "Pack BAO Café 3 × 500 g",
+        "marcaDelProducto": "BAO Café",
+        "atributosClave": [
+          "100 % arábica",
+          "Café de altura de Veracruz"
+        ],
+        "precio": {
+          "montoMenor": 8990,
+          "moneda": "PEN"
+        },
+        "unidad": "por pack",
+        "foto": {
+          "archivo": "fotos/cafe-grano.jpg",
+          "tipo": "AMBIENTE"
+        }
+      },
+      "campana": {
+        "objetivo": "PROMOCION",
+        "ocasion": "Navidad",
+        "cta": "Aprovecha",
+        "promocion": {
+          "precio": {
+            "montoMenor": 7490,
+            "moneda": "PEN"
+          },
+          "inicio": null,
+          "fin": "2026-12-31T23:59:00-05:00",
+          "condiciones": "Hasta agotar stock.",
+          "mostrarDescuento": true
+        },
+        "indicacionesCreativas": "Ambiente navideño sutil: luces cálidas desenfocadas de fondo, sin Papá Noel ni árboles."
+      },
+      "textos": {
+        "titular": "Tu café favorito, a mejor precio",
+        "subtitulo": null
+      }
+    },
+    {
+      "id": "01b-cafe-promocion-vertical",
+      "prueba": "El mismo caso 01 en formato vertical 4:5, para comparar si el espacio alivia la sobrecarga",
+      "marca": "cafe-andino",
+      "plantilla": "PROMOCION_DESTACADA",
+      "producto": {
+        "tipo": "PRODUCT",
+        "nombreCorto": "Pack BAO Café 3 × 500 g",
+        "marcaDelProducto": "BAO Café",
+        "atributosClave": [
+          "100 % arábica",
+          "Café de altura de Veracruz"
+        ],
+        "precio": {
+          "montoMenor": 8990,
+          "moneda": "PEN"
+        },
+        "unidad": "por pack",
+        "foto": {
+          "archivo": "fotos/cafe-grano.jpg",
+          "tipo": "AMBIENTE"
+        }
+      },
+      "campana": {
+        "objetivo": "PROMOCION",
+        "ocasion": "Navidad",
+        "cta": "Aprovecha",
+        "promocion": {
+          "precio": {
+            "montoMenor": 7490,
+            "moneda": "PEN"
+          },
+          "inicio": null,
+          "fin": "2026-12-31T23:59:00-05:00",
+          "condiciones": "Hasta agotar stock.",
+          "mostrarDescuento": true
+        },
+        "indicacionesCreativas": "Ambiente navideño sutil: luces cálidas desenfocadas de fondo, sin Papá Noel ni árboles."
+      },
+      "textos": {
+        "titular": "Tu café favorito, a mejor precio",
+        "subtitulo": null
+      },
+      "ajustesPlantilla": {
+        "formato": "VERTICAL"
+      }
+    },
+    {
+      "id": "02-buscaditos-promocion-oscura",
+      "prueba": "Promoción sin descuento visible; foto de estudio; logo oscuro sobre fondo oscuro (placa)",
+      "marca": "buscaditos",
+      "plantilla": "PROMOCION_DESTACADA",
+      "producto": {
+        "tipo": "PRODUCT",
+        "nombreCorto": "Mouse gamer 502",
+        "marcaDelProducto": null,
+        "atributosClave": [
+          "25 600 DPI",
+          "11 botones programables"
+        ],
+        "precio": {
+          "montoMenor": 15000,
+          "moneda": "PEN"
+        },
+        "unidad": null,
+        "foto": {
+          "archivo": "fotos/mouse.jpg",
+          "tipo": "ESTUDIO"
+        }
+      },
+      "campana": {
+        "objetivo": "PROMOCION",
+        "ocasion": null,
+        "cta": "Compra ahora",
+        "promocion": {
+          "precio": {
+            "montoMenor": 12990,
+            "moneda": "PEN"
+          },
+          "inicio": null,
+          "fin": "2026-11-30T23:59:00-05:00",
+          "condiciones": null,
+          "mostrarDescuento": false
+        },
+        "indicacionesCreativas": null
+      },
+      "textos": {
+        "titular": "Precisión para ganar",
+        "subtitulo": null
+      }
+    },
+    {
+      "id": "03-buscaditos-vitrina-clara",
+      "prueba": "Sin promoción, modo claro (logo oscuro directo, sin placa), nombre corto y atributos",
+      "marca": "buscaditos",
+      "plantilla": "PRODUCTO_EN_VITRINA",
+      "producto": {
+        "tipo": "PRODUCT",
+        "nombreCorto": "Monitor curvo 27\" 200 Hz",
+        "marcaDelProducto": "Teros",
+        "atributosClave": [
+          "Full HD, panel VA",
+          "1 ms de respuesta"
+        ],
+        "precio": {
+          "montoMenor": 119900,
+          "moneda": "PEN"
+        },
+        "unidad": null,
+        "foto": {
+          "archivo": "fotos/monitor.jpg",
+          "tipo": "ESTUDIO"
+        }
+      },
+      "campana": {
+        "objetivo": "RECORDACION",
+        "ocasion": null,
+        "cta": "Cotiza aquí",
+        "promocion": null,
+        "indicacionesCreativas": null
+      },
+      "textos": {
+        "titular": "Más pantalla, más juego",
+        "subtitulo": null
+      }
+    },
+    {
+      "id": "04-buscaditos-lanzamiento-vertical",
+      "prueba": "Lanzamiento vertical 4:5 sin precios; foto recortada con transparencia; escena",
+      "marca": "buscaditos",
+      "plantilla": "LANZAMIENTO",
+      "producto": {
+        "tipo": "PRODUCT",
+        "nombreCorto": "Cargador USB + cable USB-C",
+        "marcaDelProducto": null,
+        "atributosClave": [
+          "Puerto USB-A",
+          "Cable USB-C de 1 m"
+        ],
+        "precio": {
+          "montoMenor": 9990,
+          "moneda": "PEN"
+        },
+        "unidad": null,
+        "foto": {
+          "archivo": "fotos/cargador.png",
+          "tipo": "RECORTADA"
+        }
+      },
+      "campana": {
+        "objetivo": "LANZAMIENTO",
+        "ocasion": null,
+        "cta": "Conócelo",
+        "promocion": null,
+        "indicacionesCreativas": "Escena de escritorio moderno de noche, con el celular cargando junto al cargador."
+      },
+      "textos": {
+        "titular": "Nuevo en Buscaditos",
+        "subtitulo": "El cargador compacto para todos los días"
+      }
+    },
+    {
+      "id": "05-cafe-historia-temporada",
+      "prueba": "Historia 9:16, modo claro, escena, signos ¿ ¡, sin promoción",
+      "marca": "cafe-andino",
+      "plantilla": "HISTORIA_DE_TEMPORADA",
+      "producto": {
+        "tipo": "PRODUCT",
+        "nombreCorto": "Desayuno continental para dos",
+        "marcaDelProducto": null,
+        "atributosClave": [
+          "Sándwiches, fruta, jugo y café"
+        ],
+        "precio": {
+          "montoMenor": 2450,
+          "moneda": "PEN"
+        },
+        "unidad": null,
+        "foto": {
+          "archivo": "fotos/desayuno.jpg",
+          "tipo": "AMBIENTE"
+        }
+      },
+      "campana": {
+        "objetivo": "TEMPORADA",
+        "ocasion": "Desayunos de fin de semana",
+        "cta": "Reserva tu mesa",
+        "promocion": null,
+        "indicacionesCreativas": null
+      },
+      "textos": {
+        "titular": "¿Ya desayunaste? ¡Ven hoy!",
+        "subtitulo": null
+      }
+    },
+    {
+      "id": "06-sonrisa-servicio-lugar",
+      "prueba": "Servicio con foto del lugar, composición dividida, descuento, contacto y texto legal",
+      "marca": "sonrisa-plena",
+      "plantilla": "SERVICIO_PROFESIONAL",
+      "producto": {
+        "tipo": "SERVICE",
+        "nombreCorto": "Limpieza dental profesional",
+        "marcaDelProducto": null,
+        "atributosClave": [
+          "Ultrasonido, pulido y flúor",
+          "45 minutos"
+        ],
+        "precio": {
+          "montoMenor": 12000,
+          "moneda": "PEN"
+        },
+        "unidad": "por sesión",
+        "foto": {
+          "archivo": "fotos/consultorio.jpg",
+          "tipo": "LUGAR"
+        }
+      },
+      "campana": {
+        "objetivo": "PROMOCION",
+        "ocasion": null,
+        "cta": "Agenda tu cita",
+        "promocion": {
+          "precio": {
+            "montoMenor": 7900,
+            "moneda": "PEN"
+          },
+          "inicio": null,
+          "fin": "2026-12-20T23:59:00-05:00",
+          "condiciones": "Válido de lunes a sábado.",
+          "mostrarDescuento": true
+        },
+        "indicacionesCreativas": null
+      },
+      "textos": {
+        "titular": "Una sonrisa sana empieza aquí",
+        "subtitulo": "Cuida tu salud bucal con especialistas"
+      }
+    },
+    {
+      "id": "07-sonrisa-servicio-persona",
+      "prueba": "Servicio con foto de una persona real: no retocar rostro ni dientes",
+      "marca": "sonrisa-plena",
+      "plantilla": "SERVICIO_PROFESIONAL",
+      "producto": {
+        "tipo": "SERVICE",
+        "nombreCorto": "Blanqueamiento dental",
+        "marcaDelProducto": null,
+        "atributosClave": [
+          "Una sola sesión",
+          "Lámpara LED en consultorio"
+        ],
+        "precio": {
+          "montoMenor": 45000,
+          "moneda": "PEN"
+        },
+        "unidad": "por tratamiento",
+        "foto": {
+          "archivo": "fotos/sonrisa.jpg",
+          "tipo": "PERSONA"
+        }
+      },
+      "campana": {
+        "objetivo": "RECORDACION",
+        "ocasion": null,
+        "cta": "Agenda tu cita",
+        "promocion": null,
+        "indicacionesCreativas": null
+      },
+      "textos": {
+        "titular": "Luce una sonrisa más blanca",
+        "subtitulo": null
+      }
+    }
+  ]
+}

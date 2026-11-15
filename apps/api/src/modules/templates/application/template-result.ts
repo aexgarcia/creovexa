@@ -1,4 +1,5 @@
 import type { Template } from '../domain/entities/template.js';
+import type { FlyerDesignData } from '#app/domain/value-objects/flyer-design';
 
 export interface TemplateResult {
   id: string;
@@ -10,6 +11,7 @@ export interface TemplateResult {
     organizationId: string;
     number: number;
     dimensions: { width: number; height: number };
+    design: FlyerDesignData;
     createdAt: string;
   };
   createdAt: string;
@@ -28,6 +30,7 @@ export function templateResult(template: Template): TemplateResult {
       organizationId: revision.organizationId,
       number: revision.number,
       dimensions: { width: revision.dimensions.width, height: revision.dimensions.height },
+      design: revision.design,
       createdAt: revision.createdAt.toISOString(),
     },
     createdAt: template.createdAt.toISOString(),

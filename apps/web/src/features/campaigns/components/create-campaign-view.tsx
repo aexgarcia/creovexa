@@ -7,21 +7,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useProducts } from '@/features/products/hooks/use-products';
 import type { Product } from '@/features/products/types/product.types';
-import { useTemplates } from '@/features/templates/hooks/use-templates';
 import type { StoredTemplate } from '@/features/templates/types/stored-template.types';
 import { useCreateStoredCampaign } from '../hooks/use-stored-campaigns';
 import { campaignInput, type CampaignDraft } from '../schemas/stored-campaign-input';
-import { CampaignPagination } from './campaign-pagination';
+import { useCampaignOptions } from '../hooks/use-campaign-options';
+import { CampaignOptionSelect } from './campaign-option-select';
+import { CampaignImage } from './campaign-image';
 
 export function CreateCampaignView() {
   const router = useRouter();
   const create = useCreateStoredCampaign();
-  const [productPage, setProductPage] = useState(1),
-    [templatePage, setTemplatePage] = useState(1);
-  const products = useProducts(productPage),
-    templates = useTemplates(templatePage);
+  const { products, templates } = useCampaignOptions();
   const [product, setProduct] = useState<Product | null>(null);
   const [template, setTemplate] = useState<StoredTemplate | null>(null);
   const [draft, setDraft] = useState<CampaignDraft>({
@@ -80,24 +77,14 @@ export function CreateCampaignView() {
           </div>
           <section className="space-y-3">
             <Label htmlFor="campaign-product">Producto o servicio</Label>
-            <select
+            <CampaignOptionSelect
               id="campaign-product"
-              className="w-full rounded-md border bg-background p-2"
-              value={product?.id ?? ''}
-              onChange={(e) =>
-                setProduct(products.data?.find((item) => item.id === e.target.value) ?? null)
-              }
-            >
-              <option value="">Seleccionar producto</option>
-              {product && !products.data?.some((item) => item.id === product.id) && (
-                <option value={product.id}>{product.name}</option>
-              )}
-              {products.data?.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+              items={products.data ?? []}
+              value={product}
+              onChange={setProduct}
+              placeholder="Buscar producto por nombre..."
+              disabled={create.isPending || products.isLoading || Boolean(products.error)}
+            />
             {products.isLoading && <p role="status">Cargando productos…</p>}
             {products.error && (
               <div role="alert">
@@ -107,43 +94,54 @@ export function CreateCampaignView() {
                 </Button>
               </div>
             )}
-            {products.data?.length === 0 && <p>No hay productos en esta página.</p>}
-            <CampaignPagination
-              page={productPage}
-              totalPages={products.meta?.totalPages}
-              pending={products.isLoading}
-              onChange={setProductPage}
-            />
+            {products.data?.length === 0 && <p>No hay productos registrados.</p>}
             {product && (
-              <p>
-                Precio regular:{' '}
-                {new Intl.NumberFormat('es-PE', {
-                  style: 'currency',
-                  currency: product.regularPrice.currency,
-                }).format(product.regularPrice.amountMinor / 100)}
-              </p>
+              <div className="flex items-center gap-4 rounded-xl border bg-muted/20 p-3 sm:p-4">
+                <CampaignImage
+                  variant="thumbnail"
+                  url={product.imageUrl}
+                  alt={product.name}
+                  emptyLabel={
+                    product.imageAssetIds.length
+                      ? 'La imagen guardada aún no está disponible para visualizar.'
+                      : 'Guarda una imagen en el producto o servicio antes de generar el flyer.'
+                  }
+                />
+                <div className="min-w-0 space-y-1">
+                  <p className="text-xs text-muted-foreground">
+                    {product.kind === 'PRODUCT' ? 'Producto seleccionado' : 'Servicio seleccionado'}
+                  </p>
+                  <p className="break-words font-medium">{product.name}</p>
+                  <p className="text-sm">
+                    Precio regular:{' '}
+                    <span className="font-semibold">
+                      {new Intl.NumberFormat('es-PE', {
+                        style: 'currency',
+                        currency: product.regularPrice.currency,
+                      }).format(product.regularPrice.amountMinor / 100)}
+                    </span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {product.imageUrl
+                      ? 'Esta imagen se usará automáticamente para generar tu publicidad.'
+                      : product.imageAssetIds.length
+                        ? 'La imagen guardada aún no está disponible para visualizar.'
+                        : 'Agrega una imagen al producto antes de generar tu publicidad.'}
+                  </p>
+                </div>
+              </div>
             )}
           </section>
           <section className="space-y-3">
             <Label htmlFor="campaign-template">Plantilla</Label>
-            <select
+            <CampaignOptionSelect
               id="campaign-template"
-              className="w-full rounded-md border bg-background p-2"
-              value={template?.id ?? ''}
-              onChange={(e) =>
-                setTemplate(templates.data?.find((item) => item.id === e.target.value) ?? null)
-              }
-            >
-              <option value="">Seleccionar plantilla</option>
-              {template && !templates.data?.some((item) => item.id === template.id) && (
-                <option value={template.id}>{template.name}</option>
-              )}
-              {templates.data?.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
+              items={templates.data ?? []}
+              value={template}
+              onChange={setTemplate}
+              placeholder="Buscar plantilla por nombre..."
+              disabled={create.isPending || templates.isLoading || Boolean(templates.error)}
+            />
             {templates.isLoading && <p role="status">Cargando plantillas…</p>}
             {templates.error && (
               <div role="alert">
@@ -153,13 +151,7 @@ export function CreateCampaignView() {
                 </Button>
               </div>
             )}
-            {templates.data?.length === 0 && <p>No hay plantillas en esta página.</p>}
-            <CampaignPagination
-              page={templatePage}
-              totalPages={templates.meta?.totalPages}
-              pending={templates.isLoading}
-              onChange={setTemplatePage}
-            />
+            {templates.data?.length === 0 && <p>No hay plantillas registradas.</p>}
             {template && (
               <p>
                 Se utilizará la revisión {template.currentRevision.number} ·{' '}

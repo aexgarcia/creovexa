@@ -1,3 +1,5 @@
+import Image from 'next/image';
+import { useState } from 'react';
 import { Package } from 'lucide-react';
 import {
   Table,
@@ -29,14 +31,14 @@ export function ProductTable({ products }: { products: Product[] }) {
             <TableRow key={product.id}>
               <TableCell>
                 <div className="flex items-center gap-3">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                    <Package className="size-5 text-muted-foreground" />
+                  <ProductThumbnail product={product} />
+                  <div className="min-w-0">
+                    <p className="font-medium">{product.name}</p>
+                    <p className="mt-1 max-w-md truncate text-xs text-muted-foreground">
+                      {product.description}
+                    </p>
                   </div>
-                  <p className="font-medium">{product.name}</p>
                 </div>
-                <p className="max-w-md truncate text-xs text-muted-foreground">
-                  {product.description}
-                </p>
               </TableCell>
               <TableCell>{product.kind === 'PRODUCT' ? 'Producto' : 'Servicio'}</TableCell>
               <TableCell>
@@ -57,6 +59,31 @@ export function ProductTable({ products }: { products: Product[] }) {
           ))}
         </TableBody>
       </Table>
+    </div>
+  );
+}
+
+function ProductThumbnail({ product }: { product: Product }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  return (
+    <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted/20 p-1 sm:size-14">
+      {product.imageUrl && failedUrl !== product.imageUrl ? (
+        <Image
+          src={product.imageUrl}
+          alt=""
+          width={56}
+          height={56}
+          unoptimized
+          className="h-full w-full object-contain"
+          onError={() => setFailedUrl(product.imageUrl ?? null)}
+        />
+      ) : (
+        <Package
+          role="img"
+          aria-label={product.imageUrl ? 'Imagen no disponible' : 'Sin imagen'}
+          className="size-5 text-muted-foreground"
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-/** Shared business vocabulary for per-destination delivery and campaign summaries. */
+/** Vocabulario de negocio compartido para la entrega por destino y los resúmenes de campaña. */
 export enum PublicationStatus {
   PENDING = 'PENDING',
   PUBLISHING = 'PUBLISHING',

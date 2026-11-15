@@ -24,6 +24,9 @@ import { RequestCampaignGeneration } from '#app/modules/campaigns/application/us
 import { RequestCampaignRegeneration } from '#app/modules/campaigns/application/use-cases/request-campaign-regeneration';
 import { RecordGeneratedCampaign } from '#app/modules/campaigns/application/use-cases/record-generated-campaign';
 import { ApproveCampaign } from '#app/modules/campaigns/application/use-cases/approve-campaign';
+import { finalAssetsFake } from './final-assets-fake.js';
+import type { TransactionContext } from '#app/application/ports/transaction-context';
+import { PublishedCampaignGenerations } from '#app/modules/campaigns/application/published-campaign-generations';
 import { RecordCampaignGenerationFailure } from '#app/modules/campaigns/application/use-cases/record-campaign-generation-failure';
 import { GenerationFailureCode } from '#app/modules/campaigns/domain/campaign-status';
 
@@ -261,7 +264,38 @@ export function campaignUseCases() {
     generate: new RequestCampaignGeneration(repository, lookups, ids, clock),
     regenerate: new RequestCampaignRegeneration(repository, lookups, ids, clock),
     record: new RecordGeneratedCampaign(repository, ids, clock),
-    approve: new ApproveCampaign(repository, clock),
+    approve: new ApproveCampaign(repository, clock, finalAssetsFake),
     fail: new RecordCampaignGenerationFailure(repository, clock),
   };
+}
+
+// Las suites unitarias no tienen base de datos, así que no hay transacción en la que participar.
+export const NO_TRANSACTION = {} as TransactionContext;
+
+// El contrato publicado real de campaigns sobre el repositorio en memoria.
+export function campaignGenerationsFake(
+  repository: CampaignRepositoryFake,
+  lookups: CampaignLookups = new CampaignLookupsFake(),
+  ids: IdGenerator = new CampaignIdsFake(),
+  clock: Clock = new CampaignClockFake(),
+) {
+  return new PublishedCampaignGenerations(
+    repository,
+    lookups,
+    {
+      repositoryIn: () => repository,
+      lock: (generation, _transaction, expectedVersion) => {
+        const campaign = repository.records.get(generation.campaignId);
+        return Promise.resolve(
+          campaign !== undefined &&
+            campaign.organizationId === generation.organizationId &&
+            campaign.generation?.id === generation.generationId &&
+            campaign.status === 'GENERATING' &&
+            (expectedVersion === undefined || campaign.version === expectedVersion),
+        );
+      },
+    },
+    ids,
+    clock,
+  );
 }

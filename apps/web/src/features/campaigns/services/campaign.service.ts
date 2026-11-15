@@ -159,7 +159,7 @@ class CampaignService {
 
         hashtags: ['#Promoción', '#OfertaEspecial', '#Creovexa'],
 
-        finalAssetUrl: campaign.productImageUrl,
+        finalAssetUrl: null,
       },
 
       updatedAt: new Date().toISOString(),
@@ -316,7 +316,7 @@ class CampaignService {
 
         hashtags: ['#Promoción', '#OfertaEspecial', '#Creovexa'],
 
-        finalAssetUrl: campaign.productImageUrl,
+        finalAssetUrl: null,
       },
 
       generatedContentStatus: 'CURRENT',

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
 import { loadEnvFile } from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -15,6 +16,7 @@ if (!connection)
   );
 
 const schema = 'creovexa_test_' + randomUUID().replaceAll('-', '');
+const jobSchema = 'jobs_' + schema.slice('creovexa_test_'.length);
 let url;
 try {
   url = new URL(connection);
@@ -28,7 +30,18 @@ const environment = {
   DATABASE_URL: url.toString(),
   TEST_DATABASE_URL: url.toString(),
   CREOVEXA_TEST_SCHEMA: schema,
+  // pg-boss limita los nombres de esquema a 50 caracteres; el esquema de pruebas ya ocupa 46.
+  JOB_SCHEMA: jobSchema,
 };
+const storageTests = process.argv.includes('--storage');
+if (storageTests && !environment.TEST_STORAGE_ENDPOINT) {
+  // Solo el servicio local de Docker puede usar las credenciales root de desarrollo como respaldo de las pruebas.
+  const rootEnv = new URL('../../../.env', import.meta.url);
+  const local = existsSync(rootEnv) ? parseEnv(readFileSync(rootEnv, 'utf8')) : {};
+  environment.TEST_STORAGE_ENDPOINT = `http://127.0.0.1:${local.MINIO_PORT || '9000'}`;
+  environment.TEST_STORAGE_ACCESS_KEY = local.MINIO_ROOT_USER;
+  environment.TEST_STORAGE_SECRET_KEY = local.MINIO_ROOT_PASSWORD;
+}
 const administrator = new pg.Client({
   connectionString: connection,
   connectionTimeoutMillis: 5000,
@@ -52,11 +65,17 @@ try {
   created = true;
   run('../node_modules/prisma/build/index.js', ['migrate', 'deploy']);
   run('../node_modules/prisma/build/index.js', ['migrate', 'deploy']);
-  run('../node_modules/vitest/vitest.mjs', ['run', '--config', './vitest.config.integration.ts']);
+  run('../node_modules/vitest/vitest.mjs', [
+    'run',
+    '--config',
+    storageTests ? './vitest.config.storage.ts' : './vitest.config.integration.ts',
+  ]);
 } finally {
   try {
     if (created && /^creovexa_test_[0-9a-f]{32}$/.test(schema)) {
       await administrator.query('DROP SCHEMA "' + schema + '" CASCADE');
+      // Los trabajos en segundo plano guardan sus tablas junto al esquema de pruebas.
+      await administrator.query('DROP SCHEMA IF EXISTS "' + jobSchema + '" CASCADE');
     }
   } finally {
     await administrator.end();

@@ -1,4 +1,4 @@
-// Original design examples; the product screens now use the API.
+// Ejemplos del diseño original; las pantallas de productos ya usan la API.
 
 export const productsMock = [
   {
