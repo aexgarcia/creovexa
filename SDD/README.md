@@ -6,7 +6,7 @@ Toda la documentación de diseño del sistema vive en esta carpeta. El código e
 
 | Carpeta | Contenido | Cuándo se actualiza |
 | --- | --- | --- |
-| [arquitectura/](arquitectura/) | [Visión del sistema](arquitectura/vision.md), [modelo de dominio](arquitectura/dominio.md), [evaluación de noviembre 2026](arquitectura/evaluacion-2026-11.md) y [reglas de trabajo](arquitectura/reglas-de-trabajo.md) | Cuando cambia la estructura del sistema |
+| [arquitectura/](arquitectura/) | [Visión del sistema](arquitectura/vision.md), [modelo de dominio](arquitectura/dominio.md), [evaluación de noviembre 2026](arquitectura/evaluacion-2026-11.md), [datos para generar el flyer](arquitectura/datos-del-flyer.md) (propuesta) y [reglas de trabajo](arquitectura/reglas-de-trabajo.md) | Cuando cambia la estructura del sistema |
 | [adr/](adr/) | Índice de todas las decisiones de arquitectura (ADR) y las decisiones transversales | Cada decisión nueva o reemplazada |
 | [modulos/](modulos/) | Un `contrato.md` por módulo (API HTTP, qué expone y qué consume) y sus ADRs propios | En el mismo cambio que modifica el módulo |
 | [fases/](fases/) | [Estado y hoja de ruta](fases/estado.md) y las guías originales de fases | Al cerrar o replanificar una fase |

@@ -142,6 +142,7 @@ Configuración: `COPY_PROVIDER`, `IMAGE_PROVIDER` y las variables de cada provee
 ## Pendiente
 
 - Modo de IA completa con verificación ([ADR-0009](../../adr/0009-estrategia-de-generacion-del-flyer.md)).
+- Corregir los problemas de [datos enviados a la IA](datos-enviados-a-la-ia.md#problemas-encontrados), en especial las fechas en UTC que recibe el copy.
 - Regeneración de imagen e historial de versiones.
 - Formatos distintos de 1080×1080; región e idioma del flyer, hoy fijos.
 - Limpieza de archivos temporales.
