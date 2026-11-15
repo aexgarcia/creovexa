@@ -1,38 +1,62 @@
 'use client';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Package, ImageIcon } from 'lucide-react';
-import { useForm, useWatch } from 'react-hook-form';
+import {
+  Package,
+  BriefcaseBusiness,
+  Tag,
+  AlignLeft,
+  Coins,
+  Check,
+  Sparkles,
+  ArrowLeft,
+} from 'lucide-react';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { FormSection } from '@/components/layout/form-section';
+import { PageHeader } from '@/components/layout/page-header';
 import { productSchema, type ProductFormValues } from '../schemas/product.schema';
-import { decimalPrice } from '../schemas/product-price';
-import type { PhotoType, Product } from '../types/product.types';
+import { amountMinor, decimalPrice } from '../schemas/product-price';
+import type { Product } from '../types/product.types';
+import { ProductAttributesField } from './product-attributes-field';
+import { ProductImageField } from './product-image-field';
 
-const PHOTO_TYPES: { value: PhotoType; label: string }[] = [
-  { value: 'CUTOUT', label: 'Producto recortado, sin fondo' },
-  { value: 'STUDIO', label: 'Producto sobre fondo liso' },
-  { value: 'SCENE', label: 'Producto en un ambiente o escena' },
-  { value: 'PLACE', label: 'Un local o espacio' },
-  { value: 'PERSON', label: 'Una o varias personas' },
-];
-
+const selectClass =
+  'h-11 w-full rounded-[10px] border border-input bg-control px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring';
+const currencySymbols = { PEN: 'S/', USD: '$', EUR: '€' };
 interface ProductFormProps {
+  title: string;
+  description: string;
   product?: Product;
   isSubmitting?: boolean;
   onSubmit: (values: ProductFormValues, image: File | null) => Promise<void>;
 }
-export function ProductForm({ product, isSubmitting = false, onSubmit }: ProductFormProps) {
-  const router = useRouter();
+function FieldError({ id, message }: { id: string; message?: string }) {
+  return message ? (
+    <p id={id} role="alert" className="text-xs text-destructive">
+      {message}
+    </p>
+  ) : null;
+}
+
+export function ProductForm({
+  title,
+  description,
+  product,
+  isSubmitting = false,
+  onSubmit,
+}: ProductFormProps) {
   const {
     register,
     control,
     handleSubmit,
     setError,
+    clearErrors,
+    setValue,
     formState: { errors, isSubmitting: saving },
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -61,17 +85,12 @@ export function ProductForm({ product, isSubmitting = false, onSubmit }: Product
     [],
   );
   function selectImage(file: File | undefined) {
-    setImageError('');
     if (
       file &&
       (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type) ||
         file.size > 10 * 1024 * 1024 ||
         !file.size)
     ) {
-      if (temporaryUrl.current) URL.revokeObjectURL(temporaryUrl.current);
-      temporaryUrl.current = null;
-      setPreviewUrl(null);
-      setImage(null);
       setImageError(
         file.size > 10 * 1024 * 1024
           ? 'La imagen supera el máximo de 10 MB.'
@@ -79,290 +98,358 @@ export function ProductForm({ product, isSubmitting = false, onSubmit }: Product
       );
       return;
     }
+    setImageError('');
+    clearErrors('photoType');
     if (temporaryUrl.current) URL.revokeObjectURL(temporaryUrl.current);
     temporaryUrl.current = file ? URL.createObjectURL(file) : null;
     setPreviewUrl(temporaryUrl.current);
     setImage(file ?? null);
+    setValue('photoType', file ? '' : (product?.image?.photoType ?? ''));
   }
-  const imageUrl = previewUrl ?? product?.imageUrl;
+  const disabled = isSubmitting || saving;
+  const imageUrl = previewUrl ?? product?.imageUrl ?? null;
+  const currency = preview.currency ?? 'PEN';
+  const price = amountMinor(preview.price ?? '') ?? 0;
+  const attributes = (preview.keyAttributes ?? '').split('\n').filter(Boolean);
+  const submitLabel = disabled ? 'Guardando…' : product ? 'Guardar cambios' : 'Crear producto';
   return (
     <form
+      id="product-form"
       onSubmit={handleSubmit((values) => {
-        // Sin el tipo de foto, la IA no sabe qué conservar de la imagen.
         if (image && !values.photoType) {
           setError('photoType', { message: 'Indica qué muestra la foto' });
+          document.querySelector<HTMLInputElement>('input[name="photoType"]')?.focus();
           return;
         }
         return onSubmit(values, image);
       })}
       className="space-y-6"
     >
-      <div className="grid items-start gap-6 xl:grid-cols-[1fr_360px]">
-        <fieldset
-          disabled={isSubmitting || saving}
-          className="space-y-6 rounded-xl border bg-card p-6"
-        >
-          <legend className="px-2 font-semibold">Información del producto o servicio</legend>
-          <div className="space-y-2">
-            <Label htmlFor="kind">Tipo</Label>
-            <select
-              id="kind"
-              {...register('kind')}
-              aria-readonly={Boolean(product)}
-              className="w-full rounded border bg-background p-2"
-              onChange={product ? () => {} : register('kind').onChange}
+      <Link
+        href="/products"
+        className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="size-4" />
+        Productos
+      </Link>
+      <PageHeader
+        title={title}
+        description={description}
+        actions={
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <Button
+              variant="ghost"
+              nativeButton={false}
+              render={<Link href="/products" />}
+              disabled={disabled}
             >
-              <option value="PRODUCT" disabled={product?.kind === 'SERVICE'}>
-                Producto
-              </option>
-              <option value="SERVICE" disabled={product?.kind === 'PRODUCT'}>
-                Servicio
-              </option>
-            </select>
-            {product && (
-              <p className="text-xs text-muted-foreground">El tipo se conserva al editar.</p>
-            )}
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={disabled}>
+              <Check className="size-4" />
+              {submitLabel}
+            </Button>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="name">Nombre</Label>
-            <Input
-              id="name"
-              maxLength={200}
-              {...register('name')}
-              aria-invalid={Boolean(errors.name)}
-              aria-describedby="name-error"
-            />
-            <p id="name-error" role="alert" className="text-sm text-destructive">
-              {errors.name?.message}
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="shortName">Nombre para el flyer (opcional)</Label>
-              <Input
-                id="shortName"
-                maxLength={40}
-                placeholder="Ej. Pack BAO Café 3 × 500 g"
-                {...register('shortName')}
-                aria-invalid={Boolean(errors.shortName)}
-                aria-describedby="shortName-help"
-              />
-              <p id="shortName-help" className="text-xs text-muted-foreground">
-                Hasta 40 caracteres. Si lo dejas vacío, el flyer usa el nombre completo.
-              </p>
-              {errors.shortName && (
-                <p role="alert" className="text-sm text-destructive">
-                  {errors.shortName.message}
-                </p>
+        }
+      />
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <fieldset disabled={disabled} className="min-w-0 space-y-5">
+          <legend className="sr-only">Datos del producto o servicio</legend>
+          <FormSection
+            title="Información básica"
+            description="Cómo se llama y cómo aparecerá en el flyer."
+            icon={Tag}
+          >
+            <Controller
+              control={control}
+              name="kind"
+              render={({ field }) => (
+                <fieldset disabled={Boolean(product)} className="space-y-2">
+                  <legend className="mb-2 text-[13px] font-medium">Tipo</legend>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {(
+                      [
+                        {
+                          value: 'PRODUCT',
+                          title: 'Producto',
+                          help: 'Algo físico o digital que vendes',
+                          icon: Package,
+                        },
+                        {
+                          value: 'SERVICE',
+                          title: 'Servicio',
+                          help: 'Clases, consultas, talleres…',
+                          icon: BriefcaseBusiness,
+                        },
+                      ] as const
+                    ).map((option) => (
+                      <label
+                        key={option.value}
+                        className={[
+                          'flex min-w-0 cursor-pointer items-center gap-3 rounded-xl border p-3 has-focus-visible:ring-2 has-focus-visible:ring-ring',
+                          field.value === option.value
+                            ? 'border-primary bg-primary/10'
+                            : 'border-input bg-control',
+                        ].join(' ')}
+                      >
+                        <input
+                          type="radio"
+                          className="sr-only"
+                          name={field.name}
+                          value={option.value}
+                          checked={field.value === option.value}
+                          onChange={() => field.onChange(option.value)}
+                          onBlur={field.onBlur}
+                          ref={field.ref}
+                        />
+                        <option.icon
+                          aria-hidden="true"
+                          className="size-5 shrink-0 text-brand-cyan"
+                        />
+                        <span>
+                          <span className="block text-[13px] font-medium">{option.title}</span>
+                          <span className="text-xs text-muted-foreground">{option.help}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  {product && (
+                    <p className="text-xs text-muted-foreground">El tipo se conserva al editar.</p>
+                  )}
+                </fieldset>
               )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="productBrand">Marca del producto (opcional)</Label>
-              <Input
-                id="productBrand"
-                maxLength={80}
-                placeholder="Si vendes una marca de otra empresa"
-                {...register('productBrand')}
-                aria-invalid={Boolean(errors.productBrand)}
-              />
-              {errors.productBrand && (
-                <p role="alert" className="text-sm text-destructive">
-                  {errors.productBrand.message}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="keyAttributes">Características clave (opcional)</Label>
-            <Textarea
-              id="keyAttributes"
-              rows={4}
-              placeholder={'Una por línea, de la más a la menos importante.\nEj. 100 % arábica'}
-              {...register('keyAttributes')}
-              aria-invalid={Boolean(errors.keyAttributes)}
-              aria-describedby="keyAttributes-help"
             />
-            <p id="keyAttributes-help" className="text-xs text-muted-foreground">
-              Hasta 5. El flyer solo muestra estas, nunca inventa otras; la plantilla decide
-              cuántas.
-            </p>
-            {errors.keyAttributes && (
-              <p role="alert" className="text-sm text-destructive">
-                {errors.keyAttributes.message}
-              </p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Descripción</Label>
-            <Textarea
-              id="description"
-              rows={5}
-              maxLength={5000}
-              {...register('description')}
-              aria-invalid={Boolean(errors.description)}
-            />
-            {errors.description && (
-              <p role="alert" className="text-sm text-destructive">
-                {errors.description.message}
-              </p>
-            )}
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="price">Precio regular</Label>
+              <Label htmlFor="name">
+                Nombre <span className="text-brand-cyan">*</span>
+              </Label>
               <Input
-                id="price"
-                inputMode="decimal"
-                placeholder="0.00"
-                {...register('price')}
-                aria-invalid={Boolean(errors.price)}
-                aria-describedby="price-error"
+                id="name"
+                maxLength={200}
+                placeholder="Ej. Café BAO tostado medio 500 g"
+                {...register('name')}
+                aria-invalid={Boolean(errors.name)}
+                aria-describedby="name-error"
               />
-              <p id="price-error" role="alert" className="text-sm text-destructive">
-                {errors.price?.message}
-              </p>
+              <FieldError id="name-error" message={errors.name?.message} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="currency">Moneda</Label>
-              <select
-                id="currency"
-                {...register('currency')}
-                className="w-full rounded border bg-background p-2"
-              >
-                <option value="PEN">PEN — Soles</option>
-                <option value="USD">USD — Dólares</option>
-                <option value="EUR">EUR — Euros</option>
-              </select>
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="unit">Unidad (opcional)</Label>
-              <Input
-                id="unit"
-                maxLength={30}
-                placeholder="Ej. por kg, por sesión, c/u"
-                {...register('unit')}
-                aria-invalid={Boolean(errors.unit)}
-              />
-              {errors.unit && (
-                <p role="alert" className="text-sm text-destructive">
-                  {errors.unit.message}
-                </p>
-              )}
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Las ofertas se configuran en cada campaña. La imagen guardada se usará automáticamente
-            para componer tu publicidad.
-          </p>
-        </fieldset>
-        <aside className="space-y-5 rounded-xl border bg-card p-6">
-          <h2 className="font-semibold">Vista previa del producto</h2>
-          <div className="flex aspect-square items-center justify-center rounded-xl border border-dashed bg-muted/20">
-            {imageUrl ? (
-              <Image
-                src={imageUrl}
-                alt={preview.name || 'Producto o servicio'}
-                width={1080}
-                height={1080}
-                unoptimized
-                className="h-full w-full rounded-xl object-contain"
-              />
-            ) : (
-              <Package className="size-16 text-muted-foreground/50" />
-            )}
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">
-              {preview.kind === 'SERVICE' ? 'Servicio' : 'Producto'}
-            </p>
-            <h3 className="mt-2 break-words text-xl font-semibold">
-              {preview.name || 'Nombre del producto'}
-            </h3>
-            <p className="mt-2 whitespace-pre-wrap break-words text-sm text-muted-foreground">
-              {preview.description || 'Agrega una descripción para tus campañas.'}
-            </p>
-            <p className="mt-4 text-2xl font-semibold">
-              {preview.currency} {preview.price || '0.00'}
-            </p>
-          </div>
-          <div className="space-y-3 border-t pt-5">
-            <p className="flex items-center gap-2 text-sm">
-              <ImageIcon className="size-4" />
-              Imagen del producto
-            </p>
-            <Label htmlFor="product-image">
-              {product?.imageAssetIds.length ? 'Reemplazar imagen' : 'Subir imagen'}
-            </Label>
-            <Input
-              id="product-image"
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              disabled={isSubmitting || saving}
-              aria-describedby="product-image-help product-image-error"
-              onChange={(event) => {
-                selectImage(event.target.files?.[0]);
-                event.target.value = '';
-              }}
-            />
-            <p id="product-image-help" className="text-xs text-muted-foreground">
-              Una imagen PNG, JPEG o WebP, máximo 10 MB. Se guardará al confirmar el formulario.
-            </p>
-            {image && (
+            <div className="grid gap-[18px] sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="photoType">¿Qué muestra la foto?</Label>
-                <select
-                  id="photoType"
-                  {...register('photoType')}
-                  className="w-full rounded border bg-background p-2"
-                  aria-invalid={Boolean(errors.photoType)}
+                <Label htmlFor="shortName">
+                  Nombre para el flyer{' '}
+                  <span className="ml-auto text-xs font-normal text-muted-foreground">
+                    Opcional
+                  </span>
+                </Label>
+                <Input
+                  id="shortName"
+                  maxLength={40}
+                  placeholder="Ej. Pack BAO Café 3 × 500 g"
+                  {...register('shortName')}
+                  aria-invalid={Boolean(errors.shortName)}
+                  aria-describedby="shortName-help shortName-error"
+                />
+                <p
+                  id="shortName-help"
+                  className="flex justify-between gap-2 text-xs text-muted-foreground"
                 >
-                  <option value="">Elige una opción</option>
-                  {PHOTO_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.photoType && (
-                  <p role="alert" className="text-sm text-destructive">
-                    {errors.photoType.message}
-                  </p>
-                )}
+                  <span>Si lo dejas vacío, se usa el nombre.</span>
+                  <span className="shrink-0 font-mono">{preview.shortName?.length ?? 0}/40</span>
+                </p>
+                <FieldError id="shortName-error" message={errors.shortName?.message} />
               </div>
-            )}
-            {!image && product?.image && !product.image.photoType && (
-              <p className="text-xs text-muted-foreground">
-                Esta imagen se subió sin indicar qué muestra. Vuelve a subirla para mejorar el
-                flyer.
+              <div className="space-y-2">
+                <Label htmlFor="productBrand">
+                  Marca del producto{' '}
+                  <span className="ml-auto text-xs font-normal text-muted-foreground">
+                    Opcional
+                  </span>
+                </Label>
+                <Input
+                  id="productBrand"
+                  maxLength={80}
+                  placeholder="Si vendes una marca de otra empresa"
+                  {...register('productBrand')}
+                  aria-invalid={Boolean(errors.productBrand)}
+                  aria-describedby="productBrand-error"
+                />
+                <FieldError id="productBrand-error" message={errors.productBrand?.message} />
+              </div>
+            </div>
+          </FormSection>
+          <FormSection
+            title="Descripción y características"
+            description="El flyer solo muestra estas características, nunca inventa otras."
+            icon={AlignLeft}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="description">Descripción</Label>
+              <Textarea
+                id="description"
+                rows={3}
+                maxLength={5000}
+                placeholder="Cuéntale a la IA qué hace especial a este producto."
+                {...register('description')}
+                aria-invalid={Boolean(errors.description)}
+                aria-describedby="description-error"
+                className="rounded-[10px] border-input bg-control px-3.5 py-3 text-sm md:text-sm dark:bg-control"
+              />
+              <FieldError id="description-error" message={errors.description?.message} />
+            </div>
+            <Controller
+              control={control}
+              name="keyAttributes"
+              render={({ field }) => (
+                <ProductAttributesField
+                  value={field.value}
+                  onChange={field.onChange}
+                  error={errors.keyAttributes?.message}
+                />
+              )}
+            />
+          </FormSection>
+          <FormSection
+            title="Precio"
+            description="Precio de lista. Las ofertas se configuran en cada campaña."
+            icon={Coins}
+          >
+            <div className="grid gap-[18px] sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="price">
+                  Precio regular <span className="text-brand-cyan">*</span>
+                </Label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-sm text-muted-foreground">
+                    {currencySymbols[currency]}
+                  </span>
+                  <Input
+                    id="price"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    className="pl-10 font-mono"
+                    {...register('price')}
+                    aria-invalid={Boolean(errors.price)}
+                    aria-describedby="price-error"
+                  />
+                </div>
+                <FieldError id="price-error" message={errors.price?.message} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="currency">Moneda</Label>
+                <select id="currency" {...register('currency')} className={selectClass}>
+                  <option value="PEN">PEN · Soles</option>
+                  <option value="USD">USD · Dólares</option>
+                  <option value="EUR">EUR · Euros</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="unit">
+                  Unidad{' '}
+                  <span className="ml-auto text-xs font-normal text-muted-foreground">
+                    Opcional
+                  </span>
+                </Label>
+                <Input
+                  id="unit"
+                  maxLength={30}
+                  placeholder="por kg, por sesión, c/u"
+                  {...register('unit')}
+                  aria-invalid={Boolean(errors.unit)}
+                  aria-describedby="unit-error"
+                />
+                <FieldError id="unit-error" message={errors.unit?.message} />
+              </div>
+            </div>
+            <div className="flex gap-3 rounded-[10px] border border-primary/20 bg-primary/8 p-3 text-xs leading-relaxed text-muted-foreground">
+              <Sparkles className="mt-0.5 size-4 shrink-0 text-brand-cyan" />
+              <p>
+                <b className="font-medium text-foreground">¿Tienes una oferta?</b> Configúrala al
+                crear la campaña. Así puedes reutilizar este producto con distintos descuentos y
+                fechas.
               </p>
-            )}
-            {(image || imageError) && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isSubmitting || saving}
-                onClick={() => selectImage(undefined)}
-              >
-                Descartar selección
-              </Button>
-            )}
-            <p id="product-image-error" role="alert" className="text-sm text-destructive">
-              {imageError}
-            </p>
-          </div>
+            </div>
+          </FormSection>
+        </fieldset>
+        <aside
+          aria-label="Imagen y vista previa"
+          className="min-w-0 space-y-4 xl:sticky xl:top-[88px]"
+        >
+          <section className="overflow-hidden rounded-2xl border bg-card">
+            <div className="flex items-center justify-between gap-2 p-5">
+              <h2 className="text-sm font-semibold">Imagen y vista previa</h2>
+              <span className="rounded-full border bg-secondary px-2.5 py-1 text-xs text-muted-foreground">
+                {preview.kind === 'SERVICE' ? 'Servicio' : 'Producto'}
+              </span>
+            </div>
+            <ProductImageField
+              imageUrl={imageUrl}
+              hasSelection={Boolean(image)}
+              photoType={preview.photoType ?? ''}
+              onPhotoTypeChange={(value) => {
+                setValue('photoType', value, { shouldValidate: true });
+              }}
+              onSelect={selectImage}
+              disabled={disabled}
+              error={imageError}
+              photoTypeError={errors.photoType?.message}
+              legacyImage={Boolean(product?.image && !product.image.photoType)}
+            />
+            <div className="space-y-3 border-t bg-control/40 p-5">
+              <h3 className="break-words text-lg font-semibold">
+                {preview.shortName?.trim() || preview.name?.trim() || 'Nombre del producto'}
+              </h3>
+              <p className="whitespace-pre-wrap break-words text-[13px] text-muted-foreground">
+                {preview.description || 'Agrega una descripción para tus campañas.'}
+              </p>
+              {attributes.length > 0 && (
+                <ul aria-label="Vista previa de características" className="flex flex-wrap gap-1.5">
+                  {attributes.map((attribute, index) => (
+                    <li
+                      key={index}
+                      className="max-w-full break-words rounded-full border bg-secondary px-2.5 py-1 text-xs text-muted-foreground"
+                    >
+                      {attribute}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="flex flex-wrap items-baseline gap-2 pt-1">
+                <b className="font-mono text-2xl font-medium">
+                  {currencySymbols[currency]} {decimalPrice(price)}
+                </b>
+                <span className="break-words text-xs text-muted-foreground">{preview.unit}</span>
+              </div>
+            </div>
+          </section>
+          <section className="rounded-2xl border bg-card p-5">
+            <h2 className="text-[13px] font-semibold">Para mejores flyers</h2>
+            <ul className="mt-3 space-y-3">
+              {[
+                'Usa una foto con el producto centrado y buena luz.',
+                'Un nombre corto para el flyer se lee mejor en historias.',
+                'Tres características bastan para la mayoría de plantillas.',
+              ].map((tip) => (
+                <li key={tip} className="flex gap-2 text-xs leading-relaxed text-muted-foreground">
+                  <Check className="mt-0.5 size-3.5 shrink-0 text-brand-cyan" />
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </section>
         </aside>
       </div>
-      <div className="flex justify-end gap-3">
+      <div className="sticky bottom-0 z-10 flex justify-end gap-3 border-t bg-background/95 py-4 backdrop-blur xl:static xl:border-0">
         <Button
-          type="button"
           variant="outline"
-          disabled={isSubmitting || saving}
-          onClick={() => router.push('/products')}
+          nativeButton={false}
+          render={<Link href="/products" />}
+          disabled={disabled}
         >
           Cancelar
         </Button>
-        <Button type="submit" disabled={isSubmitting || saving || Boolean(imageError)}>
-          {isSubmitting || saving ? 'Guardando…' : product ? 'Guardar cambios' : 'Crear producto'}
+        <Button type="submit" disabled={disabled}>
+          <Check className="size-4" />
+          {submitLabel}
         </Button>
       </div>
     </form>

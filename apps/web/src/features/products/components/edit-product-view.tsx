@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
-import { PageHeader } from '@/components/layout/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api-client';
 
@@ -77,12 +76,9 @@ export function EditProductView({ productId }: EditProductViewProps) {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <ProductForm
         title="Editar producto"
         description="Modifica la información del producto seleccionado."
-      />
-
-      <ProductForm
         key={product.id}
         product={product}
         onSubmit={handleSubmit}

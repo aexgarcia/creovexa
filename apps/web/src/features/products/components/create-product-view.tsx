@@ -8,8 +8,6 @@ import type { Product } from '../types/product.types';
 import { productService } from '../services/product.service';
 import { useUploadProductImage } from '../hooks/use-upload-product-image';
 
-import { PageHeader } from '@/components/layout/page-header';
-
 import { useCreateProduct } from '../hooks/use-create-product';
 import { productChanges, productInput, type ProductFormValues } from '../schemas/product.schema';
 
@@ -51,12 +49,9 @@ export function CreateProductView() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <ProductForm
         title="Nuevo producto"
         description="Registra un nuevo producto o servicio para utilizarlo en campañas."
-      />
-
-      <ProductForm
         product={created ?? undefined}
         onSubmit={handleSubmit}
         isSubmitting={createProduct.isPending || upload.isPending}
