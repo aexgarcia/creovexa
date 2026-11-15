@@ -58,6 +58,8 @@ export interface StoredCampaign {
     id: string;
     revision: number;
     headline: string;
+    /** Subtítulo del flyer; null en contenido anterior a él o si el copy no lo trae. */
+    subheadline: string | null;
     caption: string;
     cta: string;
     hashtags: string[];

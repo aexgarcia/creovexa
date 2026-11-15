@@ -5,6 +5,8 @@ import { GenerationSnapshot } from '../value-objects/generation-snapshot.js';
 
 export interface GeneratedContentPayload {
   headline: string;
+  // Subtítulo del flyer; null si el copy no lo trae o el contenido es anterior a él.
+  subheadline?: string | null;
   caption: string;
   cta: string;
   hashtags: readonly string[];
@@ -33,6 +35,7 @@ export class GeneratedContent {
     readonly revision: number,
     readonly snapshot: GenerationSnapshot,
     readonly headline: string,
+    readonly subheadline: string | null,
     readonly caption: string,
     readonly cta: string,
     readonly hashtags: readonly string[],
@@ -73,6 +76,7 @@ export class GeneratedContent {
       identity.revision,
       snapshot,
       required(payload.headline, 'headline'),
+      payload.subheadline == null ? null : required(payload.subheadline, 'subheadline'),
       required(payload.caption, 'caption'),
       cta,
       Object.freeze(payload.hashtags.map((tag: string) => required(tag, 'hashtags'))),
@@ -93,6 +97,7 @@ export class GeneratedContent {
       this.revision === other.revision &&
       this.snapshot.equals(other.snapshot) &&
       this.headline === other.headline &&
+      this.subheadline === other.subheadline &&
       this.caption === other.caption &&
       this.cta === other.cta &&
       JSON.stringify(this.hashtags) === JSON.stringify(other.hashtags) &&

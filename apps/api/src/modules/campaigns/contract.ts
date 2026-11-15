@@ -37,6 +37,7 @@ export interface GeneratedCampaignContent {
   generationId: EntityId;
   revision: number;
   headline: string;
+  subheadline: string | null;
   caption: string;
   cta: string;
   hashtags: readonly string[];
@@ -55,7 +56,13 @@ export interface CampaignGenerationView {
 
 export interface RecordGeneratedContentInput extends GenerationReference {
   expectedVersion: number;
-  copy: { headline: string; caption: string; cta: string; hashtags: readonly string[] };
+  copy: {
+    headline: string;
+    subheadline: string | null;
+    caption: string;
+    cta: string;
+    hashtags: readonly string[];
+  };
   finalAssetId: EntityId;
   at: Date;
 }

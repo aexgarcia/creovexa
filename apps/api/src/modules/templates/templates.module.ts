@@ -89,5 +89,7 @@ import {
         new UpdateTemplate(repository, ids, clock),
     },
   ],
+  // content-generation envía las referencias de estilo congeladas al generar el flyer.
+  exports: [TEMPLATE_STYLE_REFERENCES],
 })
 export class TemplatesModule {}

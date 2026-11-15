@@ -220,6 +220,7 @@ model GeneratedContent {
   campaignId     String             @map("campaign_id") @db.Uuid
   generationId   String             @unique @map("generation_id") @db.Uuid
   headline       String
+  subheadline    String?
   caption        String
   cta            String
   hashtags       String[]

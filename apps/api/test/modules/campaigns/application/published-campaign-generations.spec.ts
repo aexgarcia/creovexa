@@ -24,6 +24,7 @@ function fixture() {
     expectedVersion: domain.generating.version,
     copy: {
       headline: 'Promoción',
+      subheadline: 'Solo esta semana',
       caption: 'Texto',
       cta: domain.generating.cta,
       hashtags: ['#Producto'],
@@ -77,6 +78,7 @@ describe('PublishedCampaignGenerations', () => {
     expect(content).toMatchObject({
       generationId: GENERATION,
       headline: 'Promoción',
+      subheadline: 'Solo esta semana',
       assetIds: [testId(501)],
     });
     const saved = f.repository.records.get(CAMPAIGN)!;

@@ -1,16 +1,20 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, open, writeFile } from 'node:fs/promises';
+import { mkdir, open, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { entityId } from '#app/domain/entity-id';
 import { CampaignImageError } from '#app/modules/campaigns/contract';
-import type { CampaignImageSelection, ImageArtifact } from '../application/ports/image-artifact.js';
+import type {
+  CampaignImageSelection,
+  ImageArtifact,
+  TemporaryArtifacts,
+} from '../application/ports/image-artifact.js';
 
 import { MAX_IMAGE_BYTES } from '#app/infrastructure/image-files';
 export { MAX_IMAGE_BYTES } from '#app/infrastructure/image-files';
 type ArtifactScope = CampaignImageSelection & { operationId: string };
 
 // Carpeta temporal del servidor. Las referencias son UUID opacos, nunca rutas ni URLs.
-export class LocalImageArtifacts {
+export class LocalImageArtifacts implements TemporaryArtifacts {
   private readonly root: string;
   constructor(root: string) {
     this.root = resolve(root);
@@ -48,6 +52,35 @@ export class LocalImageArtifacts {
     } catch {
       throw new CampaignImageError('INVALID_OUTPUT');
     }
+  }
+
+  // Borra los archivos de una operación terminada.
+  async discard(scope: ArtifactScope): Promise<void> {
+    await rm(this.directory(scope), { recursive: true, force: true });
+  }
+
+  // Borra las carpetas de operación sin cambios desde hace más de maxAgeMs.
+  async sweep(maxAgeMs: number, now = Date.now()): Promise<void> {
+    const levels = async (path: string, depth: number): Promise<void> => {
+      let names: string[];
+      try {
+        names = await readdir(path);
+      } catch {
+        return;
+      }
+      for (const name of names) {
+        const child = join(path, name);
+        if (depth < 3) {
+          await levels(child, depth + 1);
+          continue;
+        }
+        const info = await stat(child).catch(() => null);
+        if (info?.isDirectory() && now - info.mtimeMs > maxAgeMs)
+          await rm(child, { recursive: true, force: true });
+      }
+    };
+    // organización / campaña / generación / operación
+    await levels(this.root, 0);
   }
 
   private directory(scope: ArtifactScope): string {

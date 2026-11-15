@@ -1,3 +1,4 @@
+import { FORMAT_SIZES } from '#app/domain/value-objects/flyer-design';
 import { createHash, randomUUID } from 'node:crypto';
 import { inspectImageBytes } from '#app/infrastructure/image-files';
 import { entityId, type EntityId } from '#app/domain/entity-id';
@@ -159,12 +160,19 @@ async function validateImage(bytes: Buffer, input: StoreCampaignAssetInput): Pro
       throw new Error();
     if (
       input.purpose === 'FINAL_PIECE' &&
-      (metadata.contentType !== 'image/png' || metadata.width !== 1080 || metadata.height !== 1080)
+      (metadata.contentType !== 'image/png' || !isFlyerSize(metadata))
     )
       throw new Error();
   } catch {
     throw new CampaignImageError('INVALID_OUTPUT');
   }
+}
+
+// El flyer final tiene el tamaño de uno de los formatos de la plantilla.
+function isFlyerSize(size: { width: number; height: number }): boolean {
+  return Object.values(FORMAT_SIZES).some(
+    (format) => format.width === size.width && format.height === size.height,
+  );
 }
 
 function digest(bytes: Uint8Array): string {

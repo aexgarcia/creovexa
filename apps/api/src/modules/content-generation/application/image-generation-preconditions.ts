@@ -15,6 +15,10 @@ import type { ImageGenerator } from './ports/image-generator.js';
 import type { ProductImageSource } from './ports/product-image-source.js';
 import type { StorageProvider } from './ports/storage-provider.js';
 import type { TemplateRenderer } from './ports/template-renderer.js';
+import type { FlyerLogoSource } from './ports/flyer-logo-source.js';
+import type { FlyerReader } from './ports/flyer-reader.js';
+import { snapshotDesign } from './flyer-brief.js';
+import { FORMAT_SIZES } from '#app/domain/value-objects/flyer-design';
 
 export interface ImagePreconditionPorts {
   generations: CampaignGenerations;
@@ -23,6 +27,9 @@ export interface ImagePreconditionPorts {
   generator: ImageGenerator;
   renderer: TemplateRenderer;
   storage: StorageProvider;
+  // Solo en AI_FULL: el logo que se pega y la lectura que verifica el flyer.
+  logos: FlyerLogoSource | null;
+  reader: FlyerReader | null;
   clock: Clock;
 }
 
@@ -60,9 +67,18 @@ export async function checkImagePreconditions(
   if (snapshot.product.imageAssetIds.length === 0)
     throw new CampaignImageError('PRODUCT_IMAGE_REQUIRED');
   if (snapshot.product.imageAssetIds.length !== 1) throw new CampaignImageError('INVALID_OUTPUT');
-  if (snapshot.template.width !== 1080 || snapshot.template.height !== 1080)
+  // El tamaño congelado debe ser el de su formato y el compositor del despliegue debe soportarlo.
+  const size = { width: snapshot.template.width, height: snapshot.template.height };
+  const expected = FORMAT_SIZES[snapshotDesign(snapshot).format];
+  if (
+    size.width !== expected.width ||
+    size.height !== expected.height ||
+    !ports.renderer.supports(size)
+  )
     throw new CampaignImageError('UNSUPPORTED_DIMENSIONS');
   ports.productImages.assertAvailable();
+  ports.logos?.assertAvailable();
+  ports.reader?.assertAvailable();
   ports.generator.assertAvailable();
   ports.renderer.assertAvailable();
   ports.storage.assertAvailable();

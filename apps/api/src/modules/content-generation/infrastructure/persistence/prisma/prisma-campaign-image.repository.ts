@@ -1,3 +1,4 @@
+import { FORMAT_SIZES } from '#app/domain/value-objects/flyer-design';
 import { randomUUID } from 'node:crypto';
 import type { TransactionContext } from '#app/application/ports/transaction-context';
 import type { PrismaClient, Prisma } from '#app/infrastructure/persistence/prisma/generated/client';
@@ -106,8 +107,9 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
         baseAsset.purpose !== 'BASE_IMAGE' ||
         finalAsset.purpose !== 'FINAL_PIECE' ||
         finalAsset.contentType !== 'image/png' ||
-        finalAsset.width !== 1080 ||
-        finalAsset.height !== 1080 ||
+        !Object.values(FORMAT_SIZES).some(
+          (size) => size.width === finalAsset.width && size.height === finalAsset.height,
+        ) ||
         !Number.isFinite(at.getTime()) ||
         at >= lease.expiresAt
       )
@@ -117,6 +119,8 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
       if (
         !copy ||
         copy.headline !== content.headline ||
+        // Los copies anteriores al subtítulo no lo tienen.
+        (copy.subheadline ?? null) !== content.subheadline ||
         copy.caption !== content.caption ||
         copy.cta !== content.cta ||
         JSON.stringify(copy.hashtags) !== JSON.stringify(content.hashtags)

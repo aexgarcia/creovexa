@@ -318,6 +318,9 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
               {content && (
                 <div className="space-y-4 rounded-xl border bg-background p-5">
                   <h2 className="break-words text-xl font-semibold">{content.headline}</h2>
+                  {content.subheadline && (
+                    <p className="break-words text-sm font-medium">{content.subheadline}</p>
+                  )}
                   <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">
                     {content.caption}
                   </p>

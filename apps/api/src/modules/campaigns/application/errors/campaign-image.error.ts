@@ -11,7 +11,9 @@ export type CampaignImageFailure =
   | 'RATE_LIMITED'
   | 'BUSY'
   | 'STALE_RESULT'
-  | 'TIMEOUT';
+  | 'TIMEOUT'
+  // AI_FULL: la lectura del flyer no coincide con el brief (ADR-0009).
+  | 'VERIFICATION_FAILED';
 
 export class CampaignImageError extends Error {
   constructor(readonly code: CampaignImageFailure) {

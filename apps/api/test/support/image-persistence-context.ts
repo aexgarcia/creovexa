@@ -133,6 +133,8 @@ export class ImagePersistenceContext {
     const completion = (baseAsset: StoredCampaignAsset, finalAsset: StoredCampaignAsset) => ({
       copy: {
         headline: copy.headline,
+        // El copy guardado es anterior al subtítulo: se confirma sin él.
+        subheadline: null,
         caption: copy.caption,
         cta: copy.cta,
         hashtags: copy.hashtags,

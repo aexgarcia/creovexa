@@ -149,6 +149,7 @@ export class CampaignMapper {
       campaignId: content.campaignId,
       generationId: content.generationId,
       headline: content.headline,
+      subheadline: content.subheadline,
       caption: content.caption,
       cta: content.cta,
       hashtags: [...content.hashtags],

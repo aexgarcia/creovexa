@@ -1,3 +1,4 @@
+import { FORMAT_SIZES } from '#app/domain/value-objects/flyer-design';
 import { createHash } from 'node:crypto';
 import { entityId, type EntityId } from '#app/domain/entity-id';
 import { inspectImageBytes, MAX_IMAGE_BYTES } from '#app/infrastructure/image-files';
@@ -42,11 +43,16 @@ export class StoredCampaignAssets implements CampaignFinalAssets {
         generationId: input.generationId,
         purpose: 'FINAL_PIECE',
         contentType: 'image/png',
-        width: 1080,
-        height: 1080,
       },
     });
-    if (!row) return null;
+    // El flyer final tiene el tamaño de uno de los formatos (cuadrado, vertical o historia).
+    if (
+      !row ||
+      !Object.values(FORMAT_SIZES).some(
+        (size) => size.width === row.width && size.height === row.height,
+      )
+    )
+      return null;
     this.assertAvailable();
     const result = await this.read(input.organizationId, input.assetId);
     if (!result) return null;

@@ -49,6 +49,21 @@ import {
 import { COPY_GENERATOR, type CopyGenerator } from './application/ports/copy-generator.js';
 import { IMAGE_GENERATOR, type ImageGenerator } from './application/ports/image-generator.js';
 import { TEMPLATE_RENDERER, type TemplateRenderer } from './application/ports/template-renderer.js';
+import { FLYER_LOGO_SOURCE, type FlyerLogoSource } from './application/ports/flyer-logo-source.js';
+import { FLYER_READER, type FlyerReader } from './application/ports/flyer-reader.js';
+import {
+  FLYER_STYLE_SOURCE,
+  type FlyerStyleSource,
+} from './application/ports/flyer-style-source.js';
+import { StoredFlyerStyleSource } from './infrastructure/stored-flyer-style-source.js';
+import { TemplatesModule } from '#app/modules/templates/templates.module';
+import {
+  TEMPLATE_STYLE_REFERENCES,
+  type TemplateStyleReferences,
+} from '#app/modules/templates/application/ports/template-style-references';
+import { LogoOverlayComposer } from './infrastructure/logo-overlay-composer.js';
+import { OpenAIFlyerReader } from './infrastructure/openai-flyer-reader.js';
+import { StoredFlyerLogoSource } from './infrastructure/stored-flyer-logo-source.js';
 import {
   GenerateCampaignCopy,
   GetCampaignCopy,
@@ -85,6 +100,7 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
     JobsModule,
     OrganizationsModule,
     ProductsModule,
+    TemplatesModule,
     CampaignsModule,
   ],
   controllers: [CampaignCopyController, CampaignImageController],
@@ -199,14 +215,52 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
       useFactory: (db: PrismaService, storage: MinioStorageProvider, logos: OrganizationLogos) =>
         new PrismaCampaignRenderResources(db, storage, logos),
     },
+    // El modo se elige al desplegar (ADR-0009): AI_FULL pega el logo y verifica el flyer de la
+    // IA; COMPOSED compone los textos con Playwright.
     {
       provide: TEMPLATE_RENDERER,
-      inject: [CAMPAIGN_RENDER_RESOURCES, LocalImageArtifacts, RENDERER_CONFIG],
+      inject: [
+        IMAGE_GENERATION_CONFIG,
+        CAMPAIGN_RENDER_RESOURCES,
+        LocalImageArtifacts,
+        RENDERER_CONFIG,
+      ],
       useFactory: (
+        image: ImageGenerationConfig,
         resources: CampaignRenderResources,
         artifacts: LocalImageArtifacts,
         config: RendererConfig,
-      ) => new PlaywrightTemplateRenderer(resources, artifacts, config),
+      ) =>
+        image.mode === 'AI_FULL'
+          ? new LogoOverlayComposer(artifacts)
+          : new PlaywrightTemplateRenderer(resources, artifacts, config),
+    },
+    {
+      provide: FLYER_LOGO_SOURCE,
+      inject: [IMAGE_GENERATION_CONFIG, ORGANIZATION_LOGOS, LocalImageArtifacts],
+      useFactory: (
+        image: ImageGenerationConfig,
+        logos: OrganizationLogos,
+        artifacts: LocalImageArtifacts,
+      ) => (image.mode === 'AI_FULL' ? new StoredFlyerLogoSource(logos, artifacts) : null),
+    },
+    {
+      provide: FLYER_STYLE_SOURCE,
+      inject: [IMAGE_GENERATION_CONFIG, TEMPLATE_STYLE_REFERENCES, LocalImageArtifacts],
+      useFactory: (
+        image: ImageGenerationConfig,
+        references: TemplateStyleReferences,
+        artifacts: LocalImageArtifacts,
+      ) => (image.mode === 'AI_FULL' ? new StoredFlyerStyleSource(references, artifacts) : null),
+    },
+    {
+      provide: FLYER_READER,
+      inject: [IMAGE_GENERATION_CONFIG, LocalImageArtifacts],
+      useFactory: (image: ImageGenerationConfig, artifacts: LocalImageArtifacts) =>
+        // Gemini solo admite COMPOSED y sin proveedor no hay generación que verificar.
+        image.provider === 'openai' && image.mode === 'AI_FULL'
+          ? new OpenAIFlyerReader(image.settings.apiKey, image.vision, artifacts)
+          : null,
     },
     {
       provide: IMAGE_GENERATOR,
@@ -218,6 +272,7 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
               artifacts,
               fetch,
               new ConsoleLogger('ImageGeneration', { json: true }),
+              config.mode,
             )
           : new GeminiImageGenerator(
               config.provider === 'gemini' ? config.settings : null,
@@ -238,6 +293,10 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
         MinioStorageProvider,
         ID_GENERATOR,
         CLOCK,
+        FLYER_LOGO_SOURCE,
+        FLYER_READER,
+        LocalImageArtifacts,
+        FLYER_STYLE_SOURCE,
       ],
       useFactory: (
         generations: CampaignGenerations,
@@ -249,8 +308,13 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
         storage: MinioStorageProvider,
         ids: IdGenerator,
         clock: Clock,
-      ) =>
-        new GenerateCampaignImage(
+        logos: FlyerLogoSource | null,
+        reader: FlyerReader | null,
+        artifacts: LocalImageArtifacts,
+        styles: FlyerStyleSource | null,
+      ) => {
+        const logger = new ConsoleLogger('FlyerVerification', { json: true });
+        return new GenerateCampaignImage(
           generations,
           copies,
           images,
@@ -260,7 +324,19 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
           storage,
           ids,
           clock,
-        ),
+          {
+            logos,
+            reader,
+            styles,
+            // Solo el resultado y las observaciones: nunca textos del prompt ni claves.
+            report: (report) =>
+              report.verification.ok
+                ? logger.log({ event: 'flyer_verified', ...report })
+                : logger.warn({ event: 'flyer_verification_failed', ...report }),
+            temporary: artifacts,
+          },
+        );
+      },
     },
     {
       // El caso de uso de imagen ya tiene todos los ports que la petición debe revisar.
@@ -303,9 +379,13 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
     },
     {
       provide: GenerationJobRunner,
-      inject: [JOB_QUEUE, GenerationJobs, JOBS_CONFIG],
-      useFactory: (queue: JobQueue, jobs: GenerationJobs, config: JobsConfig) =>
-        new GenerationJobRunner(queue, jobs, config),
+      inject: [JOB_QUEUE, GenerationJobs, JOBS_CONFIG, LocalImageArtifacts],
+      useFactory: (
+        queue: JobQueue,
+        jobs: GenerationJobs,
+        config: JobsConfig,
+        artifacts: LocalImageArtifacts,
+      ) => new GenerationJobRunner(queue, jobs, config, artifacts),
     },
   ],
 })

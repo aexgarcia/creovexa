@@ -13,7 +13,7 @@ import type {
   CampaignImageLease,
   CampaignImageRepository,
 } from '../ports/campaign-image-repository.js';
-import type { ImageArtifact } from '../ports/image-artifact.js';
+import type { ImageArtifact, TemporaryArtifacts } from '../ports/image-artifact.js';
 import type { ImageGenerator } from '../ports/image-generator.js';
 import type { ProductImageSource } from '../ports/product-image-source.js';
 import type {
@@ -22,6 +22,30 @@ import type {
   CampaignAssetPurpose,
 } from '../ports/storage-provider.js';
 import type { TemplateRenderer } from '../ports/template-renderer.js';
+import type { FlyerLogoSource } from '../ports/flyer-logo-source.js';
+import type { FlyerReader } from '../ports/flyer-reader.js';
+import type { FlyerStyleSource } from '../ports/flyer-style-source.js';
+import { buildFlyerBrief, chooseFlyerLogo, snapshotDesign } from '../flyer-brief.js';
+import { verifyFlyer, type FlyerVerification } from '../flyer-verification.js';
+
+// Lo que se informa de cada verificación de AI_FULL, para entender por qué falló una imagen.
+export interface FlyerVerificationReport {
+  generationId: string;
+  verification: FlyerVerification;
+  warnings: string[];
+  logoPlacement: 'DIRECT' | 'VEIL' | null;
+}
+
+// Dependencias que no todos los despliegues tienen.
+export interface GenerateCampaignImageOptions {
+  // Solo en AI_FULL (ADR-0009): el logo que se pega y la lectura que verifica el flyer.
+  logos?: FlyerLogoSource | null;
+  reader?: FlyerReader | null;
+  styles?: FlyerStyleSource | null;
+  report?: (report: FlyerVerificationReport) => void;
+  // Archivos temporales de cada operación, que se borran al terminarla.
+  temporary?: TemporaryArtifacts | null;
+}
 
 export interface GenerateCampaignImageInput extends CampaignReference {
   // Fija la generación del copy revisado; nunca genera en silencio una revisión más nueva.
@@ -74,7 +98,20 @@ export class GenerateCampaignImage {
     readonly storage: StorageProvider,
     private readonly ids: IdGenerator,
     readonly clock: Clock,
-  ) {}
+    options: GenerateCampaignImageOptions = {},
+  ) {
+    this.logos = options.logos ?? null;
+    this.reader = options.reader ?? null;
+    this.styles = options.styles ?? null;
+    this.report = options.report ?? (() => {});
+    this.temporary = options.temporary ?? null;
+  }
+
+  readonly logos: FlyerLogoSource | null;
+  readonly reader: FlyerReader | null;
+  private readonly styles: FlyerStyleSource | null;
+  private readonly report: (report: FlyerVerificationReport) => void;
+  private readonly temporary: TemporaryArtifacts | null;
 
   async execute(input: GenerateCampaignImageInput): Promise<GeneratedCampaignContent> {
     const ready = await checkImagePreconditions(this, input);
@@ -98,8 +135,33 @@ export class GenerateCampaignImage {
       });
       assertArtifact(referenceImage);
       this.assertLeaseTime(lease);
+      const operation = { ...selection, operationId: lease.token };
+      const choice = this.logos ? chooseFlyerLogo(snapshot) : null;
+      const logo = choice
+        ? await this.logos!.load({ ...operation, assetId: entityId(choice.assetId) })
+        : null;
+      if (logo) assertArtifact(logo);
+      const styleImages: ImageArtifact[] = [];
+      if (this.styles)
+        for (const assetId of snapshotDesign(snapshot).styleReferenceAssetIds) {
+          const image = await this.styles.load({
+            ...operation,
+            templateId: snapshot.template.id,
+            assetId: entityId(assetId),
+          });
+          assertArtifact(image);
+          styleImages.push(image);
+        }
+      this.assertLeaseTime(lease);
+      const brief = buildFlyerBrief(
+        snapshot,
+        copy,
+        choice && logo ? { ...choice, aspectRatio: logo.width / logo.height } : null,
+        styleImages.length,
+      );
       const visualCopy = {
         headline: copy.headline,
+        subheadline: copy.subheadline,
         caption: copy.caption,
         cta: copy.cta,
         hashtags: [...copy.hashtags],
@@ -109,6 +171,8 @@ export class GenerateCampaignImage {
         operationId: lease.token,
         referenceImage,
         headline: copy.headline,
+        brief,
+        styleImages,
         snapshot,
       });
       assertArtifact(base);
@@ -121,13 +185,16 @@ export class GenerateCampaignImage {
       });
       assertStoredAsset(baseAsset, lease, 'BASE_IMAGE', base);
       this.assertLeaseTime(lease);
-      const final = await this.renderer.render({
-        ...selection,
-        operationId: lease.token,
+      const composition = await this.renderer.render({
+        ...operation,
         mainImage: baseAsset.id,
+        baseImage: base,
         copy: visualCopy,
+        brief,
+        logo,
         snapshot,
       });
+      const final = composition.final;
       assertArtifact(final);
       if (
         final.contentType !== 'image/png' ||
@@ -136,6 +203,25 @@ export class GenerateCampaignImage {
       )
         throw new CampaignImageError('INVALID_OUTPUT');
       this.assertLeaseTime(lease);
+      if (this.reader) {
+        // Primero la esquina, en la imagen de la IA: el modelo de visión completa las letras
+        // que el logo corta y la lectura del flyer final no lo notaría.
+        const review = composition.areaUnderLogo
+          ? await this.reader.reviewLogoArea({ ...operation, image: composition.areaUnderLogo })
+          : null;
+        this.assertLeaseTime(lease);
+        const reading = await this.reader.read({ ...operation, image: final });
+        const verification = verifyFlyer(brief, reading, review);
+        this.report({
+          generationId: selection.generationId,
+          verification,
+          warnings: brief.warnings,
+          logoPlacement: composition.logoPlacement,
+        });
+        // No se reintenta: cada intento se cobra (ADR-0008). Quien la pidió puede regenerarla.
+        if (!verification.ok) throw new CampaignImageError('VERIFICATION_FAILED');
+        this.assertLeaseTime(lease);
+      }
       const finalAsset = await this.storage.store({
         ...selection,
         operationId: lease.token,
@@ -157,6 +243,11 @@ export class GenerateCampaignImage {
         /* Conserva el fallo original. */
       }
       throw error;
+    } finally {
+      // Lo que importa ya quedó en el storage; los temporales de esta operación sobran.
+      await this.temporary
+        ?.discard({ ...selection, operationId: lease.token })
+        .catch(() => undefined);
     }
   }
 

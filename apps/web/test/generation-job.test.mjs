@@ -19,3 +19,12 @@ test('failures are explained without exposing internal codes', () => {
   assert.match(unknown, /No se pudo completar/);
   assert.doesNotMatch(unknown, /WEIRD/);
 });
+test('explains a failed automatic verification of the flyer', () => {
+  const message = failureMessage({
+    generationId: 'g',
+    status: 'FAILED',
+    failureCode: 'VERIFICATION_FAILED',
+  });
+  assert.match(message, /revisión automática/);
+  assert.match(message, /Puedes intentarlo de nuevo/);
+});

@@ -4,7 +4,7 @@ import type { CampaignRenderResources } from '../../../application/ports/campaig
 import type { RenderCampaignTemplateInput } from '../../../application/ports/template-renderer.js';
 import type { MinioStorageProvider } from '../../minio-storage-provider.js';
 import { requireImageLease } from './prisma-campaign-image.repository.js';
-import { FlyerDesign } from '#app/domain/value-objects/flyer-design';
+import { snapshotDesign } from '../../../application/flyer-brief.js';
 import type { OrganizationLogos } from '#app/modules/organizations/application/ports/organization-logos';
 import { entityId } from '#app/domain/entity-id';
 
@@ -28,17 +28,9 @@ export class PrismaCampaignRenderResources implements CampaignRenderResources {
       snapshot.product.organizationId !== input.organizationId
     )
       throw new CampaignImageError('INVALID_OUTPUT');
-    const template = await this.database.templateRevision.findFirst({
-      where: {
-        id: snapshot.template.revisionId,
-        templateId: snapshot.template.id,
-        organizationId: input.organizationId,
-        number: BigInt(snapshot.template.revisionNumber),
-        width: snapshot.template.width,
-        height: snapshot.template.height,
-      },
-    });
-    if (!template) throw new CampaignImageError('INVALID_OUTPUT');
+    // El diseño viene congelado en el snapshot (ADR-0024): no se lee la tabla de templates.
+    if (snapshot.template.organizationId !== input.organizationId)
+      throw new CampaignImageError('INVALID_OUTPUT');
     const selection = {
       organizationId: input.organizationId,
       campaignId: input.campaignId,
@@ -71,7 +63,7 @@ export class PrismaCampaignRenderResources implements CampaignRenderResources {
     return {
       mainImage: { ...stored.asset, bytes: stored.bytes },
       logo,
-      design: FlyerDesign.create(template.design).data,
+      design: snapshotDesign(snapshot),
     };
   }
 }

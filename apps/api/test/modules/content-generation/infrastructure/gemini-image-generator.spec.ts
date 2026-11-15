@@ -16,6 +16,7 @@ import type { GenerateImageInput } from '#app/modules/content-generation/applica
 import { LocalImageArtifacts } from '#app/modules/content-generation/infrastructure/local-image-artifacts';
 import { GeminiImageGenerator } from '#app/modules/content-generation/infrastructure/gemini-image-generator';
 import { baseImageContext } from '#app/modules/content-generation/application/base-image-context';
+import { buildFlyerBrief } from '#app/modules/content-generation/application/flyer-brief';
 
 describe('GeminiImageGenerator', () => {
   let directory: string;
@@ -56,6 +57,12 @@ describe('GeminiImageGenerator', () => {
         height: 16,
       },
       headline: 'Descubre el producto',
+      brief: buildFlyerBrief(
+        snapshot,
+        { headline: 'Descubre el producto', subheadline: null },
+        null,
+      ),
+      styleImages: [],
       snapshot,
     };
   });

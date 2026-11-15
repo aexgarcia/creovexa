@@ -10,6 +10,7 @@ import type { CampaignRenderResources } from '#app/modules/content-generation/ap
 import type { RenderCampaignTemplateInput } from '#app/modules/content-generation/application/ports/template-renderer';
 import { PlaywrightTemplateRenderer } from '#app/modules/content-generation/infrastructure/playwright-template-renderer';
 import { LocalImageArtifacts } from '#app/modules/content-generation/infrastructure/local-image-artifacts';
+import { composedRenderExtras } from './support/generation-fakes.js';
 import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
 
 describe('Flyer composition with real Chromium', () => {
@@ -44,7 +45,7 @@ describe('Flyer composition with real Chromium', () => {
 
   function fixture(withLogo = false) {
     const snapshot = domainFixture().snapshot.data;
-    const input: RenderCampaignTemplateInput = {
+    const partial = {
       organizationId: ORG,
       campaignId: CAMPAIGN,
       generationId: GENERATION,
@@ -81,6 +82,16 @@ describe('Flyer composition with real Chromium', () => {
           showDiscount: false,
         },
       },
+    };
+    // Playwright lee la imagen base de los recursos; el archivo temporal no se usa.
+    const input: RenderCampaignTemplateInput = {
+      ...partial,
+      ...composedRenderExtras(partial.snapshot, {
+        reference: testId(703),
+        contentType: 'image/png',
+        width: 1080,
+        height: 1080,
+      }),
     };
     const resolved = {
       design: FlyerDesign.create().data,
@@ -166,7 +177,7 @@ describe('Flyer composition with real Chromium', () => {
       observed.launch,
     );
     const output = await renderer.render(f.input);
-    const bytes = await artifacts.read({ ...f.input, source: output });
+    const bytes = await artifacts.read({ ...f.input, source: output.final });
     expect(await sharp(bytes).metadata()).toMatchObject({
       format: 'png',
       width: 1080,
@@ -235,7 +246,7 @@ describe('Flyer composition with real Chromium', () => {
     await mkdir('.local', { recursive: true });
     await writeFile(
       '.local/phase-6-product-focus-preview.png',
-      await artifacts.read({ ...f.input, source: output }),
+      await artifacts.read({ ...f.input, source: output.final }),
     );
   });
   it('honors the hidden elements while retaining product identity', async () => {
@@ -386,7 +397,10 @@ describe('Flyer composition with real Chromium', () => {
     await expect(renderer.render(f.input)).rejects.toMatchObject({ code: 'BUSY' });
     finish(f.resolved);
     await first;
-    await expect(renderer.render(f.input)).resolves.toHaveProperty('contentType', 'image/png');
+    await expect(renderer.render(f.input)).resolves.toHaveProperty(
+      'final.contentType',
+      'image/png',
+    );
   });
 
   it('reports safe browser failures and allows retry after timeout', async () => {
@@ -402,7 +416,10 @@ describe('Flyer composition with real Chromium', () => {
       launch,
     );
     await expect(renderer.render(f.input)).rejects.toMatchObject({ code: 'TIMEOUT' });
-    await expect(renderer.render(f.input)).resolves.toHaveProperty('contentType', 'image/png');
+    await expect(renderer.render(f.input)).resolves.toHaveProperty(
+      'final.contentType',
+      'image/png',
+    );
   });
 
   it('propagates scoped resource failures and does not create a partial flyer', async () => {

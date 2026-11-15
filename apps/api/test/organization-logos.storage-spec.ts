@@ -37,6 +37,7 @@ import {
 } from '#app/modules/content-generation/application/ports/template-renderer';
 import { entityId } from '#app/domain/entity-id';
 import { ImagePersistenceContext, uuid } from './support/image-persistence-context.js';
+import { composedRenderExtras } from './support/generation-fakes.js';
 
 describe('Organization logos (HTTP, PostgreSQL, MinIO and flyer)', () => {
   const context = new ImagePersistenceContext();
@@ -294,13 +295,14 @@ describe('Organization logos (HTTP, PostgreSQL, MinIO and flyer)', () => {
       mainImage: base.id,
       snapshot: campaign.generation!.snapshot.data,
       copy: f.copy,
+      ...composedRenderExtras(campaign.generation!.snapshot.data, source),
     };
     const resources = await context.module
       .get<CampaignRenderResources>(CAMPAIGN_RENDER_RESOURCES)
       .load(input);
     expect(resources.logo?.bytes).toEqual(png);
     const rendered = await context.module.get<TemplateRenderer>(TEMPLATE_RENDERER).render(input);
-    const bytes = await artifacts.read({ ...scope, source: rendered });
+    const bytes = await artifacts.read({ ...scope, source: rendered.final });
     expect((await sharp(bytes).metadata()).width).toBe(1080);
     expect(bytes).not.toEqual(main);
     await request(app.getHttpServer()).get(first.body.data.logoUrl).expect(200);

@@ -41,6 +41,11 @@ export class PlaywrightTemplateRenderer implements TemplateRenderer {
     if (!existsSync(chromium.executablePath())) throw new CampaignImageError('UNAVAILABLE');
   }
 
+  // El diseño HTML es cuadrado: COMPOSED solo compone 1080 × 1080.
+  supports(size: { width: number; height: number }): boolean {
+    return size.width === 1080 && size.height === 1080;
+  }
+
   async render(input: RenderCampaignTemplateInput) {
     this.assertAvailable();
     if (this.rendering) throw new CampaignImageError('BUSY');
@@ -116,7 +121,11 @@ export class PlaywrightTemplateRenderer implements TemplateRenderer {
       if (expired) throw new CampaignImageError('TIMEOUT');
       const reference = await this.artifacts.write(input, bytes);
       if (expired) throw new CampaignImageError('TIMEOUT');
-      return { ...metadata, reference };
+      return {
+        final: { ...metadata, reference },
+        areaUnderLogo: null,
+        logoPlacement: null,
+      };
     } catch (error) {
       if (expired || error instanceof errors.TimeoutError) throw new CampaignImageError('TIMEOUT');
       if (error instanceof CampaignImageError) throw error;

@@ -11,6 +11,9 @@ import {
 } from '#app/modules/content-generation/application/copy-policy';
 import type { GenerationJobState } from '#app/modules/content-generation/application/generation-job';
 import { domainFixture } from './campaign-fakes.js';
+import { buildFlyerBrief } from '#app/modules/content-generation/application/flyer-brief';
+import type { ImageArtifact } from '#app/modules/content-generation/application/ports/image-artifact';
+import type { GenerationSnapshotData } from '#app/modules/campaigns/contract';
 
 // Copy que la política acepta: nombre del producto y precios exactos en el caption.
 export function validCopy(input = domainFixture().snapshot.data): CampaignCopy {
@@ -78,4 +81,17 @@ export class CopyRepositoryFake implements CampaignCopyRepository {
     this.queued = false;
     return Promise.resolve();
   }
+}
+
+// Lo que el compositor recibe además en AI_FULL; COMPOSED lo ignora.
+export function composedRenderExtras(
+  snapshot: GenerationSnapshotData,
+  baseImage: ImageArtifact,
+  headline = 'Titular del flyer',
+) {
+  return {
+    baseImage,
+    brief: buildFlyerBrief(snapshot, { headline, subheadline: null }, null),
+    logo: null,
+  };
 }

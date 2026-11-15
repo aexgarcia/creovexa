@@ -14,7 +14,13 @@ export interface CampaignImageLease extends CampaignImageSelection {
 
 export interface CampaignImageCompletion {
   // Exactamente el copy guardado; campaigns lo convierte en el contenido que espera aprobación.
-  copy: { headline: string; caption: string; cta: string; hashtags: readonly string[] };
+  copy: {
+    headline: string;
+    subheadline: string | null;
+    caption: string;
+    cta: string;
+    hashtags: readonly string[];
+  };
   baseAsset: StoredCampaignAsset;
   finalAsset: StoredCampaignAsset;
 }

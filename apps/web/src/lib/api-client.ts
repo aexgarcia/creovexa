@@ -62,6 +62,8 @@ export async function apiRequest<T>(
       IMAGE_UNAVAILABLE:
         'La generación del flyer no está disponible. Revisa la configuración del proveedor de imagen y del almacenamiento.',
       IMAGE_LOGO_UNAVAILABLE: 'No se pudo leer el logo guardado en esta campaña.',
+      IMAGE_UNSUPPORTED_DIMENSIONS:
+        'El formato de la plantilla no está disponible en este despliegue. Usa una plantilla cuadrada.',
       IMAGE_INVALID_OUTPUT:
         'No se pudo preparar un flyer válido. Actualiza la campaña antes de reintentar.',
       IMAGE_REFUSED:

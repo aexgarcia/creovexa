@@ -17,6 +17,7 @@ export class CandidateContentResponse {
   @ApiProperty({ type: String, format: 'uuid' }) id!: string;
   @ApiProperty({ type: Number }) revision!: number;
   @ApiProperty({ type: String }) headline!: string;
+  @ApiProperty({ type: String, nullable: true }) subheadline!: string | null;
   @ApiProperty({ type: String }) caption!: string;
   @ApiProperty({ type: String }) cta!: string;
   @ApiProperty({ type: [String] }) hashtags!: string[];
@@ -60,6 +61,7 @@ export function campaignResponse(result: CampaignResult): CampaignResponse {
           id: result.candidateContent.id,
           revision: result.candidateContent.revision,
           headline: result.candidateContent.headline,
+          subheadline: result.candidateContent.subheadline,
           caption: result.candidateContent.caption,
           cta: result.candidateContent.cta,
           hashtags: [...result.candidateContent.hashtags],

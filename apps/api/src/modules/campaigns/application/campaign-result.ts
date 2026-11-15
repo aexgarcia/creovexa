@@ -7,6 +7,7 @@ function contentResult(content: GeneratedContent) {
     generationId: content.generationId as string,
     revision: content.revision,
     headline: content.headline,
+    subheadline: content.subheadline,
     caption: content.caption,
     cta: content.cta,
     hashtags: [...content.hashtags] as string[],

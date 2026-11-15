@@ -21,6 +21,10 @@ const failureMessages: Record<string, string> = {
   INVALID_OUTPUT: 'El resultado no cumplió las reglas de la campaña.',
   REFUSED: 'El proveedor de IA rechazó la solicitud.',
   LOGO_UNAVAILABLE: 'No se pudo leer el logo de la empresa.',
+  // La revisión automática encontró un precio, una fecha o un texto distinto, o el logo tapaba texto.
+  VERIFICATION_FAILED:
+    'La revisión automática encontró un texto, precio o fecha que no coincide con la campaña.',
+  UNSUPPORTED_DIMENSIONS: 'El formato de la plantilla no está disponible en este despliegue.',
 };
 
 export function failureMessage(job: GenerationJob): string {

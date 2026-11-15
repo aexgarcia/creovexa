@@ -14,6 +14,7 @@ import type { GenerateImageInput } from '#app/modules/content-generation/applica
 import { LocalImageArtifacts } from '#app/modules/content-generation/infrastructure/local-image-artifacts';
 import { OpenAIImageGenerator } from '#app/modules/content-generation/infrastructure/openai-image-generator';
 import { baseImageContext } from '#app/modules/content-generation/application/base-image-context';
+import { buildFlyerBrief } from '#app/modules/content-generation/application/flyer-brief';
 describe('OpenAIImageGenerator', () => {
   let directory: string;
   let artifacts: LocalImageArtifacts;
@@ -49,6 +50,12 @@ describe('OpenAIImageGenerator', () => {
       ...scope,
       snapshot,
       headline: 'Tu producto favorito',
+      brief: buildFlyerBrief(
+        snapshot,
+        { headline: 'Tu producto favorito', subheadline: null },
+        null,
+      ),
+      styleImages: [],
       referenceImage: {
         reference: await artifacts.write(scope, source),
         contentType: 'image/png',
@@ -150,6 +157,93 @@ describe('OpenAIImageGenerator', () => {
         async () => stalled,
       ).generate(input),
     ).rejects.toMatchObject({ code: 'TIMEOUT' });
+  });
+  it('sends the template style references after the photo, only as style', async () => {
+    const data = domainFixture().snapshot.data;
+    const brief = buildFlyerBrief(
+      data,
+      { headline: 'Tu producto favorito', subheadline: null },
+      null,
+      1,
+    );
+    const http = vi.fn(async (_url: string, options: RequestInit) => {
+      const body = options.body as FormData;
+      const images = body.getAll('image[]') as File[];
+      expect(images.map((image) => image.name)).toEqual(['product.png', 'style-1.png']);
+      expect(String(body.get('prompt'))).toContain('Image 2 is earlier flyers chosen by');
+      return Response.json(envelope(generated));
+    }) as unknown as typeof fetch;
+    await new OpenAIImageGenerator(config, artifacts, http, undefined, 'AI_FULL').generate({
+      ...input,
+      brief,
+      styleImages: [input.referenceImage],
+    });
+    expect(http).toHaveBeenCalledOnce();
+    // COMPOSED nunca envía referencias de estilo.
+    const composed = vi.fn(async (_url: string, options: RequestInit) => {
+      expect((options.body as FormData).getAll('image[]')).toHaveLength(1);
+      return Response.json(envelope(generated));
+    }) as unknown as typeof fetch;
+    await new OpenAIImageGenerator(config, artifacts, composed).generate({
+      ...input,
+      styleImages: [input.referenceImage],
+    });
+  });
+
+  it('asks for the whole flyer in AI_FULL, in the size of the template format', async () => {
+    const data = domainFixture().snapshot.data;
+    const portrait = {
+      ...data,
+      template: {
+        ...data.template,
+        width: 1080,
+        height: 1350,
+        design: { ...data.template.design!, format: 'PORTRAIT' as const },
+      },
+    };
+    const brief = buildFlyerBrief(
+      portrait,
+      { headline: 'Tu producto favorito', subheadline: null },
+      null,
+    );
+    const flyer = await sharp({
+      create: { width: 1024, height: 1280, channels: 3, background: '#334455' },
+    })
+      .png()
+      .toBuffer();
+    const http = vi.fn(async (_url: string, options: RequestInit) => {
+      const body = options.body as FormData;
+      expect(body.get('size')).toBe('1024x1280');
+      expect(body.getAll('image[]')).toHaveLength(1);
+      const prompt = String(body.get('prompt'));
+      expect(prompt).toContain('4:5 format');
+      expect(prompt).toContain('"Tu producto favorito"');
+      expect(prompt).toContain('"Ahora S/ 15.00"');
+      expect(prompt).not.toContain(data.product.id);
+      return Response.json(envelope(flyer));
+    }) as unknown as typeof fetch;
+    const result = await new OpenAIImageGenerator(
+      config,
+      artifacts,
+      http,
+      undefined,
+      'AI_FULL',
+    ).generate({ ...input, snapshot: portrait, brief });
+    expect(result).toMatchObject({ contentType: 'image/png', width: 1024, height: 1280 });
+    // Una imagen cuadrada no sirve para un flyer vertical.
+    await expect(
+      new OpenAIImageGenerator(
+        config,
+        artifacts,
+        async () => Response.json(envelope(generated)),
+        undefined,
+        'AI_FULL',
+      ).generate({
+        ...input,
+        snapshot: portrait,
+        brief,
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_OUTPUT' });
   });
   it('requires a key without silently using Gemini', () => {
     expect(() =>

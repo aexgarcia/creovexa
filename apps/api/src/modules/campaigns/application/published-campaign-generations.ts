@@ -75,6 +75,7 @@ export class PublishedCampaignGenerations implements CampaignGenerations {
       generation.snapshot,
       {
         headline: input.copy.headline,
+        subheadline: input.copy.subheadline,
         caption: input.copy.caption,
         cta: input.copy.cta,
         hashtags: input.copy.hashtags,
@@ -111,6 +112,7 @@ function contentView(content: GeneratedContent): GeneratedCampaignContent {
     generationId: content.generationId,
     revision: content.revision,
     headline: content.headline,
+    subheadline: content.subheadline,
     caption: content.caption,
     cta: content.cta,
     hashtags: content.hashtags,

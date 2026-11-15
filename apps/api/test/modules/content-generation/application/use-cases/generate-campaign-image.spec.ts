@@ -37,6 +37,11 @@ import { GenerateCampaignImage } from '#app/modules/content-generation/applicati
 import type { CampaignGenerations } from '#app/modules/campaigns/contract';
 import type { GenerationJobState } from '#app/modules/content-generation/application/generation-job';
 import { validCopy } from '../../../../support/generation-fakes.js';
+import type { FlyerLogoSource } from '#app/modules/content-generation/application/ports/flyer-logo-source';
+import type { FlyerReader } from '#app/modules/content-generation/application/ports/flyer-reader';
+import type { FlyerStyleSource } from '#app/modules/content-generation/application/ports/flyer-style-source';
+import { DEFAULT_FLYER_DESIGN } from '#app/domain/value-objects/flyer-design';
+import type { FlyerReading } from '#app/modules/content-generation/application/flyer-verification';
 
 // Adapters solo para pruebas: sin llamadas al proveedor, navegador, servicio de almacenamiento ni cableado de producción.
 class ImageRepositoryFake implements CampaignImageRepository {
@@ -116,6 +121,11 @@ class ImageRepositoryFake implements CampaignImageRepository {
   }
 }
 
+// Lo que devuelve el compositor de COMPOSED: el flyer, sin logo pegado aparte.
+function composed(final: ImageArtifact) {
+  return { final, areaUnderLogo: null, logoPlacement: null };
+}
+
 function fixture() {
   const domain = domainFixture();
   const campaigns = new CampaignRepositoryFake();
@@ -163,7 +173,8 @@ function fixture() {
   };
   const renderer = {
     assertAvailable: vi.fn(),
-    render: vi.fn<TemplateRenderer['render']>().mockResolvedValue(final),
+    supports: vi.fn<TemplateRenderer['supports']>().mockReturnValue(true),
+    render: vi.fn<TemplateRenderer['render']>().mockResolvedValue(composed(final)),
   };
   let assetNumber = 500;
   const storage = {
@@ -197,6 +208,8 @@ function fixture() {
   const selection = { organizationId: ORG, campaignId: CAMPAIGN, generationId: GENERATION };
   return {
     ...domain,
+    generations,
+    ids,
     campaigns,
     copies,
     savedCopy,
@@ -251,6 +264,8 @@ describe('GenerateCampaignImage', () => {
       operationId: f.productImages.load.mock.calls[0]![0].operationId,
       referenceImage: f.referenceImage,
       headline: f.savedCopy.headline,
+      brief: expect.objectContaining({ texts: expect.any(Array) }),
+      styleImages: [],
       snapshot: f.snapshot.data,
     });
     expect(f.storage.store.mock.calls[0]![0].source).toBe(f.base);
@@ -261,6 +276,7 @@ describe('GenerateCampaignImage', () => {
         mainImage: testId(500),
         copy: {
           headline: f.savedCopy.headline,
+          subheadline: f.savedCopy.subheadline,
           caption: f.savedCopy.caption,
           cta: f.savedCopy.cta,
           hashtags: f.savedCopy.hashtags,
@@ -429,7 +445,7 @@ describe('GenerateCampaignImage', () => {
     { reference: '' },
   ])('rejects an invalid final render %j before storing it', async (change) => {
     const f = fixture();
-    f.renderer.render.mockResolvedValue({ ...f.final, ...change });
+    f.renderer.render.mockResolvedValue(composed({ ...f.final, ...change }));
     await expect(f.useCase.execute(f.selection)).rejects.toMatchObject({ code: 'INVALID_OUTPUT' });
     expect(f.storage.store).toHaveBeenCalledTimes(1);
     expect(f.campaigns.saveCount).toBe(0);
@@ -494,6 +510,7 @@ describe('GenerateCampaignImage', () => {
     const content = await f.useCase.execute(f.selection);
     expect(f.renderer.render.mock.calls[0]![0].copy).toEqual({
       headline: f.savedCopy.headline,
+      subheadline: f.savedCopy.subheadline,
       caption: f.savedCopy.caption,
       cta: f.savedCopy.cta,
       hashtags: f.savedCopy.hashtags,
@@ -534,7 +551,7 @@ describe('GenerateCampaignImage', () => {
     const f = fixture();
     f.renderer.render.mockImplementation(async () => {
       f.clock.value = new Date(f.clock.now().getTime() + 300000).toISOString();
-      return f.final;
+      return composed(f.final);
     });
     await expect(f.useCase.execute(f.selection)).rejects.toMatchObject({ code: 'TIMEOUT' });
     expect(f.storage.store).toHaveBeenCalledTimes(1);
@@ -590,7 +607,7 @@ describe('GenerateCampaignImage', () => {
     const f = fixture();
     f.renderer.render.mockImplementation(async () => {
       f.images.active = { ...f.images.active!, token: testId(999) };
-      return f.final;
+      return composed(f.final);
     });
     await expect(f.useCase.execute(f.selection)).rejects.toMatchObject({ code: 'STALE_RESULT' });
     expect(f.images.active!.token).toBe(testId(999));
@@ -604,7 +621,7 @@ describe('GenerateCampaignImage', () => {
         CAMPAIGN,
         f.pending.requestRegeneration(NEXT_GENERATION, f.snapshot, f.clock.now()),
       );
-      return f.final;
+      return composed(f.final);
     });
     await expect(f.useCase.execute(f.selection)).rejects.toMatchObject({ code: 'STALE_RESULT' });
     expect(f.campaigns.records.get(CAMPAIGN)!.generation!.id).toBe(NEXT_GENERATION);
@@ -622,5 +639,192 @@ describe('GenerateCampaignImage', () => {
     const content = await f.useCase.execute(f.selection);
     expect(content.id).toBe(f.campaigns.records.get(CAMPAIGN)!.candidateContent!.id);
     expect(f.productImages.load).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('GenerateCampaignImage in AI_FULL', () => {
+  const LOGO = testId(950);
+  const logoArtifact: ImageArtifact = {
+    reference: 'test:logo',
+    contentType: 'image/png',
+    width: 200,
+    height: 100,
+  };
+  const area: ImageArtifact = {
+    reference: 'test:area',
+    contentType: 'image/png',
+    width: 120,
+    height: 60,
+  };
+
+  // Lo que leería la visión en un flyer correcto del fixture.
+  function reading(price = 'Ahora S/ 15.00'): FlyerReading {
+    return {
+      texts: [
+        { text: 'Producto', kind: 'headline' },
+        { text: 'Prod', kind: 'product_name' },
+        { text: 'Antes S/ 20.00', kind: 'regular_price' },
+        { text: price, kind: 'promotion_price' },
+        { text: 'Hasta el 19 de setiembre', kind: 'validity' },
+        { text: 'Comprar ahora', kind: 'cta' },
+      ],
+      logo: { visible: true, text: 'Logo' },
+    };
+  }
+
+  function aiFull(withLogo = false) {
+    const f = fixture();
+    if (withLogo) {
+      const resources = resourcesFixture();
+      resources.organization.logoAssetId = LOGO;
+      resources.organization.logoIsDark = true;
+      const snapshot = GenerationSnapshot.capture(
+        resources,
+        briefOf(f.draft.instructions, f.draft.cta, f.promotion),
+      );
+      f.campaigns.records.set(
+        CAMPAIGN,
+        f.draft.requestGeneration(GENERATION, snapshot, f.clock.now()),
+      );
+      f.copies.find.mockResolvedValue({ ...f.savedCopy, cta: snapshot.data.cta });
+      f.renderer.render.mockResolvedValue({
+        final: f.final,
+        areaUnderLogo: area,
+        logoPlacement: 'DIRECT',
+      });
+    }
+    const logos = {
+      assertAvailable: vi.fn(),
+      load: vi.fn<FlyerLogoSource['load']>().mockResolvedValue(logoArtifact),
+    };
+    const reader = {
+      assertAvailable: vi.fn(),
+      read: vi.fn<FlyerReader['read']>().mockResolvedValue(reading()),
+      reviewLogoArea: vi.fn<FlyerReader['reviewLogoArea']>().mockResolvedValue({
+        hasText: false,
+        text: '',
+        hasObject: false,
+        object: '',
+      }),
+    };
+    const report = vi.fn();
+    const temporary = { discard: vi.fn(async () => undefined) };
+    const useCase = new GenerateCampaignImage(
+      f.generations,
+      f.copies,
+      f.images,
+      f.productImages,
+      f.generator,
+      f.renderer,
+      f.storage,
+      f.ids,
+      f.clock,
+      { logos, reader, report, temporary },
+    );
+    return { ...f, logos, reader, report, temporary, useCase };
+  }
+
+  it('verifies the final flyer against the brief before recording it', async () => {
+    const f = aiFull();
+    const content = await f.useCase.execute(f.selection);
+    expect(content.assetIds).toHaveLength(1);
+    // El subtítulo revisado queda en el contenido que se aprueba.
+    expect(content.subheadline).toBe(f.savedCopy.subheadline);
+    // Sin logo en el snapshot no se carga ni se revisa ninguna esquina.
+    expect(f.logos.load).not.toHaveBeenCalled();
+    expect(f.reader.reviewLogoArea).not.toHaveBeenCalled();
+    expect(f.reader.read).toHaveBeenCalledWith(expect.objectContaining({ image: f.final }));
+    expect(f.report).toHaveBeenCalledWith(
+      expect.objectContaining({ verification: expect.objectContaining({ ok: true }) }),
+    );
+    expect(f.campaigns.records.get(CAMPAIGN)!.status).toBe(CampaignStatus.PENDING_APPROVAL);
+    // Los temporales de la operación se borran al terminar.
+    expect(f.temporary.discard).toHaveBeenCalledWith(
+      expect.objectContaining({ ...f.selection, operationId: expect.any(String) }),
+    );
+  });
+
+  it('fails with VERIFICATION_FAILED and stores no final flyer when a price is wrong', async () => {
+    const f = aiFull();
+    f.reader.read.mockResolvedValue(reading('Ahora S/ 51.00'));
+    await expect(f.useCase.execute(f.selection)).rejects.toMatchObject({
+      code: 'VERIFICATION_FAILED',
+    });
+    expect(f.storage.store.mock.calls.map(([input]) => input.purpose)).toEqual(['BASE_IMAGE']);
+    expect(f.images.active).toBeNull();
+    expect(f.campaigns.saveCount).toBe(0);
+    // También tras un fallo.
+    expect(f.temporary.discard).toHaveBeenCalledOnce();
+  });
+
+  it('pastes the frozen logo and fails if the AI drew text under it', async () => {
+    const f = aiFull(true);
+    f.reader.reviewLogoArea.mockResolvedValue({
+      hasText: true,
+      text: 'Nuevo',
+      hasObject: false,
+      object: '',
+    });
+    await expect(f.useCase.execute(f.selection)).rejects.toMatchObject({
+      code: 'VERIFICATION_FAILED',
+    });
+    expect(f.logos.load).toHaveBeenCalledWith(expect.objectContaining({ assetId: LOGO }));
+    const brief = f.generator.generate.mock.calls[0]![0].brief;
+    expect(brief.logo).toMatchObject({ isDark: true, aspectRatio: 2 });
+    expect(f.renderer.render).toHaveBeenCalledWith(
+      expect.objectContaining({ logo: logoArtifact, brief }),
+    );
+    expect(f.reader.reviewLogoArea).toHaveBeenCalledWith(expect.objectContaining({ image: area }));
+  });
+
+  it('sends the frozen style references of the template to the generator', async () => {
+    const f = aiFull();
+    const STYLE = testId(960);
+    const resources = resourcesFixture();
+    resources.template.design = { ...DEFAULT_FLYER_DESIGN, styleReferenceAssetIds: [STYLE] };
+    const snapshot = GenerationSnapshot.capture(
+      resources,
+      briefOf(f.draft.instructions, f.draft.cta, f.promotion),
+    );
+    f.campaigns.records.set(
+      CAMPAIGN,
+      f.draft.requestGeneration(GENERATION, snapshot, f.clock.now()),
+    );
+    const style: ImageArtifact = {
+      reference: 'test:style',
+      contentType: 'image/png',
+      width: 600,
+      height: 600,
+    };
+    const styles = { load: vi.fn<FlyerStyleSource['load']>().mockResolvedValue(style) };
+    const useCase = new GenerateCampaignImage(
+      f.generations,
+      f.copies,
+      f.images,
+      f.productImages,
+      f.generator,
+      f.renderer,
+      f.storage,
+      f.ids,
+      f.clock,
+      { logos: f.logos, reader: f.reader, styles },
+    );
+    await useCase.execute(f.selection);
+    expect(styles.load).toHaveBeenCalledWith(
+      expect.objectContaining({ templateId: snapshot.data.template.id, assetId: STYLE }),
+    );
+    const input = f.generator.generate.mock.calls[0]![0];
+    expect(input.styleImages).toEqual([style]);
+    expect(input.brief.styleReferences).toBe(1);
+  });
+
+  it('refuses a format the compositor cannot produce before reserving work', async () => {
+    const f = aiFull();
+    f.renderer.supports.mockReturnValue(false);
+    await expect(f.useCase.execute(f.selection)).rejects.toMatchObject({
+      code: 'UNSUPPORTED_DIMENSIONS',
+    });
+    expect(f.images.active).toBeNull();
+    expect(f.generator.generate).not.toHaveBeenCalled();
   });
 });

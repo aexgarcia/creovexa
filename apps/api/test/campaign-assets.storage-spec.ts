@@ -35,6 +35,7 @@ import { GenerateCampaignImage } from '#app/modules/content-generation/applicati
 import { PrismaCampaignCopyRepository } from '#app/modules/content-generation/infrastructure/persistence/prisma/prisma-campaign-copy.repository';
 import type { StoreCampaignAssetInput } from '#app/modules/content-generation/application/ports/storage-provider';
 import { ImagePersistenceContext, uuid } from './support/image-persistence-context.js';
+import { composedRenderExtras } from './support/generation-fakes.js';
 
 describe('Private campaign assets (MinIO + PostgreSQL)', () => {
   const context = new ImagePersistenceContext();
@@ -125,12 +126,13 @@ describe('Private campaign assets (MinIO + PostgreSQL)', () => {
       mainImage: base.id,
       snapshot: f.campaign.generation!.snapshot.data,
       copy: f.copy,
+      ...composedRenderExtras(f.campaign.generation!.snapshot.data, f.input.source),
     };
     const resources = context.module.get<CampaignRenderResources>(CAMPAIGN_RENDER_RESOURCES);
     return { ...f, assetInput: f.input, input, base, resources };
   }
 
-  it('loads the immutable template revision and owned image after the template is edited', async () => {
+  it('loads the frozen design and owned image after the template is edited', async () => {
     const f = await renderFixture();
     const revision = f.input.snapshot.template;
     await context.module.get(UpdateTemplate).execute({
@@ -148,10 +150,14 @@ describe('Private campaign assets (MinIO + PostgreSQL)', () => {
       where: { templateId: revision.id, number: 2n },
     });
     expect(current.design).toMatchObject({ composition: 'PRODUCT_PANEL', mode: 'LIGHT' });
+    // El diseño sale del snapshot; una plantilla de otra organización no se acepta.
     await expect(
       f.resources.load({
         ...f.input,
-        snapshot: { ...f.input.snapshot, template: { ...revision, revisionId: uuid() } },
+        snapshot: {
+          ...f.input.snapshot,
+          template: { ...revision, organizationId: entityId(uuid()) },
+        },
       }),
     ).rejects.toMatchObject({ code: 'INVALID_OUTPUT' });
   });
@@ -335,7 +341,15 @@ describe('Private campaign assets (MinIO + PostgreSQL)', () => {
       context.images,
       { assertAvailable() {}, load: produce },
       { assertAvailable() {}, generate },
-      { assertAvailable() {}, render: produce },
+      {
+        assertAvailable() {},
+        supports: () => true,
+        render: async (input) => ({
+          final: await produce(input),
+          areaUnderLogo: null,
+          logoPlacement: null,
+        }),
+      },
       storage,
       { next: uuid },
       { now: () => new Date() },

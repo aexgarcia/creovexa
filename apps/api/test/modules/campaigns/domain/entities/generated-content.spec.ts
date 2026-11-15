@@ -42,6 +42,7 @@ describe('GeneratedContent', () => {
 
   it.each([
     { headline: ' ' },
+    { subheadline: ' ' },
     { caption: ' ' },
     { cta: 'Otro CTA' },
     { hashtags: [' '] },
