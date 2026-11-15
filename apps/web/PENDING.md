@@ -65,3 +65,9 @@ Por instrucción del usuario, la pantalla está adaptada visualmente pero usa ú
 - **Campañas y publicaciones:** conservar los flujos existentes al adaptar sus pantallas. La publicación efectiva en Meta y TikTok sigue pendiente; no presentar los datos persistidos de publicaciones como prueba de envío a esas redes.
 
 Los mocks usados exclusivamente en pruebas de navegador no forman parte del producto ni sustituyen los servicios en ejecución.
+
+## Mantenimiento del CMS
+
+- Retirados 28 archivos sin uso desde las rutas activas: componentes y hooks del servicio mock de campañas (incluido `use-regenerate-campaign.ts`), formularios antiguos de empresa y plantillas, previews antiguas y los tipos/mocks de `MarketingTemplate`, con sus esquemas exclusivos. Se conservan los flujos reales de campañas, regeneración e historial de versiones.
+- La ficha de producto explica que guardar características no obliga a mostrarlas. El editor de plantillas avisa expresamente cuando la cantidad es cero. Al preparar una campaña se muestra la cantidad permitida por la plantilla y la disponible en el producto, con un enlace al editor en otra pestaña.
+- Quedan pendientes las operaciones de archivado o eliminación de productos y plantillas; no se añadieron botones que simulen esas operaciones.

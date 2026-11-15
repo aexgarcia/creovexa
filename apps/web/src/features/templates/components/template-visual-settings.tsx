@@ -214,7 +214,9 @@ export function TemplateVisualSettings({
             ))}
           </select>
           <p className="text-xs text-muted-foreground">
-            Se toman de la ficha de cada producto, en el orden que las guardaste.
+            {design.elements.keyAttributes === 0
+              ? 'Esta plantilla no mostrará características, aunque el producto tenga varias guardadas. Elige una cantidad para incluirlas.'
+              : `Se usarán las primeras ${design.elements.keyAttributes} características disponibles del producto, en el orden en que las guardaste.`}
           </p>
         </div>
       </FormSection>

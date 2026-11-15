@@ -205,6 +205,34 @@ export function CampaignBriefForm({
               {template.currentRevision.dimensions.height} px.
             </p>
           )}
+          {template && product && (
+            <div
+              role="note"
+              aria-label="Características que mostrará la plantilla"
+              className="space-y-2 rounded-xl border border-primary/25 bg-primary/5 p-4 text-xs leading-relaxed text-muted-foreground"
+            >
+              <p className="font-medium text-foreground">
+                {template.currentRevision.design.elements.keyAttributes === 0
+                  ? 'Esta plantilla no muestra características del producto.'
+                  : `La plantilla permite hasta ${template.currentRevision.design.elements.keyAttributes} características; el producto tiene ${product.keyAttributes.length} guardadas.`}
+              </p>
+              <p>
+                {template.currentRevision.design.elements.keyAttributes === 0
+                  ? 'Guardar características en el producto no las activa en el flyer. Cambia esa cantidad en los elementos de la plantilla o elige otra.'
+                  : product.keyAttributes.length === 0
+                    ? 'Agrega características a la ficha del producto para incluirlas en el flyer.'
+                    : `Se usarán las primeras ${Math.min(template.currentRevision.design.elements.keyAttributes, product.keyAttributes.length)}, en el orden de la ficha del producto.`}
+              </p>
+              <a
+                href={`/templates/${template.id}/edit`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block font-medium text-[#7fa0ff] underline underline-offset-2"
+              >
+                Revisar elementos de la plantilla (otra pestaña)
+              </a>
+            </div>
+          )}
         </section>
         <div className="space-y-2">
           <Label htmlFor="campaign-cta">Llamada a la acción (CTA)</Label>

@@ -87,8 +87,8 @@ export function ProductAttributesField({
         </div>
       )}
       <p id="attributes-help" className="text-xs text-muted-foreground">
-        Ordénalas de la más a la menos importante. La plantilla decide cuántas mostrar. Pulsa Añadir
-        para incluir cada una.
+        Pulsa Añadir para incluir cada una y ordénalas por importancia. Guardarlas aquí no hace que
+        aparezcan todas: la plantilla elegida en la campaña decide cuántas mostrar, incluso ninguna.
       </p>
       {(error || localError) && (
         <p id="attributes-error" role="alert" className="text-xs text-destructive">
