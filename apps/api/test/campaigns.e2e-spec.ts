@@ -4,6 +4,8 @@ import { PrismaPublicationRepository } from '#app/modules/publications/infrastru
 import { PrismaPublicationCampaignLookup } from '#app/modules/publications/infrastructure/persistence/prisma/prisma-publication-campaign-lookup';
 import { ConcurrentCampaignModificationError } from '#app/modules/campaigns/domain/errors/campaign.errors';
 import { CAMPAIGN_FINAL_ASSETS } from '#app/modules/campaigns/application/ports/campaign-final-assets';
+import type { CampaignFinalAssets } from '#app/modules/campaigns/application/ports/campaign-final-assets';
+import { CampaignAssetError } from '#app/modules/campaigns/application/errors/campaign-asset.error';
 import { finalAssetsFake } from './support/final-assets-fake.js';
 import { PublicationQueryFake } from './support/publication-query-fakes.js';
 import { pendingPublications } from './support/publication-fixtures.js';
@@ -44,10 +46,12 @@ describe('Campaign HTTP with real use cases', () => {
   let app: INestApplication<App>;
   let repository: CampaignRepositoryFake;
   let publications: PublicationQueryFake;
+  let assets: CampaignFinalAssets;
   const context: { organizationId: string | null } = { organizationId: ORG };
   beforeEach(async () => {
     repository = new CampaignRepositoryFake();
     publications = new PublicationQueryFake();
+    assets = { ...finalAssetsFake };
     context.organizationId = ORG;
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(DATABASE_CONFIG)
@@ -61,7 +65,7 @@ describe('Campaign HTTP with real use cases', () => {
       .overrideProvider(PrismaCampaignLookups)
       .useValue(new CampaignLookupsFake())
       .overrideProvider(CAMPAIGN_FINAL_ASSETS)
-      .useValue(finalAssetsFake)
+      .useValue(assets)
       .overrideProvider(PrismaPublicationRepository)
       .useValue(publications)
       .overrideProvider(PrismaPublicationCampaignLookup)
@@ -239,7 +243,8 @@ describe('Campaign HTTP with real use cases', () => {
       .get(path + '?organizationId=' + ORG)
       .expect(400);
     context.organizationId = OTHER_ORG;
-    await request(app.getHttpServer()).get(path).expect(404);
+    const inaccessible = await request(app.getHttpServer()).get(path).expect(404);
+    expect(inaccessible.body.error.code).toBe('CAMPAIGN_NOT_FOUND');
     await request(app.getHttpServer())
       .post(`/campaigns/${CAMPAIGN}/approve`)
       .send({ contentId: CONTENT })
@@ -323,5 +328,47 @@ describe('Campaign HTTP with real use cases', () => {
     expect(result.body.components.schemas.CampaignResponse.properties.promotion.nullable).toBe(
       true,
     );
+  });
+
+  it.each([
+    ['UNAVAILABLE', 503],
+    ['TIMEOUT', 504],
+    ['CORRUPTED', 500],
+  ] as const)(
+    'distingue el fallo de lectura %s y no aprueba la campaña',
+    async (failure, status) => {
+      const fixture = domainFixture();
+      repository.records.set(CAMPAIGN, fixture.pending);
+      assets.readFinal = async () => {
+        throw new CampaignAssetError(failure);
+      };
+      const preview = await request(app.getHttpServer())
+        .get(`/campaigns/${CAMPAIGN}/assets/${fixture.content.assetIds[0]}`)
+        .expect(status);
+      expect(preview.body.error.code).toBe('CAMPAIGN_ASSET_' + failure);
+      const approval = await request(app.getHttpServer())
+        .post(`/campaigns/${CAMPAIGN}/approve`)
+        .send({ contentId: CONTENT })
+        .expect(status);
+      expect(approval.body.error.code).toBe('CAMPAIGN_ASSET_' + failure);
+      expect(repository.records.get(CAMPAIGN)?.approvedContentId).toBeNull();
+      expect(repository.records.get(CAMPAIGN)?.status).toBe('PENDING_APPROVAL');
+    },
+  );
+
+  it('distingue flyer inexistente de flyer requerido para aprobar', async () => {
+    const fixture = domainFixture();
+    repository.records.set(CAMPAIGN, fixture.pending);
+    assets.readFinal = async () => null;
+    const preview = await request(app.getHttpServer())
+      .get(`/campaigns/${CAMPAIGN}/assets/${fixture.content.assetIds[0]}`)
+      .expect(404);
+    expect(preview.body.error.code).toBe('CAMPAIGN_ASSET_NOT_FOUND');
+    const approval = await request(app.getHttpServer())
+      .post(`/campaigns/${CAMPAIGN}/approve`)
+      .send({ contentId: CONTENT })
+      .expect(409);
+    expect(approval.body.error.code).toBe('CAMPAIGN_ASSET_FINAL_REQUIRED');
+    expect(repository.records.get(CAMPAIGN)?.approvedContentId).toBeNull();
   });
 });

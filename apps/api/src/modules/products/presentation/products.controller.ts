@@ -30,7 +30,9 @@ import {
   OrganizationId,
 } from '#app/presentation/http/request-context';
 import { ApiErrors } from '#app/presentation/http/api-errors.decorator';
-import { PaginationRequest, paginationResponse } from '#app/presentation/http/pagination.dto';
+import { CatalogListRequest, ArchiveRequest } from '#app/presentation/http/catalog.requests';
+import { UpdateProductArchive } from '../application/use-cases/update-product-archive.js';
+import { paginationResponse } from '#app/presentation/http/pagination.dto';
 import { validateRequest } from '#app/presentation/http/request-validation';
 import { CreateProduct } from '../application/use-cases/create-product.js';
 import { UpdateProduct } from '../application/use-cases/update-product.js';
@@ -59,6 +61,7 @@ const productImageUploadOptions = {
 @Controller('products')
 export class ProductsController {
   constructor(
+    @Inject(UpdateProductArchive) private readonly updateArchive: UpdateProductArchive,
     @Inject(CreateProduct) private readonly createProduct: CreateProduct,
     @Inject(UpdateProduct) private readonly updateProduct: UpdateProduct,
     @Inject(GetProduct) private readonly getProduct: GetProduct,
@@ -125,14 +128,31 @@ export class ProductsController {
   ): Promise<ProductEnvelope> {
     return { data: productResponse(await this.createProduct.execute({ ...body, organizationId })) };
   }
+  @Patch(':id/archive')
+  @ApiOperation({ summary: 'Archivar o restaurar product' })
+  @ApiBody({ type: ArchiveRequest })
+  @ApiOkResponse({ type: ProductEnvelope })
+  async archive(
+    @OrganizationId() organizationId: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(validateRequest(ArchiveRequest)) body: ArchiveRequest,
+  ): Promise<ProductEnvelope> {
+    return {
+      data: productResponse(
+        await this.updateArchive.execute({ organizationId, id, archived: body.archived }),
+      ),
+    };
+  }
+
   @Get()
+  @ApiQuery({ name: 'status', required: false, enum: ['active', 'archived', 'all'] })
   @ApiOperation({ summary: 'Listar productos de la organización' })
   @ApiQuery({ name: 'page', required: false, type: Number, minimum: 1, maximum: 10000 })
   @ApiQuery({ name: 'limit', required: false, type: Number, minimum: 1, maximum: 100 })
   @ApiOkResponse({ type: ProductPageResponse })
   async list(
     @OrganizationId() organizationId: string,
-    @Query(validateRequest(PaginationRequest)) query: PaginationRequest,
+    @Query(validateRequest(CatalogListRequest)) query: CatalogListRequest,
   ): Promise<ProductPageResponse> {
     const result = await this.listProducts.execute({ organizationId, ...query });
     return { data: result.items.map(productResponse), meta: paginationResponse(result) };

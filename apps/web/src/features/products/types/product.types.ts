@@ -21,6 +21,7 @@ export interface Product {
   imageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
+  archivedAt: string | null;
 }
 export interface CreateProductInput {
   kind: ProductKind;

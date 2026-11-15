@@ -1,6 +1,6 @@
 import { GetCampaignFinalAsset } from '#app/modules/campaigns/application/use-cases/get-campaign-final-asset';
 import { ApproveCampaign } from '#app/modules/campaigns/application/use-cases/approve-campaign';
-import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
+import { CampaignAssetError } from '#app/modules/campaigns/application/errors/campaign-asset.error';
 import type { CampaignFinalAssets } from '#app/modules/campaigns/application/ports/campaign-final-assets';
 import {
   domainFixture,
@@ -62,15 +62,15 @@ describe('Final flyer reading and approval', () => {
     ).rejects.toMatchObject({ code: 'NOT_FOUND' });
     await expect(
       f.approve.execute({ organizationId: ORG, campaignId: CAMPAIGN, contentId: CONTENT }),
-    ).rejects.toMatchObject({ code: 'FINAL_ASSET_REQUIRED' });
+    ).rejects.toMatchObject({ code: 'FINAL_REQUIRED' });
     expect(f.repository.records.get(CAMPAIGN)?.approvedContentId).toBeNull();
   });
   it('does not approve when the reader detects changed or invalid bytes', async () => {
     const f = fixture();
-    f.assets.readFinal.mockRejectedValue(new CampaignImageError('INVALID_OUTPUT'));
+    f.assets.readFinal.mockRejectedValue(new CampaignAssetError('CORRUPTED'));
     await expect(
       f.approve.execute({ organizationId: ORG, campaignId: CAMPAIGN, contentId: CONTENT }),
-    ).rejects.toMatchObject({ code: 'INVALID_OUTPUT' });
+    ).rejects.toMatchObject({ code: 'CORRUPTED' });
     expect(f.repository.records.get(CAMPAIGN)?.status).toBe('PENDING_APPROVAL');
   });
   it('does not read assets for a stale content ID', async () => {

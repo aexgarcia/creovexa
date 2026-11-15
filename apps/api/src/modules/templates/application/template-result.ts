@@ -16,6 +16,7 @@ export interface TemplateResult {
   };
   createdAt: string;
   updatedAt: string;
+  archivedAt: string | null;
 }
 
 export function templateResult(template: Template): TemplateResult {
@@ -35,5 +36,6 @@ export function templateResult(template: Template): TemplateResult {
     },
     createdAt: template.createdAt.toISOString(),
     updatedAt: template.updatedAt.toISOString(),
+    archivedAt: template.archivedAt?.toISOString() ?? null,
   };
 }

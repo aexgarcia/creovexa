@@ -1,7 +1,7 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import { entityId } from '#app/domain/entity-id';
 import type { Clock } from '#app/application/ports/clock';
 import {
-  CampaignImageError,
   StaleGenerationResultError,
   type GenerationReference,
 } from '#app/modules/campaigns/contract';
@@ -43,10 +43,10 @@ export class GenerationJobs {
     try {
       await this.generateImage.execute(generation);
     } catch (error) {
-      if (error instanceof CampaignImageError && ['BUSY', 'STALE_RESULT'].includes(error.code))
+      if (error instanceof ImageGenerationError && ['BUSY', 'STALE_RESULT'].includes(error.code))
         return;
       if (error instanceof StaleGenerationResultError) return;
-      const code = error instanceof CampaignImageError ? error.code : UNEXPECTED;
+      const code = error instanceof ImageGenerationError ? error.code : UNEXPECTED;
       await this.images.fail(generation, code, this.clock.now());
       throw error;
     }

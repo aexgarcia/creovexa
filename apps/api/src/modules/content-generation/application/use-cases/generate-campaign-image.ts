@@ -1,8 +1,8 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import { entityId } from '#app/domain/entity-id';
 import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
 import {
-  CampaignImageError,
   type CampaignGenerations,
   type CampaignReference,
   type GeneratedCampaignContent,
@@ -60,7 +60,7 @@ function assertArtifact(artifact: ImageArtifact) {
     !['image/png', 'image/jpeg', 'image/webp'].includes(artifact.contentType) ||
     ![artifact.width, artifact.height].every((value) => Number.isSafeInteger(value) && value > 0)
   )
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
 }
 
 function assertStoredAsset(
@@ -79,11 +79,11 @@ function assertStoredAsset(
     asset.height !== source.height ||
     asset.contentType !== source.contentType
   )
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   try {
     entityId(asset.id, 'assetId');
   } catch {
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   }
 }
 
@@ -124,7 +124,7 @@ export class GenerateCampaignImage {
       now,
       expiresAt: new Date(now.getTime() + 300000),
     };
-    if (!(await this.images.claim(lease))) throw new CampaignImageError('BUSY');
+    if (!(await this.images.claim(lease))) throw new ImageGenerationError('BUSY');
     try {
       this.assertLeaseTime(lease);
       const referenceImage = await this.productImages.load({
@@ -201,7 +201,7 @@ export class GenerateCampaignImage {
         final.width !== snapshot.template.width ||
         final.height !== snapshot.template.height
       )
-        throw new CampaignImageError('INVALID_OUTPUT');
+        throw new ImageGenerationError('INVALID_OUTPUT');
       this.assertLeaseTime(lease);
       if (this.reader) {
         // Primero la esquina, en la imagen de la IA: el modelo de visión completa las letras
@@ -219,7 +219,7 @@ export class GenerateCampaignImage {
           logoPlacement: composition.logoPlacement,
         });
         // No se reintenta: cada intento se cobra (ADR-0008). Quien la pidió puede regenerarla.
-        if (!verification.ok) throw new CampaignImageError('VERIFICATION_FAILED');
+        if (!verification.ok) throw new ImageGenerationError('VERIFICATION_FAILED');
         this.assertLeaseTime(lease);
       }
       const finalAsset = await this.storage.store({
@@ -229,7 +229,7 @@ export class GenerateCampaignImage {
         source: final,
       });
       assertStoredAsset(finalAsset, lease, 'FINAL_PIECE', final);
-      if (baseAsset.id === finalAsset.id) throw new CampaignImageError('INVALID_OUTPUT');
+      if (baseAsset.id === finalAsset.id) throw new ImageGenerationError('INVALID_OUTPUT');
       this.assertLeaseTime(lease);
       const at = this.clock.now();
       // Campaigns registra el contenido dentro de la misma transacción que cierra la reserva.
@@ -253,6 +253,6 @@ export class GenerateCampaignImage {
 
   private assertLeaseTime(lease: CampaignImageLease) {
     if (this.clock.now().getTime() >= lease.expiresAt.getTime())
-      throw new CampaignImageError('TIMEOUT');
+      throw new ImageGenerationError('TIMEOUT');
   }
 }

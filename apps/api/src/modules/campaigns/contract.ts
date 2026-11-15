@@ -5,7 +5,6 @@ import type { TransactionContext } from '#app/application/ports/transaction-cont
 import type { CampaignStatus } from './domain/campaign-status.js';
 import type { GenerationSnapshotData } from './domain/value-objects/generation-snapshot.js';
 
-export { CampaignImageError } from './application/errors/campaign-image.error.js';
 export {
   InvalidCampaignTransitionError,
   StaleGenerationResultError,

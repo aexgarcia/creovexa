@@ -1,10 +1,11 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import type { ProductImages } from '#app/modules/products/application/ports/product-images';
 import { ProductImageError } from '#app/modules/products/application/errors/product-image.error';
 import type {
   ProductImageSource,
   LoadProductImageInput,
 } from '../application/ports/product-image-source.js';
-import { CampaignImageError } from '#app/modules/campaigns/contract';
+
 import { LocalImageArtifacts } from './local-image-artifacts.js';
 
 export class StoredProductImageSource implements ProductImageSource {
@@ -16,7 +17,7 @@ export class StoredProductImageSource implements ProductImageSource {
     try {
       this.images.assertAvailable();
     } catch {
-      throw new CampaignImageError('UNAVAILABLE');
+      throw new ImageGenerationError('UNAVAILABLE');
     }
   }
   async load(input: LoadProductImageInput) {
@@ -26,7 +27,7 @@ export class StoredProductImageSource implements ProductImageSource {
         productId: input.productId,
         assetId: input.imageAssetId,
       });
-      if (!image) throw new CampaignImageError('PRODUCT_IMAGE_REQUIRED');
+      if (!image) throw new ImageGenerationError('PRODUCT_IMAGE_REQUIRED');
       return {
         reference: await this.artifacts.write(input, image.bytes),
         contentType: image.contentType,
@@ -34,8 +35,8 @@ export class StoredProductImageSource implements ProductImageSource {
         height: image.height,
       };
     } catch (error) {
-      if (error instanceof CampaignImageError) throw error;
-      if (error instanceof ProductImageError) throw new CampaignImageError('UNAVAILABLE');
+      if (error instanceof ImageGenerationError) throw error;
+      if (error instanceof ProductImageError) throw new ImageGenerationError('UNAVAILABLE');
       throw error;
     }
   }

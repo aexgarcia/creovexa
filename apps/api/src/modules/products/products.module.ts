@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { UpdateProductArchive } from './application/use-cases/update-product-archive.js';
 import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
 import { HttpCommonModule } from '#app/infrastructure/http-common.module';
@@ -27,6 +28,12 @@ import { ProductsController } from './presentation/products.controller.js';
   imports: [DatabaseModule, RuntimeModule, AssetsModule, HttpCommonModule, OrganizationsModule],
   controllers: [ProductsController],
   providers: [
+    {
+      provide: UpdateProductArchive,
+      inject: [PrismaProductRepository, CLOCK],
+      useFactory: (repository: PrismaProductRepository, clock: Clock) =>
+        new UpdateProductArchive(repository, clock),
+    },
     {
       provide: PrismaProductRepository,
       inject: [PrismaService],

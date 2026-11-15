@@ -1,3 +1,4 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import type { GeminiImageConfig } from '#app/config/image-generation.config';
 import {
   inspectImageBytes,
@@ -5,7 +6,7 @@ import {
   InvalidImageFileError,
   MAX_IMAGE_BYTES,
 } from '#app/infrastructure/image-files';
-import { CampaignImageError } from '#app/modules/campaigns/contract';
+
 import type { GenerateImageInput, ImageGenerator } from '../application/ports/image-generator.js';
 import type { ImageArtifact } from '../application/ports/image-artifact.js';
 import { baseImageContext } from '../application/base-image-context.js';
@@ -26,7 +27,7 @@ interface ImageLogger {
 
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   return value as Record<string, unknown>;
 }
 
@@ -34,7 +35,7 @@ async function readResponse(response: Response, signal: AbortSignal): Promise<un
   const declaredSize = Number(response.headers.get('content-length') ?? 0);
   if (declaredSize > MAX_RESPONSE_BYTES || !response.body) {
     void response.body?.cancel().catch(() => {});
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   }
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -52,13 +53,13 @@ async function readResponse(response: Response, signal: AbortSignal): Promise<un
       });
       if (chunk.done) break;
       size += chunk.value.byteLength;
-      if (size > MAX_RESPONSE_BYTES) throw new CampaignImageError('INVALID_OUTPUT');
+      if (size > MAX_RESPONSE_BYTES) throw new ImageGenerationError('INVALID_OUTPUT');
       chunks.push(chunk.value);
     }
     try {
       return JSON.parse(Buffer.concat(chunks, size).toString('utf8')) as unknown;
     } catch {
-      throw new CampaignImageError('INVALID_OUTPUT');
+      throw new ImageGenerationError('INVALID_OUTPUT');
     }
   } finally {
     void reader.cancel().catch(() => {});
@@ -69,9 +70,9 @@ async function readResponse(response: Response, signal: AbortSignal): Promise<un
 function imageOutput(value: unknown): { bytes: Buffer; contentType: ImageArtifact['contentType'] } {
   const envelope = object(value);
   if (envelope.promptFeedback && object(envelope.promptFeedback).blockReason)
-    throw new CampaignImageError('REFUSED');
+    throw new ImageGenerationError('REFUSED');
   if (!Array.isArray(envelope.candidates) || envelope.candidates.length !== 1)
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   const candidate = object(envelope.candidates[0]);
   if (
     [
@@ -84,20 +85,20 @@ function imageOutput(value: unknown): { bytes: Buffer; contentType: ImageArtifac
       'IMAGE_PROHIBITED_CONTENT',
     ].includes(String(candidate.finishReason))
   )
-    throw new CampaignImageError('REFUSED');
-  if (candidate.finishReason !== 'STOP') throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('REFUSED');
+  if (candidate.finishReason !== 'STOP') throw new ImageGenerationError('INVALID_OUTPUT');
   const parts = object(candidate.content).parts;
-  if (!Array.isArray(parts) || parts.length === 0) throw new CampaignImageError('INVALID_OUTPUT');
+  if (!Array.isArray(parts) || parts.length === 0) throw new ImageGenerationError('INVALID_OUTPUT');
   let image: Record<string, unknown> | undefined;
   for (const part of parts) {
     const item = object(part);
     if (item.thought === true) continue;
     if (item.inlineData) {
-      if (image) throw new CampaignImageError('INVALID_OUTPUT');
+      if (image) throw new ImageGenerationError('INVALID_OUTPUT');
       image = object(item.inlineData);
     } else if (typeof item.text !== 'string') {
       // Nunca descarga las URLs de fileData devueltas, ni ejecuta llamadas a herramientas ni acepta recursos arbitrarios.
-      throw new CampaignImageError('INVALID_OUTPUT');
+      throw new ImageGenerationError('INVALID_OUTPUT');
     }
   }
   if (
@@ -109,10 +110,10 @@ function imageOutput(value: unknown): { bytes: Buffer; contentType: ImageArtifac
     image.data.length % 4 !== 0 ||
     !/^[A-Za-z0-9+/]*={0,2}$/.test(image.data)
   )
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   const bytes = Buffer.from(image.data, 'base64');
   if (bytes.toString('base64') !== image.data || bytes.byteLength > MAX_IMAGE_BYTES)
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   return { bytes, contentType: image.mimeType as ImageArtifact['contentType'] };
 }
 
@@ -125,7 +126,7 @@ export class GeminiImageGenerator implements ImageGenerator {
   ) {}
 
   assertAvailable(): void {
-    if (!this.config?.apiKey || !this.config.model) throw new CampaignImageError('UNAVAILABLE');
+    if (!this.config?.apiKey || !this.config.model) throw new ImageGenerationError('UNAVAILABLE');
   }
 
   async generate(input: GenerateImageInput): Promise<ImageArtifact> {
@@ -133,7 +134,7 @@ export class GeminiImageGenerator implements ImageGenerator {
     const config = this.config!;
     try {
       if (input.snapshot.template.width !== 1080 || input.snapshot.template.height !== 1080)
-        throw new CampaignImageError('UNSUPPORTED_DIMENSIONS');
+        throw new ImageGenerationError('UNSUPPORTED_DIMENSIONS');
       const reference = await this.artifacts.read({ ...input, source: input.referenceImage });
       const metadata = await inspectImageBytes(reference);
       if (
@@ -141,7 +142,7 @@ export class GeminiImageGenerator implements ImageGenerator {
         metadata.width !== input.referenceImage.width ||
         metadata.height !== input.referenceImage.height
       )
-        throw new CampaignImageError('INVALID_OUTPUT');
+        throw new ImageGenerationError('INVALID_OUTPUT');
       const body = JSON.stringify({
         systemInstruction: {
           parts: [
@@ -185,12 +186,13 @@ export class GeminiImageGenerator implements ImageGenerator {
       );
       if (!response.ok) {
         void response.body?.cancel().catch(() => {});
-        throw new CampaignImageError(response.status === 429 ? 'RATE_LIMITED' : 'UNAVAILABLE');
+        throw new ImageGenerationError(response.status === 429 ? 'RATE_LIMITED' : 'UNAVAILABLE');
       }
       const output = imageOutput(await readResponse(response, signal));
       const bytes = await prepareUploadedImage(output.bytes);
       const result = await inspectImageBytes(bytes);
-      if (result.contentType !== output.contentType) throw new CampaignImageError('INVALID_OUTPUT');
+      if (result.contentType !== output.contentType)
+        throw new ImageGenerationError('INVALID_OUTPUT');
       signal.throwIfAborted();
       const artifact = { ...result, reference: await this.artifacts.write(input, bytes) };
       this.logger.log({
@@ -202,9 +204,9 @@ export class GeminiImageGenerator implements ImageGenerator {
       return artifact;
     } catch (error) {
       const safe =
-        error instanceof CampaignImageError
+        error instanceof ImageGenerationError
           ? error
-          : new CampaignImageError(
+          : new ImageGenerationError(
               error instanceof InvalidImageFileError
                 ? 'INVALID_OUTPUT'
                 : error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name)

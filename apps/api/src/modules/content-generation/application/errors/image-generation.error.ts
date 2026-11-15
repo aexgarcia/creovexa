@@ -1,6 +1,4 @@
-export type CampaignImageFailure =
-  | 'NOT_FOUND'
-  | 'FINAL_ASSET_REQUIRED'
+export type ImageGenerationFailure =
   | 'COPY_REQUIRED'
   | 'PRODUCT_IMAGE_REQUIRED'
   | 'LOGO_UNAVAILABLE'
@@ -15,9 +13,9 @@ export type CampaignImageFailure =
   // AI_FULL: la lectura del flyer no coincide con el brief (ADR-0009).
   | 'VERIFICATION_FAILED';
 
-export class CampaignImageError extends Error {
-  constructor(readonly code: CampaignImageFailure) {
+export class ImageGenerationError extends Error {
+  constructor(readonly code: ImageGenerationFailure) {
     super('No se pudo preparar la imagen de la campaña: ' + code + '.');
-    this.name = 'CampaignImageError';
+    this.name = 'ImageGenerationError';
   }
 }

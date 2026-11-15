@@ -2,7 +2,7 @@ import { entityId } from '#app/domain/entity-id';
 import type { CampaignRepository } from '../../domain/repositories/campaign.repository.js';
 import { loadCampaign, type CampaignSelection } from '../load-campaign.js';
 import type { CampaignFinalAssets } from '../ports/campaign-final-assets.js';
-import { CampaignImageError } from '../errors/campaign-image.error.js';
+import { CampaignAssetError } from '../errors/campaign-asset.error.js';
 export class GetCampaignFinalAsset {
   constructor(
     private readonly campaigns: CampaignRepository,
@@ -19,14 +19,14 @@ export class GetCampaignFinalAsset {
       : (await this.campaigns.listVersions(campaign.organizationId, campaign.id))
           .map((version) => version.content)
           .find(owns);
-    if (!content) throw new CampaignImageError('NOT_FOUND');
+    if (!content) throw new CampaignAssetError('NOT_FOUND');
     const result = await this.assets.readFinal({
       organizationId: campaign.organizationId,
       campaignId: campaign.id,
       generationId: content.generationId,
       assetId,
     });
-    if (!result) throw new CampaignImageError('NOT_FOUND');
+    if (!result) throw new CampaignAssetError('NOT_FOUND');
     return result;
   }
 }

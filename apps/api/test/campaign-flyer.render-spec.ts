@@ -1,3 +1,4 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -11,7 +12,6 @@ import type { RenderCampaignTemplateInput } from '#app/modules/content-generatio
 import { PlaywrightTemplateRenderer } from '#app/modules/content-generation/infrastructure/playwright-template-renderer';
 import { LocalImageArtifacts } from '#app/modules/content-generation/infrastructure/local-image-artifacts';
 import { composedRenderExtras } from './support/generation-fakes.js';
-import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
 
 describe('Flyer composition with real Chromium', () => {
   let directory: string;
@@ -424,7 +424,7 @@ describe('Flyer composition with real Chromium', () => {
 
   it('propagates scoped resource failures and does not create a partial flyer', async () => {
     const f = fixture();
-    f.resources.load.mockRejectedValue(new CampaignImageError('STALE_RESULT'));
+    f.resources.load.mockRejectedValue(new ImageGenerationError('STALE_RESULT'));
     const launch = vi.fn();
     await expect(
       new PlaywrightTemplateRenderer(f.resources, artifacts, { timeoutMs: 20000 }, launch).render(

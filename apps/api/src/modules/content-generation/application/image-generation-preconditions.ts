@@ -1,6 +1,6 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import type { Clock } from '#app/application/ports/clock';
 import {
-  CampaignImageError,
   InvalidCampaignTransitionError,
   type CampaignGenerations,
   type CampaignGenerationView,
@@ -60,13 +60,13 @@ export async function checkImagePreconditions(
     generationId: generation.id,
   };
   const copy = await ports.copies.find(selection);
-  if (!copy) throw new CampaignImageError('COPY_REQUIRED');
+  if (!copy) throw new ImageGenerationError('COPY_REQUIRED');
   // El copy se validó y congeló en la fase 5. No se reinterpreta con una política de copy más nueva.
-  if (copy.cta !== generation.snapshot.cta) throw new CampaignImageError('INVALID_OUTPUT');
+  if (copy.cta !== generation.snapshot.cta) throw new ImageGenerationError('INVALID_OUTPUT');
   const snapshot = generation.snapshot;
   if (snapshot.product.imageAssetIds.length === 0)
-    throw new CampaignImageError('PRODUCT_IMAGE_REQUIRED');
-  if (snapshot.product.imageAssetIds.length !== 1) throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('PRODUCT_IMAGE_REQUIRED');
+  if (snapshot.product.imageAssetIds.length !== 1) throw new ImageGenerationError('INVALID_OUTPUT');
   // El tamaño congelado debe ser el de su formato y el compositor del despliegue debe soportarlo.
   const size = { width: snapshot.template.width, height: snapshot.template.height };
   const expected = FORMAT_SIZES[snapshotDesign(snapshot).format];
@@ -75,7 +75,7 @@ export async function checkImagePreconditions(
     size.height !== expected.height ||
     !ports.renderer.supports(size)
   )
-    throw new CampaignImageError('UNSUPPORTED_DIMENSIONS');
+    throw new ImageGenerationError('UNSUPPORTED_DIMENSIONS');
   ports.productImages.assertAvailable();
   ports.logos?.assertAvailable();
   ports.reader?.assertAvailable();

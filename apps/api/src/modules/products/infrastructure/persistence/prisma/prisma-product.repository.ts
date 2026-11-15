@@ -14,6 +14,15 @@ import { ProductMapper } from './product.mapper.js';
 export class PrismaProductRepository implements ProductRepository {
   constructor(private readonly client: PrismaClient) {}
 
+  async setArchivedAt(organizationId: EntityId, id: EntityId, at: Date | null): Promise<void> {
+    const changed = await this.client.product.updateMany({
+      where: { organizationId, id, archivedAt: at === null ? { not: null } : null },
+      data: { archivedAt: at },
+    });
+    if (!changed.count && !(await this.findById(organizationId, id)))
+      throw new ProductNotFoundError();
+  }
+
   async findById(organizationId: EntityId, productId: EntityId): Promise<Product | null> {
     const row = await this.client.product.findUnique({
       where: { organizationId_id: { organizationId, id: productId } },
@@ -45,11 +54,18 @@ export class PrismaProductRepository implements ProductRepository {
     }
   }
 
-  async list(organizationId: EntityId, input: Pagination): Promise<Page<Product>> {
+  async list(
+    organizationId: EntityId,
+    input: Pagination,
+    status: 'active' | 'archived' | 'all' = 'active',
+  ): Promise<Page<Product>> {
     const { page, limit } = pagination(input);
     return this.client.$transaction(
       async (tx) => {
-        const where = { organizationId };
+        const where = {
+          organizationId,
+          ...(status === 'all' ? {} : { archivedAt: status === 'archived' ? { not: null } : null }),
+        };
         const rows = await tx.product.findMany({
           where,
           orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],

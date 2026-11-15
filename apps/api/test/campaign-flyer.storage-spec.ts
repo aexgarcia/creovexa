@@ -1,3 +1,4 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -23,7 +24,7 @@ import {
   IMAGE_GENERATOR,
   type ImageGenerator,
 } from '#app/modules/content-generation/application/ports/image-generator';
-import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
+
 import { CreateCampaign } from '#app/modules/campaigns/application/use-cases/create-campaign';
 import { RequestCampaignGeneration } from '#app/modules/campaigns/application/use-cases/request-campaign-generation';
 import {
@@ -211,7 +212,7 @@ describe('Final flyer HTTP (real database, storage and composition)', () => {
     const f = await fixture();
     const port = context.module.get<ImageGenerator>(IMAGE_GENERATOR);
     const available = vi.spyOn(port, 'assertAvailable').mockImplementationOnce(() => {
-      throw new CampaignImageError('UNAVAILABLE');
+      throw new ImageGenerationError('UNAVAILABLE');
     });
     const response = await post(f).expect(503);
     expect(response.body.error.code).toBe('IMAGE_UNAVAILABLE');
@@ -249,11 +250,15 @@ describe('Final flyer HTTP (real database, storage and composition)', () => {
       where: { campaignId: f.campaignId, purpose: 'FINAL_PIECE' },
     });
     await client.send(new PutObjectCommand({ Bucket: bucket, Key: row.objectKey, Body: creative }));
-    await request(app.getHttpServer()).get(result.body.data.finalAssetUrl).expect(502);
-    await request(app.getHttpServer())
+    const preview = await request(app.getHttpServer())
+      .get(result.body.data.finalAssetUrl)
+      .expect(500);
+    expect(preview.body.error.code).toBe('CAMPAIGN_ASSET_CORRUPTED');
+    const approval = await request(app.getHttpServer())
       .post(`/campaigns/${f.campaignId}/approve`)
       .send({ contentId: result.body.data.contentId })
-      .expect(502);
+      .expect(500);
+    expect(approval.body.error.code).toBe('CAMPAIGN_ASSET_CORRUPTED');
     expect(
       (await context.campaigns.findById(f.organizationId, f.campaignId))?.approvedContentId,
     ).toBeNull();

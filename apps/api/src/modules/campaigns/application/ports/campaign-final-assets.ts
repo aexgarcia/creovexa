@@ -21,6 +21,7 @@ export interface StoredCampaignAsset extends CampaignImageSelection {
 
 export interface CampaignFinalAssets {
   // Lee solo un PNG final verificado que pertenece a esta campaña y generación.
+  // Devuelve null si no existe; falla con CampaignAssetError si no puede verificar o leer el archivo.
   readFinal(
     input: CampaignImageSelection & { assetId: EntityId },
   ): Promise<{ bytes: Uint8Array; asset: StoredCampaignAsset } | null>;

@@ -12,6 +12,46 @@ registerHooks({
 });
 const { templateService } = await import('../src/features/templates/services/template.service.ts');
 const originalFetch = globalThis.fetch;
+
+test('filtra plantillas archivadas y mantiene activos por defecto para campañas', async () => {
+  const urls = [];
+  globalThis.fetch = async (url) => {
+    urls.push(String(url));
+    return Response.json({ data: [], meta: { page: 1, limit: 20, total: 0, totalPages: 0 } });
+  };
+  await templateService.findAll();
+  await templateService.findAll(1, undefined, 'archived');
+  await templateService.findAll(1, undefined, 'all');
+  assert.ok(urls[0].endsWith('/templates?page=1&limit=20&status=active'));
+  assert.ok(urls[1].endsWith('&status=archived'));
+  assert.ok(urls[2].endsWith('&status=all'));
+});
+
+test('archiva y restaura una plantilla sin alterar la revisión recibida', async () => {
+  const revision = { id: 'revision-original', number: 3 };
+  const states = [];
+  globalThis.fetch = async (url, options) => {
+    assert.ok(String(url).endsWith('/templates/id%2Fespecial/archive'));
+    assert.equal(options.method, 'PATCH');
+    const { archived } = JSON.parse(options.body);
+    states.push(archived);
+    return Response.json({
+      data: {
+        id: 'id/especial',
+        archivedAt: archived ? '2026-11-15T12:00:00Z' : null,
+        currentRevision: revision,
+      },
+    });
+  };
+  assert.deepEqual(
+    (await templateService.setArchived('id/especial', true)).currentRevision,
+    revision,
+  );
+  assert.equal((await templateService.setArchived('id/especial', false)).archivedAt, null);
+  assert.deepEqual(states, [true, false]);
+  globalThis.fetch = async () => Response.json({}, { status: 503 });
+  await assert.rejects(templateService.setArchived('id/especial', true));
+});
 const design = {
   format: 'STORY',
   composition: 'PRODUCT_PANEL',
@@ -56,7 +96,7 @@ const template = {
 test('template list preserves server pagination and revision metadata', async () => {
   const page = { data: [template], meta: { page: 2, limit: 20, total: 21, totalPages: 2 } };
   globalThis.fetch = async (url) => {
-    assert.ok(url.endsWith('/templates?page=2&limit=20'));
+    assert.ok(url.endsWith('/templates?page=2&limit=20&status=active'));
     return Response.json(page);
   };
   assert.deepEqual(await templateService.findAll(2), page);

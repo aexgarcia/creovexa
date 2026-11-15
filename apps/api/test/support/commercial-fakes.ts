@@ -1,3 +1,4 @@
+import { ProductNotFoundError } from '#app/modules/products/domain/errors/product.errors';
 import type { Clock } from '#app/application/ports/clock';
 import type { Pagination, Page } from '#app/domain/pagination';
 import { entityId, type EntityId } from '#app/domain/entity-id';
@@ -47,12 +48,26 @@ export class OrganizationLookupFake implements OrganizationLookup {
 }
 
 export class ProductRepositoryFake implements ProductRepository {
+  async setArchivedAt(organizationId: EntityId, id: EntityId, at: Date | null): Promise<void> {
+    const current = await this.findById(organizationId, id);
+    if (!current) throw new ProductNotFoundError();
+    this.records.set(id, current.withArchiveDate(at === null ? null : (current.archivedAt ?? at)));
+  }
   readonly records = new Map<EntityId, Product>();
   saveCount = 0;
 
-  list(organizationId: EntityId, { page, limit }: Pagination): Promise<Page<Product>> {
+  list(
+    organizationId: EntityId,
+    { page, limit }: Pagination,
+    status: 'active' | 'archived' | 'all' = 'active',
+  ): Promise<Page<Product>> {
     const rows = [...this.records.values()]
-      .filter((item) => item.organizationId === organizationId)
+      .filter(
+        (item) =>
+          item.organizationId === organizationId &&
+          (status === 'all' ||
+            (status === 'archived' ? item.archivedAt !== null : item.archivedAt === null)),
+      )
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id));
     return Promise.resolve({
       items: rows.slice((page - 1) * limit, page * limit),

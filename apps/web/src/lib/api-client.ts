@@ -57,8 +57,15 @@ export async function apiRequest<T>(
       IMAGE_COPY_REQUIRED: 'Primero genera el texto de la campaña.',
       IMAGE_PRODUCT_IMAGE_REQUIRED:
         'Esta campaña necesita una imagen guardada del producto. Crea una campaña nueva después de subirla.',
-      IMAGE_FINAL_ASSET_REQUIRED:
+      CAMPAIGN_ASSET_FINAL_REQUIRED:
         'El flyer final no está disponible. Actualiza la campaña antes de aprobar.',
+      CAMPAIGN_ASSET_NOT_FOUND: 'No se encontró el flyer de esta versión.',
+      CAMPAIGN_ASSET_UNAVAILABLE:
+        'No se pudo acceder al flyer guardado. Intenta leerlo nuevamente antes de regenerar.',
+      CAMPAIGN_ASSET_CORRUPTED:
+        'El flyer guardado no supera la verificación de integridad. No se puede aprobar esta versión.',
+      CAMPAIGN_ASSET_TIMEOUT:
+        'La lectura del flyer guardado tardó demasiado. Intenta leerlo nuevamente.',
       IMAGE_UNAVAILABLE:
         'La generación del flyer no está disponible. Revisa la configuración del proveedor de imagen y del almacenamiento.',
       IMAGE_LOGO_UNAVAILABLE: 'No se pudo leer el logo guardado en esta campaña.',

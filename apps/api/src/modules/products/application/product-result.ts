@@ -18,6 +18,7 @@ export interface ProductResult {
   image: { photoType: PhotoType | null; hasTransparency: boolean | null } | null;
   createdAt: string;
   updatedAt: string;
+  archivedAt: string | null;
 }
 
 export function productResult(product: Product): ProductResult {
@@ -39,5 +40,6 @@ export function productResult(product: Product): ProductResult {
     image: product.imageTraits && { ...product.imageTraits },
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
+    archivedAt: product.archivedAt?.toISOString() ?? null,
   };
 }

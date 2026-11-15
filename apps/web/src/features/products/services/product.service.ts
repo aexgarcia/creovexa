@@ -5,11 +5,28 @@ import type {
   Product,
   UpdateProductInput,
 } from '../types/product.types';
+import type { CatalogStatus } from '@/types/catalog-status';
+
 class ProductService {
-  async findAll(page = 1, signal?: AbortSignal): Promise<ApiPage<Product>> {
-    const result = await apiRequest<ApiPage<Product>>('/products?page=' + page + '&limit=20', {
-      signal,
-    });
+  async setArchived(id: string, archived: boolean): Promise<Product> {
+    const result = await apiRequest<{ data: Product }>(
+      '/products/' + encodeURIComponent(id) + '/archive',
+      { method: 'PATCH', body: JSON.stringify({ archived }) },
+    );
+    return resolveImage(result.data);
+  }
+
+  async findAll(
+    page = 1,
+    signal?: AbortSignal,
+    status: CatalogStatus = 'active',
+  ): Promise<ApiPage<Product>> {
+    const result = await apiRequest<ApiPage<Product>>(
+      '/products?page=' + page + '&limit=20&status=' + status,
+      {
+        signal,
+      },
+    );
     return { ...result, data: result.data.map(resolveImage) };
   }
   async findById(id: string, signal?: AbortSignal): Promise<Product> {

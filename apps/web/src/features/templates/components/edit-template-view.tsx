@@ -53,30 +53,38 @@ function TemplateProfile({ template }: { template: StoredTemplate }) {
     }
   }
   return (
-    <TemplateForm
-      template={template}
-      pending={mutation.isPending}
-      onSubmit={submit}
-      error={
-        mutation.error ? (
-          <div
-            role="alert"
-            className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
-          >
-            <p>{mutation.error.message}</p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                void client.invalidateQueries({ queryKey: ['templates', template.id] })
-              }
+    <>
+      {template.archivedAt && (
+        <p role="note" className="mb-6 rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+          Plantilla archivada. Guardar cambios no la restaura. Puedes restaurarla desde el filtro
+          Archivados del catálogo para usarla en nuevas generaciones.
+        </p>
+      )}
+      <TemplateForm
+        template={template}
+        pending={mutation.isPending}
+        onSubmit={submit}
+        error={
+          mutation.error ? (
+            <div
+              role="alert"
+              className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm"
             >
-              Recargar revisión
-            </Button>
-          </div>
-        ) : undefined
-      }
-    />
+              <p>{mutation.error.message}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  void client.invalidateQueries({ queryKey: ['templates', template.id] })
+                }
+              >
+                Recargar revisión
+              </Button>
+            </div>
+          ) : undefined
+        }
+      />
+    </>
   );
 }

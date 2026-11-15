@@ -34,6 +34,7 @@ export class TemplateResponse {
   @ApiProperty({ type: TemplateRevisionResponse }) currentRevision!: TemplateRevisionResponse;
   @ApiProperty({ type: String, format: 'date-time' }) createdAt!: string;
   @ApiProperty({ type: String, format: 'date-time' }) updatedAt!: string;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true }) archivedAt!: string | null;
 }
 export class TemplateEnvelope {
   @ApiProperty({ type: TemplateResponse }) data!: TemplateResponse;
@@ -63,5 +64,6 @@ export function templateResponse(result: TemplateResult): TemplateResponse {
     },
     createdAt: result.createdAt,
     updatedAt: result.updatedAt,
+    archivedAt: result.archivedAt,
   };
 }

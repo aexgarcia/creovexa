@@ -1,3 +1,4 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import {
   CampaignClockFake,
   CampaignIdsFake,
@@ -21,7 +22,7 @@ import {
   StaleGenerationResultError,
 } from '#app/modules/campaigns/domain/errors/campaign.errors';
 import { GenerationSnapshot } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
-import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
+
 import type { CampaignCopyRepository } from '#app/modules/content-generation/application/ports/campaign-copy-repository';
 import type {
   CampaignImageRepository,
@@ -79,7 +80,7 @@ class ImageRepositoryFake implements CampaignImageRepository {
       current.organizationId !== lease.organizationId ||
       current.status !== CampaignStatus.GENERATING
     )
-      throw new CampaignImageError('STALE_RESULT');
+      throw new ImageGenerationError('STALE_RESULT');
     const content = await this.generations.recordContent(
       {
         organizationId: lease.organizationId,
@@ -364,7 +365,7 @@ describe('GenerateCampaignImage', () => {
     async (port) => {
       const f = fixture();
       f[port].assertAvailable.mockImplementation(() => {
-        throw new CampaignImageError('UNAVAILABLE');
+        throw new ImageGenerationError('UNAVAILABLE');
       });
       await expect(f.useCase.execute(f.selection)).rejects.toMatchObject({ code: 'UNAVAILABLE' });
       expect(f.images.active).toBeNull();
@@ -411,7 +412,7 @@ describe('GenerateCampaignImage', () => {
     'leaves the campaign unapprovable after a %s failure and allows retry',
     async (port) => {
       const f = fixture();
-      const failure = new CampaignImageError('UNAVAILABLE');
+      const failure = new ImageGenerationError('UNAVAILABLE');
       if (port === 'productImages') f.productImages.load.mockRejectedValueOnce(failure);
       else if (port === 'generator') f.generator.generate.mockRejectedValueOnce(failure);
       else if (port === 'renderer') f.renderer.render.mockRejectedValueOnce(failure);
@@ -431,7 +432,7 @@ describe('GenerateCampaignImage', () => {
     const f = fixture();
     const store = f.storage.store.getMockImplementation()!;
     f.storage.store.mockImplementation(async (input) => {
-      if (input.purpose === 'FINAL_PIECE') throw new CampaignImageError('UNAVAILABLE');
+      if (input.purpose === 'FINAL_PIECE') throw new ImageGenerationError('UNAVAILABLE');
       return store(input);
     });
     await expect(f.useCase.execute(f.selection)).rejects.toMatchObject({ code: 'UNAVAILABLE' });
@@ -470,7 +471,7 @@ describe('GenerateCampaignImage', () => {
 
   it('does not fall back to the source photo when visual AI fails', async () => {
     const f = fixture();
-    f.generator.generate.mockRejectedValue(new CampaignImageError('UNAVAILABLE'));
+    f.generator.generate.mockRejectedValue(new ImageGenerationError('UNAVAILABLE'));
     await expect(f.useCase.execute(f.selection)).rejects.toMatchObject({ code: 'UNAVAILABLE' });
     expect(f.productImages.load).toHaveBeenCalledTimes(1);
     expect(f.storage.store).not.toHaveBeenCalled();
@@ -587,7 +588,7 @@ describe('GenerateCampaignImage', () => {
 
   it('preserves the provider error if releasing the reservation also fails', async () => {
     const f = fixture();
-    const failure = new CampaignImageError('TIMEOUT');
+    const failure = new ImageGenerationError('TIMEOUT');
     f.productImages.load.mockRejectedValue(failure);
     vi.spyOn(f.images, 'release').mockRejectedValue(new Error('Repository unreachable'));
     await expect(f.useCase.execute(f.selection)).rejects.toBe(failure);

@@ -377,6 +377,137 @@ describe('Catalog HTTP with PostgreSQL', () => {
     };
   }
 
+  it.each(['products', 'templates'] as const)(
+    'archiva y restaura %s sin romper referencias y valida organización y filtros',
+    async (catalog) => {
+      const input = await campaignInput();
+      const campaign = await request(app.getHttpServer())
+        .post('/campaigns')
+        .send(input)
+        .expect(201);
+      const id = catalog === 'products' ? input.productId : input.templateId;
+      const path = '/' + catalog + '/' + id;
+      const before = (await request(app.getHttpServer()).get(path).expect(200)).body.data;
+      clock.value = LATER;
+      const archived = await request(app.getHttpServer())
+        .patch(path + '/archive')
+        .send({ archived: true })
+        .expect(200);
+      expect(archived.body.data.archivedAt).toBe(LATER.toISOString());
+      expect(archived.body.data.updatedAt).toBe(before.updatedAt);
+      if (catalog === 'templates')
+        expect(archived.body.data.currentRevision).toEqual(before.currentRevision);
+      clock.value = new Date(LATER.getTime() + 1000);
+      const repeated = await request(app.getHttpServer())
+        .patch(path + '/archive')
+        .send({ archived: true })
+        .expect(200);
+      expect(repeated.body.data.archivedAt).toBe(LATER.toISOString());
+      expect(
+        (
+          await request(app.getHttpServer())
+            .get('/' + catalog)
+            .expect(200)
+        ).body.meta.total,
+      ).toBe(0);
+      expect(
+        (
+          await request(app.getHttpServer())
+            .get('/' + catalog + '?status=archived')
+            .expect(200)
+        ).body.meta.total,
+      ).toBe(1);
+      expect(
+        (
+          await request(app.getHttpServer())
+            .get('/' + catalog + '?status=all')
+            .expect(200)
+        ).body.meta.total,
+      ).toBe(1);
+      await request(app.getHttpServer())
+        .get('/' + catalog + '?status=invalid')
+        .expect(400);
+      await request(app.getHttpServer())
+        .patch(path + '/archive')
+        .send({ archived: 'false' })
+        .expect(400);
+      await request(app.getHttpServer())
+        .patch(path + '/archive')
+        .send({})
+        .expect(400);
+      await request(app.getHttpServer()).post('/campaigns').send(input).expect(404);
+      await request(app.getHttpServer())
+        .post('/campaigns/' + campaign.body.data.id + '/copy')
+        .expect(404);
+      const historical = await request(app.getHttpServer())
+        .get('/campaigns/' + campaign.body.data.id)
+        .expect(200);
+      expect(historical.body.data.productId).toBe(input.productId);
+      const own = context.organizationId;
+      context.organizationId = entityId(
+        (await module.get(CreateOrganization).execute({ name: 'Otra organización' })).id,
+      );
+      await request(app.getHttpServer()).get(path).expect(404);
+      await request(app.getHttpServer())
+        .patch(path + '/archive')
+        .send({ archived: false })
+        .expect(404);
+      context.organizationId = own;
+      // Una edición posterior conserva el archivado y no modifica revisiones históricas.
+      await request(app.getHttpServer())
+        .patch(path)
+        .send(
+          catalog === 'products'
+            ? { name: 'Editado' }
+            : { name: 'Editada', expectedRevisionId: before.currentRevision.id },
+        )
+        .expect(200);
+      expect((await request(app.getHttpServer()).get(path).expect(200)).body.data.archivedAt).toBe(
+        LATER.toISOString(),
+      );
+      await request(app.getHttpServer())
+        .patch(path + '/archive')
+        .send({ archived: false })
+        .expect(200);
+      await request(app.getHttpServer())
+        .patch(path + '/archive')
+        .send({ archived: false })
+        .expect(200);
+      expect(
+        (
+          await request(app.getHttpServer())
+            .get('/' + catalog)
+            .expect(200)
+        ).body.meta.total,
+      ).toBe(1);
+      await request(app.getHttpServer()).post('/campaigns').send(input).expect(201);
+    },
+  );
+
+  it('conserva snapshots ya generados cuando se archiva el catálogo', async () => {
+    const input = await campaignInput();
+    const created = await request(app.getHttpServer()).post('/campaigns').send(input).expect(201);
+    const base = '/campaigns/' + created.body.data.id;
+    await request(app.getHttpServer())
+      .post(base + '/copy')
+      .expect(202);
+    await queue.drain();
+    const before = await request(app.getHttpServer()).get(base).expect(200);
+    await request(app.getHttpServer())
+      .patch('/products/' + input.productId + '/archive')
+      .send({ archived: true })
+      .expect(200);
+    await request(app.getHttpServer())
+      .patch('/templates/' + input.templateId + '/archive')
+      .send({ archived: true })
+      .expect(200);
+    const after = await request(app.getHttpServer()).get(base).expect(200);
+    expect(after.body.data).toEqual(before.body.data);
+    await request(app.getHttpServer())
+      .get(base + '/copy')
+      .expect(200);
+  });
+
   it('persists copy once without allowing approval and isolates organization access', async () => {
     const input = await campaignInput();
     const created = await request(app.getHttpServer()).post('/campaigns').send(input).expect(201);

@@ -1,3 +1,4 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import { FORMAT_SIZES } from '#app/domain/value-objects/flyer-design';
 import { randomUUID } from 'node:crypto';
 import type { TransactionContext } from '#app/application/ports/transaction-context';
@@ -14,7 +15,6 @@ import type { CampaignImageSelection } from '../../../application/ports/image-ar
 import type { StoredCampaignAsset } from '../../../application/ports/storage-provider.js';
 import { transactionContext } from '#app/infrastructure/persistence/prisma/transaction-context';
 import {
-  CampaignImageError,
   type CampaignGenerations,
   type GeneratedCampaignContent,
 } from '#app/modules/campaigns/contract';
@@ -32,7 +32,7 @@ export async function lockImageCampaign(
   expectedVersion?: number,
 ): Promise<void> {
   if (!(await generations.lock(selectionOf(selection), transactionContext(tx), expectedVersion)))
-    throw new CampaignImageError('STALE_RESULT');
+    throw new ImageGenerationError('STALE_RESULT');
 }
 
 export async function requireImageLease(
@@ -44,7 +44,7 @@ export async function requireImageLease(
     where: { ...selection, token, status: 'RUNNING' },
   });
   if (!job || job.expiresAt <= (await databaseTime(tx)))
-    throw new CampaignImageError('STALE_RESULT');
+    throw new ImageGenerationError('STALE_RESULT');
 }
 
 export class PrismaCampaignImageRepository implements CampaignImageRepository {
@@ -55,16 +55,16 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
 
   async claim(lease: CampaignImageLease): Promise<boolean> {
     if (!Number.isSafeInteger(lease.expectedVersion) || lease.expectedVersion < 0)
-      throw new CampaignImageError('STALE_RESULT');
+      throw new ImageGenerationError('STALE_RESULT');
     return this.client.$transaction(async (tx) => {
       await lockImageCampaign(this.generations, tx, lease, lease.expectedVersion);
       const now = await databaseTime(tx);
       if (!Number.isFinite(lease.expiresAt.getTime()) || lease.expiresAt <= now)
-        throw new CampaignImageError('TIMEOUT');
+        throw new ImageGenerationError('TIMEOUT');
       const copy = await tx.campaignCopy.findFirst({
         where: { ...selectionOf(lease), status: 'READY' },
       });
-      if (!copy?.content) throw new CampaignImageError('COPY_REQUIRED');
+      if (!copy?.content) throw new ImageGenerationError('COPY_REQUIRED');
       const existing = await tx.campaignImageJob.findUnique({
         where: { generationId: lease.generationId },
       });
@@ -113,7 +113,7 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
         !Number.isFinite(at.getTime()) ||
         at >= lease.expiresAt
       )
-        throw new CampaignImageError('INVALID_OUTPUT');
+        throw new ImageGenerationError('INVALID_OUTPUT');
       const copyRow = await tx.campaignCopy.findFirst({ where: { ...selection, status: 'READY' } });
       const copy = copyRow?.content as unknown as CampaignCopy | null;
       if (
@@ -125,7 +125,7 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
         copy.cta !== content.cta ||
         JSON.stringify(copy.hashtags) !== JSON.stringify(content.hashtags)
       )
-        throw new CampaignImageError('INVALID_OUTPUT');
+        throw new ImageGenerationError('INVALID_OUTPUT');
       for (const asset of [baseAsset, finalAsset]) await this.checkAsset(tx, lease, asset);
       const recorded = await this.generations.recordContent(
         {
@@ -148,7 +148,7 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
         },
         data: { status: 'READY' },
       });
-      if (completed.count !== 1) throw new CampaignImageError('STALE_RESULT');
+      if (completed.count !== 1) throw new ImageGenerationError('STALE_RESULT');
       return recorded;
     });
   }
@@ -245,7 +245,7 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
       asset.width !== row.width ||
       asset.height !== row.height
     )
-      throw new CampaignImageError('INVALID_OUTPUT');
+      throw new ImageGenerationError('INVALID_OUTPUT');
   }
 }
 

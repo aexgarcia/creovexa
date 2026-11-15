@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { UpdateTemplateArchive } from './application/use-cases/update-template-archive.js';
 import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
 import { HttpCommonModule } from '#app/infrastructure/http-common.module';
@@ -34,6 +35,12 @@ import {
   imports: [DatabaseModule, RuntimeModule, AssetsModule, HttpCommonModule, OrganizationsModule],
   controllers: [TemplatesController, TemplateStyleReferencesController],
   providers: [
+    {
+      provide: UpdateTemplateArchive,
+      inject: [PrismaTemplateRepository, CLOCK],
+      useFactory: (repository: PrismaTemplateRepository, clock: Clock) =>
+        new UpdateTemplateArchive(repository, clock),
+    },
     {
       provide: PrismaTemplateRepository,
       inject: [PrismaService],

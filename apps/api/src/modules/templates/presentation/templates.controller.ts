@@ -26,7 +26,9 @@ import {
   OrganizationId,
 } from '#app/presentation/http/request-context';
 import { ApiErrors } from '#app/presentation/http/api-errors.decorator';
-import { PaginationRequest, paginationResponse } from '#app/presentation/http/pagination.dto';
+import { CatalogListRequest, ArchiveRequest } from '#app/presentation/http/catalog.requests';
+import { UpdateTemplateArchive } from '../application/use-cases/update-template-archive.js';
+import { paginationResponse } from '#app/presentation/http/pagination.dto';
 import { validateRequest } from '#app/presentation/http/request-validation';
 import { CreateTemplate } from '../application/use-cases/create-template.js';
 import { GetTemplate } from '../application/use-cases/get-template.js';
@@ -47,6 +49,7 @@ import { TemplateNotFoundError } from '../domain/errors/template.errors.js';
 @Controller('templates')
 export class TemplatesController {
   constructor(
+    @Inject(UpdateTemplateArchive) private readonly updateArchive: UpdateTemplateArchive,
     @Inject(UpdateTemplate) private readonly updateTemplate: UpdateTemplate,
     @Inject(CreateTemplate) private readonly createTemplate: CreateTemplate,
     @Inject(GetTemplate) private readonly getTemplate: GetTemplate,
@@ -78,14 +81,31 @@ export class TemplatesController {
       data: templateResponse(await this.createTemplate.execute({ ...body, organizationId })),
     };
   }
+  @Patch(':id/archive')
+  @ApiOperation({ summary: 'Archivar o restaurar template' })
+  @ApiBody({ type: ArchiveRequest })
+  @ApiOkResponse({ type: TemplateEnvelope })
+  async archive(
+    @OrganizationId() organizationId: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(validateRequest(ArchiveRequest)) body: ArchiveRequest,
+  ): Promise<TemplateEnvelope> {
+    return {
+      data: templateResponse(
+        await this.updateArchive.execute({ organizationId, id, archived: body.archived }),
+      ),
+    };
+  }
+
   @Get()
+  @ApiQuery({ name: 'status', required: false, enum: ['active', 'archived', 'all'] })
   @ApiOperation({ summary: 'Listar plantillas de la organización' })
   @ApiQuery({ name: 'page', required: false, type: Number, minimum: 1, maximum: 10000 })
   @ApiQuery({ name: 'limit', required: false, type: Number, minimum: 1, maximum: 100 })
   @ApiOkResponse({ type: TemplatePageResponse })
   async list(
     @OrganizationId() organizationId: string,
-    @Query(validateRequest(PaginationRequest)) query: PaginationRequest,
+    @Query(validateRequest(CatalogListRequest)) query: CatalogListRequest,
   ): Promise<TemplatePageResponse> {
     const result = await this.listTemplates.execute({ organizationId, ...query });
     return { data: result.items.map(templateResponse), meta: paginationResponse(result) };

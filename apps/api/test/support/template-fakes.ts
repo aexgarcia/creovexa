@@ -1,3 +1,4 @@
+import { TemplateNotFoundError } from '#app/modules/templates/domain/errors/template.errors';
 import { TemplateRevisionConflictError } from '#app/modules/templates/domain/errors/template.errors';
 import type { Clock } from '#app/application/ports/clock';
 import type { Pagination, Page } from '#app/domain/pagination';
@@ -49,6 +50,11 @@ export class TemplateOrganizationLookupFake implements OrganizationLookup {
 }
 
 export class TemplateRepositoryFake implements TemplateRepository {
+  async setArchivedAt(organizationId: EntityId, id: EntityId, at: Date | null): Promise<void> {
+    const current = await this.findById(organizationId, id);
+    if (!current) throw new TemplateNotFoundError();
+    this.records.set(id, current.withArchiveDate(at === null ? null : (current.archivedAt ?? at)));
+  }
   readonly records = new Map<EntityId, Template>();
   readonly revisions = new Map<EntityId, TemplateRevision>();
   readonly organizationIds: EntityId[] = [];
@@ -58,9 +64,18 @@ export class TemplateRepositoryFake implements TemplateRepository {
     return Promise.resolve(template?.organizationId === organizationId ? template : null);
   }
 
-  list(organizationId: EntityId, { page, limit }: Pagination): Promise<Page<Template>> {
+  list(
+    organizationId: EntityId,
+    { page, limit }: Pagination,
+    status: 'active' | 'archived' | 'all' = 'active',
+  ): Promise<Page<Template>> {
     const rows = [...this.records.values()]
-      .filter((item) => item.organizationId === organizationId)
+      .filter(
+        (item) =>
+          item.organizationId === organizationId &&
+          (status === 'all' ||
+            (status === 'archived' ? item.archivedAt !== null : item.archivedAt === null)),
+      )
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime() || b.id.localeCompare(a.id));
     return Promise.resolve({
       items: rows.slice((page - 1) * limit, page * limit),

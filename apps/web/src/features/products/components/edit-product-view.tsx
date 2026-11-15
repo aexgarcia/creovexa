@@ -76,6 +76,12 @@ export function EditProductView({ productId }: EditProductViewProps) {
 
   return (
     <div className="space-y-6">
+      {product.archivedAt && (
+        <p role="note" className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+          Producto archivado. Guardar cambios no lo restaura. Puedes restaurarlo desde el filtro
+          Archivados del catálogo para usarlo en nuevas generaciones.
+        </p>
+      )}
       <ProductForm
         title="Editar producto"
         description="Modifica la información del producto seleccionado."

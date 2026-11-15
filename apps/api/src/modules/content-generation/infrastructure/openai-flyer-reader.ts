@@ -1,5 +1,6 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import type { FlyerVisionConfig } from '#app/config/image-generation.config';
-import { CampaignImageError } from '#app/modules/campaigns/contract';
+
 import {
   FLYER_TEXT_KINDS,
   type FlyerReading,
@@ -61,7 +62,7 @@ const MAX_RESPONSE = 200_000;
 
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value))
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   return value as Record<string, unknown>;
 }
 
@@ -73,7 +74,7 @@ function reading(value: unknown): FlyerReading {
     typeof logo.visible !== 'boolean' ||
     typeof logo.text !== 'string'
   )
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   return {
     texts: row.texts.map((item) => {
       const text = record(item);
@@ -81,7 +82,7 @@ function reading(value: unknown): FlyerReading {
         typeof text.text !== 'string' ||
         !FLYER_TEXT_KINDS.includes(text.kind as (typeof FLYER_TEXT_KINDS)[number])
       )
-        throw new CampaignImageError('INVALID_OUTPUT');
+        throw new ImageGenerationError('INVALID_OUTPUT');
       return { text: text.text, kind: text.kind as (typeof FLYER_TEXT_KINDS)[number] };
     }),
     logo: { visible: logo.visible, text: logo.text },
@@ -96,7 +97,7 @@ function review(value: unknown): LogoAreaReview {
     typeof row.hasObject !== 'boolean' ||
     typeof row.object !== 'string'
   )
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   return { hasText: row.hasText, text: row.text, hasObject: row.hasObject, object: row.object };
 }
 
@@ -109,7 +110,7 @@ export class OpenAIFlyerReader implements FlyerReader {
   ) {}
 
   assertAvailable(): void {
-    if (!this.apiKey || !this.config.model) throw new CampaignImageError('UNAVAILABLE');
+    if (!this.apiKey || !this.config.model) throw new ImageGenerationError('UNAVAILABLE');
   }
 
   async read(input: ReadFlyerInput): Promise<FlyerReading> {
@@ -159,35 +160,36 @@ export class OpenAIFlyerReader implements FlyerReader {
       });
       if (!response.ok) {
         void response.body?.cancel().catch(() => {});
-        throw new CampaignImageError(response.status === 429 ? 'RATE_LIMITED' : 'UNAVAILABLE');
+        throw new ImageGenerationError(response.status === 429 ? 'RATE_LIMITED' : 'UNAVAILABLE');
       }
       const raw = await response.text();
-      if (raw.length > MAX_RESPONSE) throw new CampaignImageError('INVALID_OUTPUT');
+      if (raw.length > MAX_RESPONSE) throw new ImageGenerationError('INVALID_OUTPUT');
       let envelope: Record<string, unknown>;
       try {
         envelope = record(JSON.parse(raw));
       } catch {
-        throw new CampaignImageError('INVALID_OUTPUT');
+        throw new ImageGenerationError('INVALID_OUTPUT');
       }
       if (envelope.status !== 'completed' || !Array.isArray(envelope.output))
-        throw new CampaignImageError('INVALID_OUTPUT');
+        throw new ImageGenerationError('INVALID_OUTPUT');
       const content = (envelope.output as { type?: string; content?: unknown }[])
         .filter((item) => item?.type === 'message')
         .flatMap((item) =>
           Array.isArray(item.content) ? (item.content as { type?: string; text?: unknown }[]) : [],
         );
-      if (content.some((item) => item.type === 'refusal')) throw new CampaignImageError('REFUSED');
+      if (content.some((item) => item.type === 'refusal'))
+        throw new ImageGenerationError('REFUSED');
       const texts = content.filter((item) => item.type === 'output_text');
       if (texts.length !== 1 || typeof texts[0]!.text !== 'string')
-        throw new CampaignImageError('INVALID_OUTPUT');
+        throw new ImageGenerationError('INVALID_OUTPUT');
       try {
         return JSON.parse(texts[0]!.text);
       } catch {
-        throw new CampaignImageError('INVALID_OUTPUT');
+        throw new ImageGenerationError('INVALID_OUTPUT');
       }
     } catch (error) {
-      if (error instanceof CampaignImageError) throw error;
-      throw new CampaignImageError(
+      if (error instanceof ImageGenerationError) throw error;
+      throw new ImageGenerationError(
         error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name)
           ? 'TIMEOUT'
           : 'UNAVAILABLE',

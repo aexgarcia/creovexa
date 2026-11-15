@@ -1,6 +1,6 @@
 import { entityId } from '#app/domain/entity-id';
 import { pagination, type Pagination } from '#app/domain/pagination';
-import { CampaignNotFoundError } from '#app/modules/campaigns/domain/errors/campaign.errors';
+import { PublicationCampaignNotFoundError } from '#app/modules/publications/application/errors/publication-campaign-not-found.error';
 import type { PublicationRepository } from '../../domain/repositories/publication.repository.js';
 import type { PublicationCampaignLookup } from '../ports/publication-campaign-lookup.js';
 import { publicationResult } from '../publication-result.js';
@@ -15,7 +15,7 @@ export class ListCampaignPublications {
     const campaignId = entityId(input.campaignId, 'campaignId');
     const window = pagination(input);
     if (!(await this.campaigns.exists(organizationId, campaignId)))
-      throw new CampaignNotFoundError();
+      throw new PublicationCampaignNotFoundError();
     const result = await this.publications.pageByCampaign(organizationId, campaignId, window);
     return { ...window, total: result.total, items: result.items.map(publicationResult) };
   }

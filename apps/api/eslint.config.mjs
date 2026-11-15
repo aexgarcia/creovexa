@@ -47,4 +47,21 @@ export default [
       ),
     },
   },
+  {
+    files: ['src/modules/publications/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^#app/modules/campaigns/(?!contract$|campaigns[.]module$)',
+              message:
+                'publications consulta campañas mediante su port; no importa sus errores internos (ADR-0028).',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];

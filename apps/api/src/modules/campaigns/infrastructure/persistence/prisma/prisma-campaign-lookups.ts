@@ -52,7 +52,7 @@ export class PrismaCampaignLookups implements CampaignLookups {
       const row = await this.database.product.findUnique({
         where: { organizationId_id: { organizationId, id } },
       });
-      if (row === null) return null;
+      if (row === null || row.archivedAt !== null) return null;
       const image =
         row.imageAssetIds.length === 0
           ? null
@@ -82,7 +82,11 @@ export class PrismaCampaignLookups implements CampaignLookups {
       const row = await this.database.templateRevision.findUnique({
         where: { organizationId_templateId_id: { organizationId, templateId, id } },
       });
-      return row === null
+      const template = await this.database.template.findUnique({
+        where: { organizationId_id: { organizationId, id: templateId } },
+        select: { archivedAt: true },
+      });
+      return row === null || !template || template.archivedAt !== null
         ? null
         : {
             id: row.templateId,

@@ -1,5 +1,6 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import type { TemplateStyleReferences } from '#app/modules/templates/application/ports/template-style-references';
-import { CampaignImageError } from '#app/modules/campaigns/contract';
+
 import type {
   FlyerStyleSource,
   LoadFlyerStyleInput,
@@ -22,10 +23,10 @@ export class StoredFlyerStyleSource implements FlyerStyleSource {
         assetId: input.assetId,
       });
     } catch {
-      throw new CampaignImageError('UNAVAILABLE');
+      throw new ImageGenerationError('UNAVAILABLE');
     }
     // Las referencias son inmutables: si falta una congelada, el snapshot no se puede cumplir.
-    if (!reference) throw new CampaignImageError('INVALID_OUTPUT');
+    if (!reference) throw new ImageGenerationError('INVALID_OUTPUT');
     return {
       reference: await this.artifacts.write(input, reference.bytes),
       contentType: reference.contentType,

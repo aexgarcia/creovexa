@@ -30,6 +30,7 @@ interface TemplateState {
   currentRevision: TemplateRevision;
   createdAt: number;
   updatedAt: number;
+  archivedAt: number | null;
 }
 
 export class Template {
@@ -54,6 +55,7 @@ export class Template {
       id: templateId,
       organizationId: ownerId,
       name: input.name.trim(),
+      archivedAt: null,
       currentRevision: TemplateRevision.initial(
         revisionId,
         templateId,
@@ -102,6 +104,7 @@ export class Template {
     revision: TemplateRevision,
     created: Date,
     updated: Date,
+    archived: Date | null = null,
   ): Template {
     const templateId = entityId(id, 'templateId');
     const ownerId = entityId(organizationId, 'organizationId');
@@ -120,10 +123,22 @@ export class Template {
       id: templateId,
       organizationId: ownerId,
       name: name.trim(),
+      archivedAt: archived === null ? null : timestamp(archived, createdAt),
       currentRevision: revision,
       createdAt,
       updatedAt,
     });
+  }
+
+  withArchiveDate(at: Date | null): Template {
+    return new Template({
+      ...this.#state,
+      archivedAt: at === null ? null : timestamp(at, this.#state.createdAt),
+    });
+  }
+
+  get archivedAt(): Date | null {
+    return this.#state.archivedAt === null ? null : new Date(this.#state.archivedAt);
   }
 
   get id(): EntityId {

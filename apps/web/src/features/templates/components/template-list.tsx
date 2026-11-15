@@ -13,11 +13,22 @@ import { FORMAT_LABELS } from '../types/template-design-options';
 import { TemplateCard } from './template-card';
 import { TemplateEmptyState } from './template-empty-state';
 
+import { CatalogStatusFilter } from '@/components/layout/catalog-status-filter';
+import type { CatalogStatus } from '@/types/catalog-status';
+
 export function TemplateList() {
   const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<CatalogStatus>('active');
   const [search, setSearch] = useState('');
   const [format, setFormat] = useState<TemplateFormat | 'ALL'>('ALL');
-  const { data: templates, meta, isPending, isFetching, error, refetch } = useTemplates(page);
+  const {
+    data: templates,
+    meta,
+    isPending,
+    isFetching,
+    error,
+    refetch,
+  } = useTemplates(page, status);
   const term = search.trim().toLocaleLowerCase('es');
   const visible =
     templates?.filter(
@@ -37,6 +48,13 @@ export function TemplateList() {
             Nueva plantilla
           </Button>
         }
+      />
+      <CatalogStatusFilter
+        value={status}
+        onChange={(next) => {
+          setStatus(next);
+          setPage(1);
+        }}
       />
       <div className="flex flex-wrap gap-3">
         <div className="relative min-w-[200px] flex-1 lg:max-w-[380px]">
@@ -107,7 +125,7 @@ export function TemplateList() {
             Reintentar
           </Button>
         </div>
-      ) : !templates?.length && page === 1 && !meta?.total ? (
+      ) : !templates?.length && page === 1 && !meta?.total && status === 'active' ? (
         <TemplateEmptyState />
       ) : (
         <>
@@ -115,7 +133,14 @@ export function TemplateList() {
             {visible.length ? (
               <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                 {visible.map((template) => (
-                  <TemplateCard key={template.id} template={template} />
+                  <TemplateCard
+                    key={template.id}
+                    template={template}
+                    onArchiveChanged={() => {
+                      if (status !== 'all' && templates?.length === 1 && page > 1)
+                        setPage(page - 1);
+                    }}
+                  />
                 ))}
               </div>
             ) : (
@@ -123,7 +148,9 @@ export function TemplateList() {
                 <h2 className="font-medium">
                   {filtered
                     ? 'Sin coincidencias en esta página'
-                    : 'No hay plantillas en esta página'}
+                    : status === 'archived'
+                      ? 'No hay plantillas archivadas en esta página'
+                      : 'No hay plantillas en esta página'}
                 </h2>
                 {filtered && (
                   <Button

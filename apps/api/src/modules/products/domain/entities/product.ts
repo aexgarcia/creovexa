@@ -37,6 +37,7 @@ interface ProductState {
   imageTraits: ProductImageTraits | null;
   createdAt: number;
   updatedAt: number;
+  archivedAt: number | null;
 }
 
 export const SHORT_NAME_MAX_LENGTH = 40;
@@ -126,6 +127,7 @@ export class Product {
     created: Date,
     updated: Date,
     imageTraits: ProductImageTraits | null = null,
+    archived: Date | null = null,
   ): Product {
     if (!Object.values(ProductKind).includes(kind)) throw new InvalidProductError('kind');
     const createdAt = timestamp(created);
@@ -135,6 +137,7 @@ export class Product {
       organizationId: entityId(organizationId, 'organizationId'),
       kind,
       ...restored,
+      archivedAt: archived === null ? null : timestamp(archived, createdAt),
       imageTraits: restored.imageAssetIds.length ? traits(imageTraits) : null,
       createdAt,
       updatedAt: timestamp(updated, createdAt),
@@ -162,6 +165,17 @@ export class Product {
       imageTraits: sameImage ? this.imageTraits : null,
       updatedAt: timestamp(at, this.#state.updatedAt),
     });
+  }
+
+  withArchiveDate(at: Date | null): Product {
+    return new Product({
+      ...this.#state,
+      archivedAt: at === null ? null : timestamp(at, this.#state.createdAt),
+    });
+  }
+
+  get archivedAt(): Date | null {
+    return this.#state.archivedAt === null ? null : new Date(this.#state.archivedAt);
   }
 
   get id(): EntityId {

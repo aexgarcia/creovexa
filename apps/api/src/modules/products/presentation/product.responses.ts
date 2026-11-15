@@ -35,6 +35,7 @@ export class ProductResponse {
   @ApiProperty({ type: String, nullable: true }) imageUrl!: string | null;
   @ApiProperty({ type: String, format: 'date-time' }) createdAt!: string;
   @ApiProperty({ type: String, format: 'date-time' }) updatedAt!: string;
+  @ApiProperty({ type: String, format: 'date-time', nullable: true }) archivedAt!: string | null;
 }
 export class ProductEnvelope {
   @ApiProperty({ type: ProductResponse }) data!: ProductResponse;
@@ -66,5 +67,6 @@ export function productResponse(result: ProductResult): ProductResponse {
         : null,
     createdAt: result.createdAt,
     updatedAt: result.updatedAt,
+    archivedAt: result.archivedAt,
   };
 }

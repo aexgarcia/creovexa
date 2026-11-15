@@ -1,11 +1,20 @@
+'use client';
+import { useArchiveTemplate } from '../hooks/use-archive-template';
 import Link from 'next/link';
-import { Copy, Pencil } from 'lucide-react';
+import { Archive, ArchiveRestore, Copy, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TemplateDesignPreview } from './template-design-preview';
 import type { StoredTemplate } from '../types/stored-template.types';
 import { COMPOSITION_LABELS, FORMAT_LABELS, STYLE_LABELS } from '../types/template-design-options';
 
-export function TemplateCard({ template }: { template: StoredTemplate }) {
+export function TemplateCard({
+  template,
+  onArchiveChanged,
+}: {
+  template: StoredTemplate;
+  onArchiveChanged?: () => void;
+}) {
+  const archive = useArchiveTemplate(onArchiveChanged);
   const revision = template.currentRevision;
   const design = revision.design;
   return (
@@ -28,7 +37,14 @@ export function TemplateCard({ template }: { template: StoredTemplate }) {
       </Link>
       <div className="space-y-3 p-5">
         <div className="flex min-w-0 items-start justify-between gap-3">
-          <h2 className="min-w-0 break-words text-[15px] font-semibold">{template.name}</h2>
+          <div className="min-w-0">
+            <h2 className="break-words text-[15px] font-semibold">{template.name}</h2>
+            {template.archivedAt && (
+              <span className="mt-1 inline-block rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                Archivada
+              </span>
+            )}
+          </div>
           <span className="shrink-0 rounded-full border px-2 py-0.5 font-mono text-[11px] text-muted-foreground">
             r{revision.number}
           </span>
@@ -53,6 +69,19 @@ export function TemplateCard({ template }: { template: StoredTemplate }) {
           >
             <Pencil className="size-3.5" />
             Editar
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={archive.isPending}
+            onClick={() => archive.mutate({ id: template.id, archived: !template.archivedAt })}
+          >
+            {template.archivedAt ? (
+              <ArchiveRestore className="size-3.5" />
+            ) : (
+              <Archive className="size-3.5" />
+            )}
+            {archive.isPending ? 'Guardando…' : template.archivedAt ? 'Restaurar' : 'Archivar'}
           </Button>
           <span title="Duplicar plantillas: pendiente de implementar">
             <Button disabled variant="ghost" size="sm">

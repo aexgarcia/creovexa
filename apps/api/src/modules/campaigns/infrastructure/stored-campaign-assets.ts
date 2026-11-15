@@ -10,7 +10,7 @@ import {
   ObjectStorageError,
   type ObjectStorage,
 } from '#app/modules/assets/application/ports/object-storage';
-import { CampaignImageError } from '../application/errors/campaign-image.error.js';
+import { CampaignAssetError } from '../application/errors/campaign-asset.error.js';
 import type {
   CampaignFinalAssets,
   CampaignImageSelection,
@@ -26,7 +26,7 @@ export class StoredCampaignAssets implements CampaignFinalAssets {
 
   get bucket(): string {
     const bucket = this.storage.bucket;
-    if (!bucket) throw new CampaignImageError('UNAVAILABLE');
+    if (!bucket) throw new CampaignAssetError('UNAVAILABLE');
     return bucket;
   }
 
@@ -63,9 +63,9 @@ export class StoredCampaignAssets implements CampaignFinalAssets {
         actual.width !== row.width ||
         actual.height !== row.height
       )
-        throw new CampaignImageError('INVALID_OUTPUT');
+        throw new CampaignAssetError('CORRUPTED');
     } catch {
-      throw new CampaignImageError('INVALID_OUTPUT');
+      throw new CampaignAssetError('CORRUPTED');
     }
     return result;
   }
@@ -80,14 +80,14 @@ export class StoredCampaignAssets implements CampaignFinalAssets {
         where: { id: assetId, organizationId },
       });
       if (!row) return null;
-      if (row.bucket !== this.bucket) throw new CampaignImageError('UNAVAILABLE');
+      if (row.bucket !== this.bucket) throw new CampaignAssetError('UNAVAILABLE');
       const bytes = await this.readObject(row.objectKey);
       if (bytes.length !== row.byteLength || sha256(bytes) !== row.sha256)
-        throw new CampaignImageError('INVALID_OUTPUT');
+        throw new CampaignAssetError('CORRUPTED');
       return { bytes, asset: campaignAssetResult(row) };
     } catch (error) {
-      if (error instanceof CampaignImageError) throw error;
-      throw new CampaignImageError('UNAVAILABLE');
+      if (error instanceof CampaignAssetError) throw error;
+      throw new CampaignAssetError('UNAVAILABLE');
     }
   }
 
@@ -96,10 +96,10 @@ export class StoredCampaignAssets implements CampaignFinalAssets {
       return await this.storage.read(key, MAX_IMAGE_BYTES);
     } catch (error) {
       if (!(error instanceof ObjectStorageError)) throw error;
-      if (error.code === 'TIMEOUT') throw new CampaignImageError('TIMEOUT');
+      if (error.code === 'TIMEOUT') throw new CampaignAssetError('TIMEOUT');
       if (error.code === 'EMPTY' || error.code === 'TOO_LARGE')
-        throw new CampaignImageError('INVALID_OUTPUT');
-      throw new CampaignImageError('UNAVAILABLE');
+        throw new CampaignAssetError('CORRUPTED');
+      throw new CampaignAssetError('UNAVAILABLE');
     }
   }
 }

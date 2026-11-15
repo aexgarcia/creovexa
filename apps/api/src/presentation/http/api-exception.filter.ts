@@ -2,7 +2,9 @@ import {
   CopyGenerationError,
   InvalidFlyerTextError,
 } from '#app/modules/content-generation/application/ports/copy-generator';
-import { CampaignImageError } from '#app/modules/campaigns/application/errors/campaign-image.error';
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
+import { CampaignAssetError } from '#app/modules/campaigns/application/errors/campaign-asset.error';
+import { PublicationCampaignNotFoundError } from '#app/modules/publications/application/errors/publication-campaign-not-found.error';
 import { InvalidFlyerDesignError } from '#app/domain/value-objects/flyer-design';
 import { ProductImageError } from '#app/modules/products/application/errors/product-image.error';
 import { TemplateStyleReferenceError } from '#app/modules/templates/application/errors/template-style-reference.error';
@@ -100,27 +102,30 @@ export class ApiExceptionFilter implements ExceptionFilter {
       code =
         (error instanceof ProductImageError ? 'PRODUCT_IMAGE_' : 'ORGANIZATION_LOGO_') + error.code;
       message = error.message;
-    } else if (error instanceof CampaignImageError) {
-      status =
-        error.code === 'NOT_FOUND'
-          ? 404
-          : [
-                'COPY_REQUIRED',
-                'PRODUCT_IMAGE_REQUIRED',
-                'FINAL_ASSET_REQUIRED',
-                'BUSY',
-                'STALE_RESULT',
-              ].includes(error.code)
-            ? 409
-            : error.code === 'UNSUPPORTED_DIMENSIONS'
-              ? 400
-              : error.code === 'TIMEOUT'
-                ? 504
-                : ['UNAVAILABLE', 'LOGO_UNAVAILABLE'].includes(error.code)
-                  ? 503
-                  : error.code === 'RATE_LIMITED'
-                    ? 429
-                    : 502;
+    } else if (error instanceof CampaignAssetError) {
+      status = {
+        NOT_FOUND: 404,
+        FINAL_REQUIRED: 409,
+        UNAVAILABLE: 503,
+        CORRUPTED: 500,
+        TIMEOUT: 504,
+      }[error.code];
+      code = 'CAMPAIGN_ASSET_' + error.code;
+      message = error.message;
+    } else if (error instanceof ImageGenerationError) {
+      status = ['COPY_REQUIRED', 'PRODUCT_IMAGE_REQUIRED', 'BUSY', 'STALE_RESULT'].includes(
+        error.code,
+      )
+        ? 409
+        : error.code === 'UNSUPPORTED_DIMENSIONS'
+          ? 400
+          : error.code === 'TIMEOUT'
+            ? 504
+            : ['UNAVAILABLE', 'LOGO_UNAVAILABLE'].includes(error.code)
+              ? 503
+              : error.code === 'RATE_LIMITED'
+                ? 429
+                : 502;
       code = 'IMAGE_' + error.code;
       message = error.message;
     } else if (error instanceof CopyGenerationError) {
@@ -146,13 +151,15 @@ export class ApiExceptionFilter implements ExceptionFilter {
     } else if (
       error instanceof PublicationNotFoundError ||
       error instanceof CampaignNotFoundError ||
+      error instanceof PublicationCampaignNotFoundError ||
       error instanceof CampaignResourceNotFoundError
     ) {
       status = 404;
       code =
         error instanceof PublicationNotFoundError
           ? 'PUBLICATION_NOT_FOUND'
-          : error instanceof CampaignNotFoundError
+          : error instanceof CampaignNotFoundError ||
+              error instanceof PublicationCampaignNotFoundError
             ? 'CAMPAIGN_NOT_FOUND'
             : 'CAMPAIGN_RESOURCE_NOT_FOUND';
       message = error.message;

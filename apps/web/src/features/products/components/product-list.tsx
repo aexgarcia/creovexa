@@ -12,12 +12,16 @@ import type { ProductKind } from '../types/product.types';
 import { ProductEmptyState } from './product-empty-state';
 import { ProductTable } from './product-table';
 
+import { CatalogStatusFilter } from '@/components/layout/catalog-status-filter';
+import type { CatalogStatus } from '@/types/catalog-status';
+
 export function ProductList() {
   const [page, setPage] = useState(1);
+  const [status, setStatus] = useState<CatalogStatus>('active');
   const [search, setSearch] = useState('');
   const [kind, setKind] = useState<ProductKind | 'ALL'>('ALL');
   const [sort, setSort] = useState('recent');
-  const { data: products, meta, isPending, error, refetch, isFetching } = useProducts(page);
+  const { data: products, meta, isPending, error, refetch, isFetching } = useProducts(page, status);
   const term = search.trim().toLocaleLowerCase('es');
   const visible = (products ?? [])
     .filter(
@@ -49,6 +53,13 @@ export function ProductList() {
             Nuevo producto
           </Button>
         }
+      />
+      <CatalogStatusFilter
+        value={status}
+        onChange={(next) => {
+          setStatus(next);
+          setPage(1);
+        }}
       />
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-[200px] flex-1 lg:max-w-[380px]">
@@ -121,21 +132,32 @@ export function ProductList() {
             Reintentar
           </Button>
         </div>
-      ) : !products?.length && page === 1 && !meta?.total ? (
+      ) : !products?.length && page === 1 && !meta?.total && status === 'active' ? (
         <ProductEmptyState />
       ) : (
         <div aria-busy={isFetching} className="overflow-hidden rounded-2xl border bg-card">
           {visible.length ? (
-            <ProductTable products={visible} />
+            <ProductTable
+              products={visible}
+              onArchiveChanged={() => {
+                if (status !== 'all' && products?.length === 1 && page > 1) setPage(page - 1);
+              }}
+            />
           ) : (
             <div className="space-y-2 p-12 text-center">
               <h2 className="font-medium">
-                {filtered ? 'Sin coincidencias en esta página' : 'No hay productos en esta página'}
+                {filtered
+                  ? 'Sin coincidencias en esta página'
+                  : status === 'archived'
+                    ? 'No hay productos archivados en esta página'
+                    : 'No hay productos en esta página'}
               </h2>
               <p className="text-sm text-muted-foreground">
                 {filtered
                   ? 'Prueba con otro nombre o cambia el tipo.'
-                  : 'Vuelve a la página anterior para ver el catálogo.'}
+                  : status === 'archived' && page === 1
+                    ? 'Los productos que archives aparecerán aquí. Puedes restaurarlos cuando los necesites.'
+                    : 'Cambia el filtro o vuelve a la página anterior para ver el catálogo.'}
               </p>
               {filtered && (
                 <Button

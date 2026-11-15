@@ -1,5 +1,6 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import type { OrganizationLogos } from '#app/modules/organizations/application/ports/organization-logos';
-import { CampaignImageError } from '#app/modules/campaigns/contract';
+
 import type {
   FlyerLogoSource,
   LoadFlyerLogoInput,
@@ -23,9 +24,9 @@ export class StoredFlyerLogoSource implements FlyerLogoSource {
         assetId: input.assetId,
       });
     } catch {
-      throw new CampaignImageError('LOGO_UNAVAILABLE');
+      throw new ImageGenerationError('LOGO_UNAVAILABLE');
     }
-    if (!logo) throw new CampaignImageError('LOGO_UNAVAILABLE');
+    if (!logo) throw new ImageGenerationError('LOGO_UNAVAILABLE');
     return {
       reference: await this.artifacts.write(input, logo.bytes),
       contentType: logo.contentType,

@@ -46,6 +46,7 @@ describe('CreateTemplate', () => {
     const result = await useCase.execute(input());
 
     expect(result).toEqual({
+      archivedAt: null,
       id: TEMPLATE_ID,
       organizationId: ORGANIZATION_ID,
       name: 'Promoción',

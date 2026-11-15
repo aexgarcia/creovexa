@@ -55,6 +55,7 @@ describe('Product use cases', () => {
     const result = await createUseCase(repository).execute({ ...input(), kind });
 
     expect(result).toEqual({
+      archivedAt: null,
       id: PRODUCT_ID,
       organizationId: ORGANIZATION_ID,
       kind,

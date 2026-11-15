@@ -13,6 +13,7 @@ export interface StoredTemplate {
   };
   createdAt: string;
   updatedAt: string;
+  archivedAt: string | null;
 }
 // Las dimensiones salen del formato del diseño.
 export interface CreateStoredTemplateInput {

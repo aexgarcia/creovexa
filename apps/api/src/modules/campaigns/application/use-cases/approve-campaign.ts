@@ -3,7 +3,7 @@ import type { CampaignRepository } from '../../domain/repositories/campaign.repo
 import { campaignResult, type CampaignResult } from '../campaign-result.js';
 import { loadCampaign, type CampaignSelection } from '../load-campaign.js';
 import type { CampaignFinalAssets } from '../ports/campaign-final-assets.js';
-import { CampaignImageError } from '../errors/campaign-image.error.js';
+import { CampaignAssetError } from '../errors/campaign-asset.error.js';
 
 export interface ApproveCampaignInput extends CampaignSelection {
   contentId: string;
@@ -29,7 +29,7 @@ export class ApproveCampaign {
         assetId: content.assetIds[0],
       }))
     )
-      throw new CampaignImageError('FINAL_ASSET_REQUIRED');
+      throw new CampaignAssetError('FINAL_REQUIRED');
     campaign.promotion?.assertNotExpired(this.clock.now());
     await this.campaigns.save(campaign.organizationId, updated, campaign.version);
     return campaignResult(updated);

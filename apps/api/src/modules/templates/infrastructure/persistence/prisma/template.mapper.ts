@@ -26,6 +26,7 @@ export class TemplateMapper {
       ),
       row.createdAt,
       row.updatedAt,
+      row.archivedAt,
     );
   }
 
@@ -45,6 +46,7 @@ export class TemplateMapper {
         currentRevisionId: revision.id,
         createdAt: template.createdAt,
         updatedAt: template.updatedAt,
+        archivedAt: template.archivedAt,
       },
       revision: {
         id: revision.id,

@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { ListCampaignPublications } from '#app/modules/publications/application/use-cases/list-campaign-publications';
-import { CampaignNotFoundError } from '#app/modules/campaigns/domain/errors/campaign.errors';
+import { PublicationCampaignNotFoundError } from '#app/modules/publications/application/errors/publication-campaign-not-found.error';
 import { InvalidPaginationError } from '#app/domain/pagination';
 import { PublicationQueryFake } from '../../../../support/publication-query-fakes.js';
 import {
@@ -49,7 +49,7 @@ describe('ListCampaignPublications', () => {
         organizationId: OTHER_ORG,
         campaignId: CAMPAIGN,
       }),
-    ).rejects.toThrow(CampaignNotFoundError);
+    ).rejects.toThrow(PublicationCampaignNotFoundError);
     expect(exists).toHaveBeenCalledWith(OTHER_ORG, CAMPAIGN);
     expect(read).not.toHaveBeenCalled();
   });

@@ -17,6 +17,42 @@ registerHooks({
 const { productService } = await import('../src/features/products/services/product.service.ts');
 
 const originalFetch = globalThis.fetch;
+
+test('filtra el catálogo por disponibilidad y usa activos por defecto para campañas', async () => {
+  const urls = [];
+  globalThis.fetch = async (url) => {
+    urls.push(String(url));
+    return Response.json({ data: [], meta: { page: 2, limit: 20, total: 0, totalPages: 0 } });
+  };
+  await productService.findAll(2);
+  await productService.findAll(1, undefined, 'archived');
+  await productService.findAll(1, undefined, 'all');
+  assert.ok(urls[0].endsWith('/products?page=2&limit=20&status=active'));
+  assert.ok(urls[1].endsWith('&status=archived'));
+  assert.ok(urls[2].endsWith('&status=all'));
+});
+
+test('archiva y restaura por ID codificado, conserva la imagen y propaga el fallo', async () => {
+  const states = [];
+  globalThis.fetch = async (url, options) => {
+    assert.ok(String(url).endsWith('/products/id%2Fespecial/archive'));
+    assert.equal(options.method, 'PATCH');
+    const { archived } = JSON.parse(options.body);
+    states.push(archived);
+    return Response.json({
+      data: {
+        id: 'id/especial',
+        archivedAt: archived ? '2026-11-15T12:00:00Z' : null,
+        imageUrl: '/foto',
+      },
+    });
+  };
+  assert.ok((await productService.setArchived('id/especial', true)).archivedAt);
+  assert.equal((await productService.setArchived('id/especial', false)).archivedAt, null);
+  assert.deepEqual(states, [true, false]);
+  globalThis.fetch = async () => Response.json({}, { status: 503 });
+  await assert.rejects(productService.setArchived('id/especial', true), ApiError);
+});
 afterEach(() => {
   globalThis.fetch = originalFetch;
 });
@@ -127,4 +163,27 @@ test('preserves query cancellation instead of presenting it as a network failure
   await assert.rejects(apiRequest('/products', { signal: controller.signal }), {
     name: 'AbortError',
   });
+});
+
+test('distingue los errores de lectura del flyer de los errores de generación', async () => {
+  const cases = [
+    ['CAMPAIGN_ASSET_NOT_FOUND', 404, 'No se encontró el flyer'],
+    ['CAMPAIGN_ASSET_FINAL_REQUIRED', 409, 'antes de aprobar'],
+    ['CAMPAIGN_ASSET_UNAVAILABLE', 503, 'flyer guardado'],
+    ['CAMPAIGN_ASSET_CORRUPTED', 500, 'integridad'],
+    ['CAMPAIGN_ASSET_TIMEOUT', 504, 'lectura'],
+    ['IMAGE_UNAVAILABLE', 503, 'proveedor'],
+  ];
+  for (const [code, status, expected] of cases) {
+    globalThis.fetch = async () =>
+      Response.json({ error: { code, message: 'detalle privado' } }, { status });
+    await assert.rejects(
+      apiRequest('/campaigns/test/approve'),
+      (error) =>
+        error instanceof ApiError &&
+        error.status === status &&
+        error.message.includes(expected) &&
+        !error.message.includes('privado'),
+    );
+  }
 });

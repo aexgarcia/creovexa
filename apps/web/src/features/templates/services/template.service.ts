@@ -2,7 +2,17 @@ import { apiRequest, type ApiPage } from '@/lib/api-client';
 import type { CreateStoredTemplateInput, StoredTemplate } from '../types/stored-template.types';
 import type { BaseTemplate, TemplateDesign } from '../types/template-design';
 
+import type { CatalogStatus } from '@/types/catalog-status';
+
 class TemplateService {
+  async setArchived(id: string, archived: boolean): Promise<StoredTemplate> {
+    const result = await apiRequest<{ data: StoredTemplate }>(
+      '/templates/' + encodeURIComponent(id) + '/archive',
+      { method: 'PATCH', body: JSON.stringify({ archived }) },
+    );
+    return result.data;
+  }
+
   async update(
     id: string,
     input: { name: string; expectedRevisionId: string; design?: TemplateDesign },
@@ -15,8 +25,12 @@ class TemplateService {
     ).data;
   }
 
-  findAll(page = 1, signal?: AbortSignal): Promise<ApiPage<StoredTemplate>> {
-    return apiRequest(`/templates?page=${page}&limit=20`, { signal });
+  findAll(
+    page = 1,
+    signal?: AbortSignal,
+    status: CatalogStatus = 'active',
+  ): Promise<ApiPage<StoredTemplate>> {
+    return apiRequest(`/templates?page=${page}&limit=20&status=${status}`, { signal });
   }
   async findById(id: string, signal?: AbortSignal): Promise<StoredTemplate> {
     const response = await apiRequest<{ data: StoredTemplate }>(

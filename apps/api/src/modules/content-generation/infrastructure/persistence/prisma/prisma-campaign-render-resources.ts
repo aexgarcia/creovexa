@@ -1,5 +1,6 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import type { PrismaClient } from '#app/infrastructure/persistence/prisma/generated/client';
-import { CampaignImageError } from '#app/modules/campaigns/contract';
+
 import type { CampaignRenderResources } from '../../../application/ports/campaign-render-resources.js';
 import type { RenderCampaignTemplateInput } from '../../../application/ports/template-renderer.js';
 import type { MinioStorageProvider } from '../../minio-storage-provider.js';
@@ -16,7 +17,7 @@ export class PrismaCampaignRenderResources implements CampaignRenderResources {
   ) {}
 
   assertAvailable(): void {
-    if (!this.storage) throw new CampaignImageError('UNAVAILABLE');
+    if (!this.storage) throw new ImageGenerationError('UNAVAILABLE');
     this.storage.assertAvailable();
   }
 
@@ -27,10 +28,10 @@ export class PrismaCampaignRenderResources implements CampaignRenderResources {
       snapshot.organization.id !== input.organizationId ||
       snapshot.product.organizationId !== input.organizationId
     )
-      throw new CampaignImageError('INVALID_OUTPUT');
+      throw new ImageGenerationError('INVALID_OUTPUT');
     // El diseño viene congelado en el snapshot (ADR-0024): no se lee la tabla de templates.
     if (snapshot.template.organizationId !== input.organizationId)
-      throw new CampaignImageError('INVALID_OUTPUT');
+      throw new ImageGenerationError('INVALID_OUTPUT');
     const selection = {
       organizationId: input.organizationId,
       campaignId: input.campaignId,
@@ -45,9 +46,9 @@ export class PrismaCampaignRenderResources implements CampaignRenderResources {
         purpose: 'BASE_IMAGE',
       },
     });
-    if (!row) throw new CampaignImageError('INVALID_OUTPUT');
+    if (!row) throw new ImageGenerationError('INVALID_OUTPUT');
     const stored = await this.storage!.read(input.organizationId, input.mainImage);
-    if (!stored) throw new CampaignImageError('INVALID_OUTPUT');
+    if (!stored) throw new ImageGenerationError('INVALID_OUTPUT');
     let logo = null;
     if (snapshot.organization.logoAssetId !== null) {
       try {
@@ -55,9 +56,9 @@ export class PrismaCampaignRenderResources implements CampaignRenderResources {
           organizationId: input.organizationId,
           assetId: entityId(snapshot.organization.logoAssetId),
         });
-        if (!logo) throw new CampaignImageError('LOGO_UNAVAILABLE');
+        if (!logo) throw new ImageGenerationError('LOGO_UNAVAILABLE');
       } catch {
-        throw new CampaignImageError('LOGO_UNAVAILABLE');
+        throw new ImageGenerationError('LOGO_UNAVAILABLE');
       }
     }
     return {

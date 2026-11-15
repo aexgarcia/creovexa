@@ -20,6 +20,7 @@ function fixture() {
     at,
   );
   const repo = {
+    setArchivedAt: vi.fn(),
     findById: vi.fn<ProductRepository['findById']>().mockImplementation(async () => product),
     add: vi.fn(),
     save: vi.fn(),

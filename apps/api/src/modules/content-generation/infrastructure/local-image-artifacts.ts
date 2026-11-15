@@ -1,8 +1,9 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import { randomUUID } from 'node:crypto';
 import { mkdir, open, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { entityId } from '#app/domain/entity-id';
-import { CampaignImageError } from '#app/modules/campaigns/contract';
+
 import type {
   CampaignImageSelection,
   ImageArtifact,
@@ -22,7 +23,7 @@ export class LocalImageArtifacts implements TemporaryArtifacts {
 
   async write(scope: ArtifactScope, bytes: Uint8Array): Promise<string> {
     if (!bytes.byteLength || bytes.byteLength > MAX_IMAGE_BYTES)
-      throw new CampaignImageError('INVALID_OUTPUT');
+      throw new ImageGenerationError('INVALID_OUTPUT');
     const reference = randomUUID();
     const directory = this.directory(scope);
     await mkdir(directory, { recursive: true, mode: 0o700 });
@@ -37,12 +38,12 @@ export class LocalImageArtifacts implements TemporaryArtifacts {
       try {
         const info = await file.stat();
         if (!info.isFile() || info.size <= 0 || info.size > MAX_IMAGE_BYTES)
-          throw new CampaignImageError('INVALID_OUTPUT');
+          throw new ImageGenerationError('INVALID_OUTPUT');
         const bytes = Buffer.alloc(info.size);
         let offset = 0;
         while (offset < bytes.length) {
           const { bytesRead } = await file.read(bytes, offset, bytes.length - offset, offset);
-          if (bytesRead === 0) throw new CampaignImageError('INVALID_OUTPUT');
+          if (bytesRead === 0) throw new ImageGenerationError('INVALID_OUTPUT');
           offset += bytesRead;
         }
         return bytes;
@@ -50,7 +51,7 @@ export class LocalImageArtifacts implements TemporaryArtifacts {
         await file.close();
       }
     } catch {
-      throw new CampaignImageError('INVALID_OUTPUT');
+      throw new ImageGenerationError('INVALID_OUTPUT');
     }
   }
 

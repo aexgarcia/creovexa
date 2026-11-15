@@ -1,3 +1,4 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import { FORMAT_SIZES } from '#app/domain/value-objects/flyer-design';
 import { createHash, randomUUID } from 'node:crypto';
 import { inspectImageBytes } from '#app/infrastructure/image-files';
@@ -10,7 +11,7 @@ import {
   ObjectStorageError,
   type ObjectStorage,
 } from '#app/modules/assets/application/ports/object-storage';
-import { CampaignImageError, type CampaignGenerations } from '#app/modules/campaigns/contract';
+import { type CampaignGenerations } from '#app/modules/campaigns/contract';
 import type {
   StorageProvider,
   StoreCampaignAssetInput,
@@ -33,7 +34,7 @@ export class MinioStorageProvider implements StorageProvider {
 
   private get bucket(): string {
     const bucket = this.storage.bucket;
-    if (!bucket) throw new CampaignImageError('UNAVAILABLE');
+    if (!bucket) throw new ImageGenerationError('UNAVAILABLE');
     return bucket;
   }
 
@@ -72,7 +73,7 @@ export class MinioStorageProvider implements StorageProvider {
       if (!created) {
         // Una subida anterior pudo completarse antes de confirmar los metadatos. Nunca la sobrescribas.
         const stored = await this.readObject(objectKey);
-        if (digest(stored) !== sha256) throw new CampaignImageError('INVALID_OUTPUT');
+        if (digest(stored) !== sha256) throw new ImageGenerationError('INVALID_OUTPUT');
       }
       return await this.database.$transaction(async (tx) => {
         await lockImageCampaign(this.generations, tx, selection);
@@ -98,8 +99,8 @@ export class MinioStorageProvider implements StorageProvider {
         return campaignAssetResult(row);
       });
     } catch (error) {
-      if (error instanceof CampaignImageError) throw error;
-      throw new CampaignImageError('UNAVAILABLE');
+      if (error instanceof ImageGenerationError) throw error;
+      throw new ImageGenerationError('UNAVAILABLE');
     }
   }
 
@@ -113,14 +114,14 @@ export class MinioStorageProvider implements StorageProvider {
         where: { id: assetId, organizationId },
       });
       if (!row) return null;
-      if (row.bucket !== this.bucket) throw new CampaignImageError('UNAVAILABLE');
+      if (row.bucket !== this.bucket) throw new ImageGenerationError('UNAVAILABLE');
       const bytes = await this.readObject(row.objectKey);
       if (bytes.length !== row.byteLength || digest(bytes) !== row.sha256)
-        throw new CampaignImageError('INVALID_OUTPUT');
+        throw new ImageGenerationError('INVALID_OUTPUT');
       return { bytes, asset: campaignAssetResult(row) };
     } catch (error) {
-      if (error instanceof CampaignImageError) throw error;
-      throw new CampaignImageError('UNAVAILABLE');
+      if (error instanceof ImageGenerationError) throw error;
+      throw new ImageGenerationError('UNAVAILABLE');
     }
   }
 
@@ -129,10 +130,10 @@ export class MinioStorageProvider implements StorageProvider {
       return await this.storage.read(key, MAX_IMAGE_BYTES);
     } catch (error) {
       if (!(error instanceof ObjectStorageError)) throw error;
-      if (error.code === 'TIMEOUT') throw new CampaignImageError('TIMEOUT');
+      if (error.code === 'TIMEOUT') throw new ImageGenerationError('TIMEOUT');
       if (error.code === 'EMPTY' || error.code === 'TOO_LARGE')
-        throw new CampaignImageError('INVALID_OUTPUT');
-      throw new CampaignImageError('UNAVAILABLE');
+        throw new ImageGenerationError('INVALID_OUTPUT');
+      throw new ImageGenerationError('UNAVAILABLE');
     }
   }
 
@@ -144,7 +145,7 @@ export class MinioStorageProvider implements StorageProvider {
       row.height !== input.source.height ||
       row.bucket !== this.bucket
     )
-      throw new CampaignImageError('INVALID_OUTPUT');
+      throw new ImageGenerationError('INVALID_OUTPUT');
   }
 }
 
@@ -164,7 +165,7 @@ async function validateImage(bytes: Buffer, input: StoreCampaignAssetInput): Pro
     )
       throw new Error();
   } catch {
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   }
 }
 

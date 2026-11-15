@@ -13,7 +13,13 @@ import {
 } from '@/components/ui/table';
 import type { Product } from '../types/product.types';
 import { ProductActions } from './product-actions';
-export function ProductTable({ products }: { products: Product[] }) {
+export function ProductTable({
+  products,
+  onArchiveChanged,
+}: {
+  products: Product[];
+  onArchiveChanged?: () => void;
+}) {
   return (
     <div>
       <Table className="table-fixed text-sm [&_td]:px-3 [&_td]:py-3.5 [&_td:last-child]:px-2 [&_th]:px-3 md:[&_td]:px-5 md:[&_td:last-child]:px-2 md:[&_th]:px-5">
@@ -43,6 +49,11 @@ export function ProductTable({ products }: { products: Product[] }) {
                     >
                       {product.name}
                     </Link>
+                    {product.archivedAt && (
+                      <span className="mt-1 inline-block rounded border px-2 py-0.5 text-xs text-muted-foreground">
+                        Archivado
+                      </span>
+                    )}
                     <p className="mt-1 truncate text-[13px] text-muted-foreground">
                       {product.description}
                     </p>
@@ -72,7 +83,11 @@ export function ProductTable({ products }: { products: Product[] }) {
                 )}
               </TableCell>
               <TableCell>
-                <ProductActions productId={product.id} />
+                <ProductActions
+                  productId={product.id}
+                  archived={Boolean(product.archivedAt)}
+                  onArchiveChanged={onArchiveChanged}
+                />
               </TableCell>
             </TableRow>
           ))}

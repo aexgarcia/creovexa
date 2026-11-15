@@ -1,3 +1,4 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import { existsSync } from 'node:fs';
 import { InvalidFlyerDesignError } from '#app/domain/value-objects/flyer-design';
 import { chromium, errors, type Browser, type LaunchOptions } from 'playwright';
@@ -11,7 +12,7 @@ import type {
   RenderCampaignTemplateInput,
   TemplateRenderer,
 } from '../application/ports/template-renderer.js';
-import { CampaignImageError } from '#app/modules/campaigns/contract';
+
 import { campaignFlyerHtml } from './campaign-flyer-html.js';
 import { LocalImageArtifacts } from './local-image-artifacts.js';
 
@@ -22,7 +23,7 @@ async function dataImage(image: RenderRasterImage): Promise<string> {
     metadata.width !== image.width ||
     metadata.height !== image.height
   )
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   return `data:${metadata.contentType};base64,${Buffer.from(image.bytes).toString('base64')}`;
 }
 
@@ -38,7 +39,7 @@ export class PlaywrightTemplateRenderer implements TemplateRenderer {
 
   assertAvailable(): void {
     this.resources.assertAvailable();
-    if (!existsSync(chromium.executablePath())) throw new CampaignImageError('UNAVAILABLE');
+    if (!existsSync(chromium.executablePath())) throw new ImageGenerationError('UNAVAILABLE');
   }
 
   // El diseño HTML es cuadrado: COMPOSED solo compone 1080 × 1080.
@@ -48,10 +49,10 @@ export class PlaywrightTemplateRenderer implements TemplateRenderer {
 
   async render(input: RenderCampaignTemplateInput) {
     this.assertAvailable();
-    if (this.rendering) throw new CampaignImageError('BUSY');
+    if (this.rendering) throw new ImageGenerationError('BUSY');
     if (input.snapshot.template.width !== 1080 || input.snapshot.template.height !== 1080)
-      throw new CampaignImageError('UNSUPPORTED_DIMENSIONS');
-    if (input.copy.cta !== input.snapshot.cta) throw new CampaignImageError('INVALID_OUTPUT');
+      throw new ImageGenerationError('UNSUPPORTED_DIMENSIONS');
+    if (input.copy.cta !== input.snapshot.cta) throw new ImageGenerationError('INVALID_OUTPUT');
     this.rendering = true;
     let browser: Browser | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -59,7 +60,7 @@ export class PlaywrightTemplateRenderer implements TemplateRenderer {
     try {
       const resources = await this.resources.load(input);
       if ((input.snapshot.organization.logoAssetId !== null) !== (resources.logo !== null))
-        throw new CampaignImageError('LOGO_UNAVAILABLE');
+        throw new ImageGenerationError('LOGO_UNAVAILABLE');
       const mainImage = await dataImage(resources.mainImage);
       const logo = resources.logo ? await dataImage(resources.logo) : null;
       const html = campaignFlyerHtml(input, mainImage, logo, resources.design);
@@ -68,7 +69,7 @@ export class PlaywrightTemplateRenderer implements TemplateRenderer {
         void browser?.close().catch(() => {});
       }, this.config.timeoutMs);
       browser = await this.launch({ headless: true, timeout: this.config.timeoutMs });
-      if (expired) throw new CampaignImageError('TIMEOUT');
+      if (expired) throw new ImageGenerationError('TIMEOUT');
       const context = await browser.newContext({
         viewport: { width: 1080, height: 1080 },
         deviceScaleFactor: 1,
@@ -105,7 +106,7 @@ export class PlaywrightTemplateRenderer implements TemplateRenderer {
         }
         return true;
       });
-      if (!fits) throw new CampaignImageError('INVALID_OUTPUT');
+      if (!fits) throw new ImageGenerationError('INVALID_OUTPUT');
       const bytes = await page.screenshot({
         type: 'png',
         animations: 'disabled',
@@ -117,19 +118,20 @@ export class PlaywrightTemplateRenderer implements TemplateRenderer {
         metadata.width !== 1080 ||
         metadata.height !== 1080
       )
-        throw new CampaignImageError('INVALID_OUTPUT');
-      if (expired) throw new CampaignImageError('TIMEOUT');
+        throw new ImageGenerationError('INVALID_OUTPUT');
+      if (expired) throw new ImageGenerationError('TIMEOUT');
       const reference = await this.artifacts.write(input, bytes);
-      if (expired) throw new CampaignImageError('TIMEOUT');
+      if (expired) throw new ImageGenerationError('TIMEOUT');
       return {
         final: { ...metadata, reference },
         areaUnderLogo: null,
         logoPlacement: null,
       };
     } catch (error) {
-      if (expired || error instanceof errors.TimeoutError) throw new CampaignImageError('TIMEOUT');
-      if (error instanceof CampaignImageError) throw error;
-      throw new CampaignImageError(
+      if (expired || error instanceof errors.TimeoutError)
+        throw new ImageGenerationError('TIMEOUT');
+      if (error instanceof ImageGenerationError) throw error;
+      throw new ImageGenerationError(
         error instanceof InvalidImageFileError || error instanceof InvalidFlyerDesignError
           ? 'INVALID_OUTPUT'
           : 'UNAVAILABLE',

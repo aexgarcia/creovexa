@@ -1,3 +1,4 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import type { ImageMode, OpenAIImageConfig } from '#app/config/image-generation.config';
 import {
   inspectImageBytes,
@@ -5,7 +6,7 @@ import {
   InvalidImageFileError,
 } from '#app/infrastructure/image-files';
 import type { ImageGenerator, GenerateImageInput } from '../application/ports/image-generator.js';
-import { CampaignImageError } from '#app/modules/campaigns/contract';
+
 import { baseImageContext } from '../application/base-image-context.js';
 import { buildFlyerPrompt } from '../application/flyer-prompt.js';
 import { LocalImageArtifacts } from './local-image-artifacts.js';
@@ -25,7 +26,7 @@ interface ImageLogger {
 async function readResponse(response: Response, signal: AbortSignal): Promise<unknown> {
   if (!response.body || Number(response.headers.get('content-length') ?? 0) > MAX_RESPONSE) {
     void response.body?.cancel().catch(() => {});
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   }
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
@@ -41,13 +42,13 @@ async function readResponse(response: Response, signal: AbortSignal): Promise<un
       signal.throwIfAborted();
       if (chunk.done) break;
       size += chunk.value.byteLength;
-      if (size > MAX_RESPONSE) throw new CampaignImageError('INVALID_OUTPUT');
+      if (size > MAX_RESPONSE) throw new ImageGenerationError('INVALID_OUTPUT');
       chunks.push(chunk.value);
     }
     try {
       return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;
     } catch {
-      throw new CampaignImageError('INVALID_OUTPUT');
+      throw new ImageGenerationError('INVALID_OUTPUT');
     }
   } finally {
     signal.removeEventListener('abort', abort);
@@ -64,7 +65,7 @@ function imageOutput(value: unknown): Buffer {
     !Array.isArray(value.data) ||
     value.data.length !== 1
   )
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   const item: unknown = value.data[0];
   if (
     !item ||
@@ -76,10 +77,10 @@ function imageOutput(value: unknown): Buffer {
     item.b64_json.length % 4 !== 0 ||
     !/^[A-Za-z0-9+/]+={0,2}$/.test(item.b64_json)
   )
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   const bytes = Buffer.from(item.b64_json, 'base64');
   if (bytes.toString('base64') !== item.b64_json || bytes.byteLength > MAX_IMAGE_BYTES)
-    throw new CampaignImageError('INVALID_OUTPUT');
+    throw new ImageGenerationError('INVALID_OUTPUT');
   return bytes;
 }
 
@@ -93,7 +94,7 @@ export class OpenAIImageGenerator implements ImageGenerator {
     private readonly mode: ImageMode = 'COMPOSED',
   ) {}
   assertAvailable() {
-    if (!this.config.apiKey || !this.config.model) throw new CampaignImageError('UNAVAILABLE');
+    if (!this.config.apiKey || !this.config.model) throw new ImageGenerationError('UNAVAILABLE');
   }
   async generate(input: GenerateImageInput) {
     this.assertAvailable();
@@ -103,7 +104,7 @@ export class OpenAIImageGenerator implements ImageGenerator {
         !full &&
         (input.snapshot.template.width !== 1080 || input.snapshot.template.height !== 1080)
       )
-        throw new CampaignImageError('UNSUPPORTED_DIMENSIONS');
+        throw new ImageGenerationError('UNSUPPORTED_DIMENSIONS');
       const size = full ? input.brief.output.generationSize : '1024x1024';
       const [width, height] = size.split('x').map(Number);
       const reference = await this.artifacts.read({ ...input, source: input.referenceImage });
@@ -113,7 +114,7 @@ export class OpenAIImageGenerator implements ImageGenerator {
         actual.width !== input.referenceImage.width ||
         actual.height !== input.referenceImage.height
       )
-        throw new CampaignImageError('INVALID_OUTPUT');
+        throw new ImageGenerationError('INVALID_OUTPUT');
       const body = new FormData();
       body.append('model', this.config.model);
       body.append(
@@ -126,7 +127,7 @@ export class OpenAIImageGenerator implements ImageGenerator {
         const bytes = await this.artifacts.read({ ...input, source: style });
         const metadata = await inspectImageBytes(bytes);
         if (metadata.contentType !== style.contentType)
-          throw new CampaignImageError('INVALID_OUTPUT');
+          throw new ImageGenerationError('INVALID_OUTPUT');
         body.append(
           'image[]',
           new Blob([new Uint8Array(bytes)], { type: metadata.contentType }),
@@ -154,7 +155,7 @@ export class OpenAIImageGenerator implements ImageGenerator {
       });
       if (!response.ok) {
         void response.body?.cancel().catch(() => {});
-        throw new CampaignImageError(response.status === 429 ? 'RATE_LIMITED' : 'UNAVAILABLE');
+        throw new ImageGenerationError(response.status === 429 ? 'RATE_LIMITED' : 'UNAVAILABLE');
       }
       const bytes = imageOutput(await readResponse(response, signal));
       const metadata = await inspectImageBytes(bytes);
@@ -163,7 +164,7 @@ export class OpenAIImageGenerator implements ImageGenerator {
         metadata.width !== width ||
         metadata.height !== height
       )
-        throw new CampaignImageError('INVALID_OUTPUT');
+        throw new ImageGenerationError('INVALID_OUTPUT');
       signal.throwIfAborted();
       const artifact = { ...metadata, reference: await this.artifacts.write(input, bytes) };
       this.logger.log({
@@ -175,9 +176,9 @@ export class OpenAIImageGenerator implements ImageGenerator {
       return artifact;
     } catch (error) {
       const safe =
-        error instanceof CampaignImageError
+        error instanceof ImageGenerationError
           ? error
-          : new CampaignImageError(
+          : new ImageGenerationError(
               error instanceof InvalidImageFileError
                 ? 'INVALID_OUTPUT'
                 : error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name)

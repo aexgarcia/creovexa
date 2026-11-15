@@ -38,6 +38,7 @@ export class ProductMapper {
         photoType: image.photoType && PhotoType[image.photoType],
         hasTransparency: image.hasTransparency,
       },
+      row.archivedAt,
     );
   }
 
@@ -57,6 +58,7 @@ export class ProductMapper {
       imageAssetIds: [...product.imageAssetIds],
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
+      archivedAt: product.archivedAt,
     };
   }
 }

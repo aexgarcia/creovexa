@@ -1,7 +1,8 @@
+import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import sharp, { type OverlayOptions } from 'sharp';
 import { FORMAT_SIZES } from '#app/domain/value-objects/flyer-design';
 import { inspectImageBytes } from '#app/infrastructure/image-files';
-import { CampaignImageError } from '#app/modules/campaigns/contract';
+
 import type { FlyerBrief } from '../application/flyer-brief.js';
 import { logoArea, type LogoArea, type Rect } from '../application/logo-area.js';
 import type {
@@ -171,10 +172,10 @@ export class LogoOverlayComposer implements TemplateRenderer {
       height !== input.snapshot.template.height ||
       !this.supports({ width, height })
     )
-      throw new CampaignImageError('UNSUPPORTED_DIMENSIONS');
+      throw new ImageGenerationError('UNSUPPORTED_DIMENSIONS');
     // Sin logo en el brief, la IA no reservó esquina: pegarlo taparía el diseño.
     if (Boolean(input.logo) !== Boolean(input.brief.logo))
-      throw new CampaignImageError('INVALID_OUTPUT');
+      throw new ImageGenerationError('INVALID_OUTPUT');
     try {
       const base = await this.artifacts.read({ ...input, source: input.baseImage });
       // La IA genera en su propio tamaño (1024 × 1280…); el flyer final es el del formato.
@@ -202,8 +203,8 @@ export class LogoOverlayComposer implements TemplateRenderer {
       }
       return { final: await this.artifact(input, final), areaUnderLogo, logoPlacement };
     } catch (error) {
-      if (error instanceof CampaignImageError) throw error;
-      throw new CampaignImageError('INVALID_OUTPUT');
+      if (error instanceof ImageGenerationError) throw error;
+      throw new ImageGenerationError('INVALID_OUTPUT');
     }
   }
 

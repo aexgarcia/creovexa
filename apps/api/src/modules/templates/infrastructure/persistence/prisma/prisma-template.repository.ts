@@ -1,3 +1,4 @@
+import { TemplateNotFoundError } from '../../../domain/errors/template.errors.js';
 import { TemplateRevisionConflictError } from '../../../domain/errors/template.errors.js';
 import type { EntityId } from '#app/domain/entity-id';
 import { pagination, type Page, type Pagination } from '#app/domain/pagination';
@@ -12,6 +13,15 @@ import { TemplateMapper } from './template.mapper.js';
 export class PrismaTemplateRepository implements TemplateRepository {
   constructor(private readonly client: PrismaClient) {}
 
+  async setArchivedAt(organizationId: EntityId, id: EntityId, at: Date | null): Promise<void> {
+    const changed = await this.client.template.updateMany({
+      where: { organizationId, id, archivedAt: at === null ? { not: null } : null },
+      data: { archivedAt: at },
+    });
+    if (!changed.count && !(await this.findById(organizationId, id)))
+      throw new TemplateNotFoundError();
+  }
+
   findById(organizationId: EntityId, templateId: EntityId): Promise<Template | null> {
     return this.client.$transaction(
       async (tx) => {
@@ -25,11 +35,18 @@ export class PrismaTemplateRepository implements TemplateRepository {
     );
   }
 
-  list(organizationId: EntityId, input: Pagination): Promise<Page<Template>> {
+  list(
+    organizationId: EntityId,
+    input: Pagination,
+    status: 'active' | 'archived' | 'all' = 'active',
+  ): Promise<Page<Template>> {
     const { page, limit } = pagination(input);
     return this.client.$transaction(
       async (tx) => {
-        const where = { organizationId };
+        const where = {
+          organizationId,
+          ...(status === 'all' ? {} : { archivedAt: status === 'archived' ? { not: null } : null }),
+        };
         const rows = await tx.template.findMany({
           where,
           include: { currentRevision: true },
