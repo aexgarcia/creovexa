@@ -56,3 +56,8 @@ tmp/
 .tmp/
 # Configuración local de asistentes y editores
 .claude/settings.local.json
+
+# --- Solo en local ---
+# Documentación de diseño, prototipo y pruebas de calidad con la API de OpenAI
+SDD/
+apps/api/evaluation/
