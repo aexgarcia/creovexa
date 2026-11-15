@@ -10,8 +10,8 @@ Catálogo de productos y servicios de una organización: datos comerciales, prec
 
 | Tabla | Contenido |
 | --- | --- |
-| `products` | `kind` (`PRODUCT` o `SERVICE`), `name`, `description`, precio (`amountMinor` + `currency`), `imageAssetIds` (cero o un elemento) |
-| `product_image_assets` | Un registro por imagen subida; inmutable |
+| `products` | `kind` (`PRODUCT` o `SERVICE`), `name`, `description`, precio (`amountMinor` + `currency`), `imageAssetIds` (cero o un elemento). Para el flyer: `shortName` (hasta 40 caracteres; sin él se usa `name`), `productBrand` (marca de un tercero), `keyAttributes` (hasta 5, de hasta 60 caracteres, sin repetir) y `unit` |
+| `product_image_assets` | Un registro por imagen subida; inmutable. Incluye `photoType` (`CUTOUT`, `STUDIO`, `SCENE`, `PLACE` o `PERSON`), que indica quien la sube, y `hasTransparency`, que deriva el sistema. Ambos son nulos en imágenes anteriores a este cambio |
 
 ## API HTTP
 
@@ -20,8 +20,8 @@ Catálogo de productos y servicios de una organización: datos comerciales, prec
 | `POST /products` | Crear producto o servicio | `201` |
 | `GET /products` | Listar, paginado (`page`, `limit`) | `200` |
 | `GET /products/:id` | Consultar | `200` |
-| `PATCH /products/:id` | Editar datos comerciales | `200` |
-| `POST /products/:id/image` | Subir o reemplazar la única imagen (multipart) | `201` |
+| `PATCH /products/:id` | Editar datos comerciales y del flyer; `null` borra `shortName`, `productBrand` o `unit` | `200` |
+| `POST /products/:id/image` | Subir o reemplazar la única imagen (multipart: `image` y `photoType`, obligatorio) | `201` |
 | `GET /products/:id/images/:assetId` | Leer los bytes de una imagen | `200` imagen |
 
 ### Códigos de error propios
@@ -30,7 +30,7 @@ Catálogo de productos y servicios de una organización: datos comerciales, prec
 | --- | --- | --- |
 | `PRODUCT_NOT_FOUND` | 404 | Inexistente o de otra organización |
 | `ORGANIZATION_NOT_FOUND` | 404 | La organización activa no existe |
-| `INVALID_INPUT` | 400 | Datos, importe o moneda inválidos |
+| `INVALID_INPUT` | 400 | Datos, importe, moneda o tipo de foto inválidos |
 | `PRODUCT_IMAGE_INVALID_IMAGE` | 400 | El archivo no es PNG, JPEG o WebP válido |
 | `PRODUCT_IMAGE_TOO_LARGE` | 413 | Supera el tamaño permitido |
 | `PRODUCT_IMAGE_CONFLICT` | 409 | Subida concurrente |
@@ -48,7 +48,7 @@ Formato de respuestas y errores: [ADR-0004](../../adr/0004-contrato-http-y-error
 | Contrato | Consumidor | Uso |
 | --- | --- | --- |
 | Port `ProductImages` (`application/ports/product-images.ts`) | `campaigns` | Leer la foto de referencia para la generación visual |
-| Datos del producto para el snapshot | `campaigns`, mediante su port `ProductLookup` | Nombre, descripción, precio e imagen al solicitar una generación |
+| Datos del producto para el snapshot | `campaigns`, mediante su port `ProductLookup` | Nombre, descripción, precio e imagen al solicitar una generación. Los datos para el flyer y el tipo de foto todavía no llegan al snapshot ([ADR-0009](../../adr/0009-estrategia-de-generacion-del-flyer.md)) |
 
 `campaigns` importa además `ProductImageError` desde este módulo; es el único import de una clase concreta entre módulos y debería sustituirse por un resultado del port.
 

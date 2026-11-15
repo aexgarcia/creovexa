@@ -14,6 +14,14 @@ enum ProductKind {
   SERVICE
 }
 
+enum PhotoType {
+  CUTOUT
+  STUDIO
+  SCENE
+  PLACE
+  PERSON
+}
+
 enum Currency {
   PEN
   USD
@@ -51,6 +59,10 @@ model Product {
   description    String
   amountMinor    BigInt              @map("amount_minor")
   currency       Currency
+  shortName      String?             @map("short_name")
+  productBrand   String?             @map("product_brand")
+  keyAttributes  String[]            @default([]) @map("key_attributes")
+  unit           String?
   imageAssetIds  String[]            @default([]) @map("image_asset_ids") @db.Uuid
   createdAt      DateTime            @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime            @map("updated_at") @db.Timestamptz(3)
@@ -356,18 +368,20 @@ model CampaignAsset {
 }
 
 model ProductImageAsset {
-  id             String   @id @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
-  productId      String   @map("product_id") @db.Uuid
-  bucket         String
-  objectKey      String   @unique @map("object_key")
-  sha256         String
-  byteLength     Int      @map("byte_length")
-  contentType    String   @map("content_type")
-  width          Int
-  height         Int
-  createdAt      DateTime @map("created_at") @db.Timestamptz(3)
-  product        Product  @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
+  id              String     @id @db.Uuid
+  organizationId  String     @map("organization_id") @db.Uuid
+  productId       String     @map("product_id") @db.Uuid
+  bucket          String
+  objectKey       String     @unique @map("object_key")
+  sha256          String
+  byteLength      Int        @map("byte_length")
+  contentType     String     @map("content_type")
+  width           Int
+  height          Int
+  photoType       PhotoType? @map("photo_type")
+  hasTransparency Boolean?   @map("has_transparency")
+  createdAt       DateTime   @map("created_at") @db.Timestamptz(3)
+  product         Product    @relation(fields: [organizationId, productId], references: [organizationId, id], onDelete: Restrict, onUpdate: Restrict)
 
   @@index([organizationId, productId, id])
   @@map("product_image_assets")

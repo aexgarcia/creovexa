@@ -18,6 +18,9 @@ import {
 } from 'class-validator';
 import { Currency } from '#app/domain/value-objects/money';
 import { ProductKind } from '../domain/product-kind.js';
+import { PhotoType } from '../domain/photo-type.js';
+
+const nullableText = (_object: unknown, value: unknown) => value !== undefined && value !== null;
 
 export class PriceRequest {
   @ApiProperty({
@@ -55,6 +58,47 @@ export class CreateProductRequest {
   @Type(() => PriceRequest)
   regularPrice!: PriceRequest;
   @ApiPropertyOptional({
+    type: String,
+    maxLength: 40,
+    nullable: true,
+    description: 'Nombre para el flyer. Sin él se usa el nombre completo.',
+  })
+  @ValidateIf(nullableText)
+  @IsString()
+  @MaxLength(40)
+  shortName?: string | null;
+  @ApiPropertyOptional({
+    type: String,
+    maxLength: 80,
+    nullable: true,
+    description: 'Marca de un tercero que vende la tienda.',
+  })
+  @ValidateIf(nullableText)
+  @IsString()
+  @MaxLength(80)
+  productBrand?: string | null;
+  @ApiPropertyOptional({
+    type: [String],
+    maxItems: 5,
+    description: 'Hasta 5 características, por prioridad; la plantilla decide cuántas se muestran.',
+  })
+  @ValidateIf((_object, value: unknown) => value !== undefined)
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsString({ each: true })
+  @MaxLength(60, { each: true })
+  keyAttributes?: string[];
+  @ApiPropertyOptional({
+    type: String,
+    maxLength: 30,
+    nullable: true,
+    example: 'por kg',
+  })
+  @ValidateIf(nullableText)
+  @IsString()
+  @MaxLength(30)
+  unit?: string | null;
+  @ApiPropertyOptional({
     type: [String],
     maxItems: 1,
     uniqueItems: true,
@@ -66,6 +110,11 @@ export class CreateProductRequest {
   @ArrayUnique()
   @IsUUID('all', { each: true })
   imageAssetIds?: string[];
+}
+export class UploadProductImageRequest {
+  @ApiProperty({ enum: PhotoType, enumName: 'PhotoType', description: 'Qué muestra la foto.' })
+  @IsEnum(PhotoType)
+  photoType!: PhotoType;
 }
 export class UpdateProductRequest extends PartialType(
   OmitType(CreateProductRequest, ['kind'] as const),

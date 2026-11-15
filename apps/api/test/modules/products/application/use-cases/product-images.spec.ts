@@ -42,6 +42,7 @@ describe('Product image use cases', () => {
       organizationId: org,
       productId: id,
       bytes: new Uint8Array([1]),
+      photoType: 'CUTOUT',
     });
     expect(result.imageAssetIds).toEqual([asset]);
     expect(f.images.save).toHaveBeenCalledWith(
@@ -49,16 +50,37 @@ describe('Product image use cases', () => {
         organizationId: org,
         productId: id,
         assetId: asset,
+        photoType: 'CUTOUT',
         expectedUpdatedAt: at,
       }),
     );
     expect(new Date(result.updatedAt).getTime()).toBe(at.getTime() + 1);
   });
+  it.each([undefined, '', 'ESTUDIO'])(
+    'requires a valid photo type (%j) before storing',
+    async (photoType) => {
+      const f = fixture();
+      await expect(
+        f.save.execute({
+          organizationId: org,
+          productId: id,
+          bytes: new Uint8Array([1]),
+          photoType: photoType as string,
+        }),
+      ).rejects.toMatchObject({ name: 'InvalidProductError', field: 'photoType' });
+      expect(f.images.save).not.toHaveBeenCalled();
+    },
+  );
   it('checks the owner before contacting storage', async () => {
     const f = fixture();
     f.repo.findById.mockResolvedValue(null);
     await expect(
-      f.save.execute({ organizationId: org, productId: id, bytes: new Uint8Array([1]) }),
+      f.save.execute({
+        organizationId: org,
+        productId: id,
+        bytes: new Uint8Array([1]),
+        photoType: 'STUDIO',
+      }),
     ).rejects.toMatchObject({ name: 'ProductNotFoundError' });
     expect(f.images.save).not.toHaveBeenCalled();
   });
@@ -66,7 +88,7 @@ describe('Product image use cases', () => {
     const f = fixture();
     for (const bytes of [new Uint8Array(), new Uint8Array(10 * 1024 * 1024 + 1)])
       await expect(
-        f.save.execute({ organizationId: org, productId: id, bytes }),
+        f.save.execute({ organizationId: org, productId: id, bytes, photoType: 'STUDIO' }),
       ).rejects.toMatchObject({ code: bytes.length ? 'TOO_LARGE' : 'INVALID_IMAGE' });
     expect(f.images.save).not.toHaveBeenCalled();
   });
@@ -82,7 +104,12 @@ describe('Product image use cases', () => {
       ),
     );
     await expect(
-      f.save.execute({ organizationId: org, productId: id, bytes: new Uint8Array([1]) }),
+      f.save.execute({
+        organizationId: org,
+        productId: id,
+        bytes: new Uint8Array([1]),
+        photoType: 'STUDIO',
+      }),
     ).rejects.toMatchObject({ name: 'ProductNotFoundError' });
     expect(f.images.save).not.toHaveBeenCalled();
   });
@@ -90,7 +117,12 @@ describe('Product image use cases', () => {
     const f = fixture();
     f.images.save.mockRejectedValue(new Error('Unavailable'));
     await expect(
-      f.save.execute({ organizationId: org, productId: id, bytes: new Uint8Array([1]) }),
+      f.save.execute({
+        organizationId: org,
+        productId: id,
+        bytes: new Uint8Array([1]),
+        photoType: 'STUDIO',
+      }),
     ).rejects.toThrow('Unavailable');
     expect((await f.repo.findById(org, id))?.imageAssetIds).toEqual([]);
   });

@@ -36,7 +36,12 @@ import { CreateProduct } from '../application/use-cases/create-product.js';
 import { UpdateProduct } from '../application/use-cases/update-product.js';
 import { GetProduct } from '../application/use-cases/get-product.js';
 import { ListProducts } from '../application/use-cases/list-products.js';
-import { CreateProductRequest, UpdateProductRequest } from './product.requests.js';
+import {
+  CreateProductRequest,
+  UpdateProductRequest,
+  UploadProductImageRequest,
+} from './product.requests.js';
+import { PhotoType } from '../domain/photo-type.js';
 import { ProductEnvelope, ProductPageResponse, productResponse } from './product.responses.js';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
@@ -45,7 +50,7 @@ import { SaveProductImage } from '../application/use-cases/save-product-image.js
 import { GetProductImage } from '../application/use-cases/get-product-image.js';
 import { MAX_IMAGE_BYTES } from '#app/infrastructure/image-files';
 const productImageUploadOptions = {
-  limits: { fileSize: MAX_IMAGE_BYTES, files: 1, fields: 0, parts: 1 },
+  limits: { fileSize: MAX_IMAGE_BYTES, files: 1, fields: 1, parts: 2 },
 } satisfies Pick<Options, 'limits'>;
 
 @ApiTags('Productos')
@@ -67,8 +72,11 @@ export class ProductsController {
   @ApiBody({
     schema: {
       type: 'object',
-      required: ['image'],
-      properties: { image: { type: 'string', format: 'binary' } },
+      required: ['image', 'photoType'],
+      properties: {
+        image: { type: 'string', format: 'binary' },
+        photoType: { type: 'string', enum: Object.values(PhotoType) },
+      },
     },
   })
   @ApiCreatedResponse({ type: ProductEnvelope })
@@ -76,12 +84,18 @@ export class ProductsController {
   async uploadImage(
     @OrganizationId() organizationId: string,
     @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(validateRequest(UploadProductImageRequest)) body: UploadProductImageRequest,
     @UploadedFile() file?: Express.Multer.File,
   ): Promise<ProductEnvelope> {
     if (!file) throw new BadRequestException();
     return {
       data: productResponse(
-        await this.saveImage.execute({ organizationId, productId: id, bytes: file.buffer }),
+        await this.saveImage.execute({
+          organizationId,
+          productId: id,
+          bytes: file.buffer,
+          photoType: body.photoType,
+        }),
       ),
     };
   }

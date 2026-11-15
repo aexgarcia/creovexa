@@ -1,5 +1,10 @@
 import { apiRequest, apiUrl, type ApiPage } from '@/lib/api-client';
-import type { CreateProductInput, Product, UpdateProductInput } from '../types/product.types';
+import type {
+  CreateProductInput,
+  PhotoType,
+  Product,
+  UpdateProductInput,
+} from '../types/product.types';
 class ProductService {
   async findAll(page = 1, signal?: AbortSignal): Promise<ApiPage<Product>> {
     const result = await apiRequest<ApiPage<Product>>('/products?page=' + page + '&limit=20', {
@@ -32,8 +37,9 @@ class ProductService {
       ).data,
     );
   }
-  async uploadImage(id: string, file: File): Promise<Product> {
+  async uploadImage(id: string, file: File, photoType: PhotoType): Promise<Product> {
     const body = new FormData();
+    body.append('photoType', photoType);
     body.append('image', file);
     const result = await apiRequest<{ data: Product }>(
       '/products/' + encodeURIComponent(id) + '/image',

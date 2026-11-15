@@ -48,3 +48,15 @@ export async function inspectImageBytes(bytes: Uint8Array): Promise<ImageFileMet
     throw new InvalidImageFileError();
   }
 }
+
+/** Si algún píxel es transparente o translúcido; una imagen sin canal alfa no lo es. */
+export async function imageHasTransparency(bytes: Uint8Array): Promise<boolean> {
+  try {
+    const image = sharp(bytes, { limitInputPixels: 16_000_000 }).timeout({ seconds: 10 });
+    if (!(await image.metadata()).hasAlpha) return false;
+    const { channels } = await image.stats();
+    return (channels[3]?.min ?? 255) < 255;
+  } catch {
+    throw new InvalidImageFileError();
+  }
+}

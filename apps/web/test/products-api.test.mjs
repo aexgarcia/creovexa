@@ -33,6 +33,7 @@ test('product service uploads one image and resolves the saved image URL', async
     assert.equal(options.headers.has('Content-Type'), false);
     assert.equal(options.headers.get('Accept'), 'application/json');
     assert.equal(body.getAll('image').length, 1);
+    assert.equal(body.get('photoType'), 'STUDIO');
     assert.equal(body.get('image').name, 'photo.png');
     assert.equal(body.get('image').type, 'image/png');
     assert.deepEqual(
@@ -50,7 +51,7 @@ test('product service uploads one image and resolves the saved image URL', async
       { status: 201 },
     );
   };
-  assert.deepEqual(await productService.uploadImage('product-id', file), {
+  assert.deepEqual(await productService.uploadImage('product-id', file, 'STUDIO'), {
     id: 'product-id',
     imageAssetIds: ['saved-id'],
     imageUrl:

@@ -5,6 +5,7 @@ import {
   prepareUploadedImage,
   InvalidImageFileError,
   MAX_IMAGE_BYTES,
+  imageHasTransparency,
 } from '#app/infrastructure/image-files';
 import type { ObjectStorage } from '#app/modules/assets/application/ports/object-storage';
 import type {
@@ -13,6 +14,7 @@ import type {
   SavedProductImage,
 } from '../application/ports/product-images.js';
 import { ProductImageError } from '../application/errors/product-image.error.js';
+import type { PhotoType } from '../domain/photo-type.js';
 
 export class MinioProductImages implements ProductImages {
   constructor(
@@ -25,13 +27,19 @@ export class MinioProductImages implements ProductImages {
   }
 
   async save(
-    input: ProductImageSelection & { bytes: Uint8Array; at: Date; expectedUpdatedAt: Date },
+    input: ProductImageSelection & {
+      bytes: Uint8Array;
+      photoType: PhotoType;
+      at: Date;
+      expectedUpdatedAt: Date;
+    },
   ): Promise<void> {
     const bucket = this.storage.bucket;
     if (!bucket) throw new ProductImageError('UNAVAILABLE');
     try {
       const bytes = await prepareUploadedImage(input.bytes);
       const metadata = await inspectImageBytes(bytes);
+      const hasTransparency = await imageHasTransparency(bytes);
       const objectKey = `products/${input.organizationId}/${input.productId}/${input.assetId}`;
       const sha256 = digest(bytes);
       const created = await this.storage.putIfAbsent({
@@ -62,6 +70,8 @@ export class MinioProductImages implements ProductImages {
             sha256,
             byteLength: bytes.byteLength,
             ...metadata,
+            photoType: input.photoType,
+            hasTransparency,
             createdAt: input.at,
           },
         });

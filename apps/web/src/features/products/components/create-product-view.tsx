@@ -11,7 +11,7 @@ import { useUploadProductImage } from '../hooks/use-upload-product-image';
 import { PageHeader } from '@/components/layout/page-header';
 
 import { useCreateProduct } from '../hooks/use-create-product';
-import { productInput, type ProductFormValues } from '../schemas/product.schema';
+import { productChanges, productInput, type ProductFormValues } from '../schemas/product.schema';
 
 import { ProductForm } from './product-form';
 
@@ -26,15 +26,12 @@ export function CreateProductView() {
     try {
       const input = productInput(values);
       const result = created
-        ? await productService.update(created.id, {
-            name: input.name,
-            description: input.description,
-            regularPrice: input.regularPrice,
-          })
+        ? await productService.update(created.id, productChanges(values))
         : await createProduct.mutateAsync(input);
       setCreated(result);
       productSaved = true;
-      if (image) await upload.mutateAsync({ id: result.id, file: image });
+      if (image && values.photoType)
+        await upload.mutateAsync({ id: result.id, file: image, photoType: values.photoType });
 
       toast.success('Producto creado correctamente');
 

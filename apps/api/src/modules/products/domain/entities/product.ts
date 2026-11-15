@@ -3,11 +3,20 @@ import { timestamp } from '#app/domain/timestamp';
 import { Money } from '#app/domain/value-objects/money';
 import { InvalidProductError } from '../errors/product.errors.js';
 import { ProductKind } from '../product-kind.js';
+import { PhotoType, type ProductImageTraits } from '../photo-type.js';
 
 export interface ProductDetails {
   name: string;
   description?: string;
   regularPrice: Money;
+  // El nombre que va al flyer; el nombre completo queda para el catálogo y el copy.
+  shortName?: string | null;
+  // Marca de un tercero que vende la tienda (BAO Café en Café Andino).
+  productBrand?: string | null;
+  // Características que puede mostrar el flyer, por prioridad, escritas por el usuario.
+  keyAttributes?: readonly string[];
+  // Cómo se vende: "por kg", "por sesión", "c/u".
+  unit?: string | null;
   imageAssetIds?: readonly string[];
 }
 
@@ -20,9 +29,40 @@ interface ProductState {
   name: string;
   description: string;
   regularPrice: Money;
+  shortName: string | null;
+  productBrand: string | null;
+  keyAttributes: readonly string[];
+  unit: string | null;
   imageAssetIds: readonly EntityId[];
+  imageTraits: ProductImageTraits | null;
   createdAt: number;
   updatedAt: number;
+}
+
+export const SHORT_NAME_MAX_LENGTH = 40;
+export const KEY_ATTRIBUTES_MAX = 5;
+const KEY_ATTRIBUTE_MAX_LENGTH = 60;
+const PRODUCT_BRAND_MAX_LENGTH = 80;
+const UNIT_MAX_LENGTH = 30;
+
+function optionalText(value: unknown, field: string, max: number): string | null {
+  if (value == null) return null;
+  if (typeof value !== 'string' || value.trim().length > max) throw new InvalidProductError(field);
+  return value.trim() || null;
+}
+
+function keyAttributes(value: unknown): readonly string[] {
+  if (value === undefined) return Object.freeze([]);
+  if (!Array.isArray(value) || value.length > KEY_ATTRIBUTES_MAX)
+    throw new InvalidProductError('keyAttributes');
+  const list = value.map((item) => {
+    if (typeof item !== 'string' || !item.trim() || item.trim().length > KEY_ATTRIBUTE_MAX_LENGTH)
+      throw new InvalidProductError('keyAttributes');
+    return item.trim();
+  });
+  if (new Set(list.map((item) => item.toLocaleLowerCase('es'))).size !== list.length)
+    throw new InvalidProductError('keyAttributes');
+  return Object.freeze(list);
 }
 
 function details(input: ProductDetails) {
@@ -44,8 +84,21 @@ function details(input: ProductDetails) {
     name: input.name.trim(),
     description: input.description?.trim() ?? '',
     regularPrice: input.regularPrice,
+    shortName: optionalText(input.shortName, 'shortName', SHORT_NAME_MAX_LENGTH),
+    productBrand: optionalText(input.productBrand, 'productBrand', PRODUCT_BRAND_MAX_LENGTH),
+    keyAttributes: keyAttributes(input.keyAttributes),
+    unit: optionalText(input.unit, 'unit', UNIT_MAX_LENGTH),
     imageAssetIds: Object.freeze(normalizedIds),
   };
+}
+
+function traits(input: ProductImageTraits | null): ProductImageTraits | null {
+  if (!input) return null;
+  if (input.photoType !== null && !Object.values(PhotoType).includes(input.photoType))
+    throw new InvalidProductError('photoType');
+  if (input.hasTransparency !== null && typeof input.hasTransparency !== 'boolean')
+    throw new InvalidProductError('hasTransparency');
+  return Object.freeze({ photoType: input.photoType, hasTransparency: input.hasTransparency });
 }
 
 export class Product {
@@ -72,14 +125,17 @@ export class Product {
     input: ProductDetails,
     created: Date,
     updated: Date,
+    imageTraits: ProductImageTraits | null = null,
   ): Product {
     if (!Object.values(ProductKind).includes(kind)) throw new InvalidProductError('kind');
     const createdAt = timestamp(created);
+    const restored = details(input);
     return new Product({
       id: entityId(id),
       organizationId: entityId(organizationId, 'organizationId'),
       kind,
-      ...details(input),
+      ...restored,
+      imageTraits: restored.imageAssetIds.length ? traits(imageTraits) : null,
       createdAt,
       updatedAt: timestamp(updated, createdAt),
     });
@@ -90,12 +146,20 @@ export class Product {
       name: changes.name === undefined ? this.name : changes.name,
       description: changes.description === undefined ? this.description : changes.description,
       regularPrice: changes.regularPrice === undefined ? this.regularPrice : changes.regularPrice,
+      shortName: changes.shortName === undefined ? this.shortName : changes.shortName,
+      productBrand: changes.productBrand === undefined ? this.productBrand : changes.productBrand,
+      keyAttributes:
+        changes.keyAttributes === undefined ? this.keyAttributes : changes.keyAttributes,
+      unit: changes.unit === undefined ? this.unit : changes.unit,
       imageAssetIds:
         changes.imageAssetIds === undefined ? this.imageAssetIds : changes.imageAssetIds,
     });
+    const sameImage = updatedDetails.imageAssetIds[0] === this.imageAssetIds[0];
     return new Product({
       ...this.#state,
       ...updatedDetails,
+      // Los datos de la imagen son de la imagen actual; con otra, o sin imagen, dejan de valer.
+      imageTraits: sameImage ? this.imageTraits : null,
       updatedAt: timestamp(at, this.#state.updatedAt),
     });
   }
@@ -118,8 +182,27 @@ export class Product {
   get regularPrice(): Money {
     return this.#state.regularPrice;
   }
+  get shortName(): string | null {
+    return this.#state.shortName;
+  }
+  /** El nombre que va al flyer: el corto si existe; si no, el completo. */
+  get flyerName(): string {
+    return this.#state.shortName ?? this.#state.name;
+  }
+  get productBrand(): string | null {
+    return this.#state.productBrand;
+  }
+  get keyAttributes(): readonly string[] {
+    return this.#state.keyAttributes;
+  }
+  get unit(): string | null {
+    return this.#state.unit;
+  }
   get imageAssetIds(): readonly EntityId[] {
     return this.#state.imageAssetIds;
+  }
+  get imageTraits(): ProductImageTraits | null {
+    return this.#state.imageTraits;
   }
   get createdAt(): Date {
     return new Date(this.#state.createdAt);

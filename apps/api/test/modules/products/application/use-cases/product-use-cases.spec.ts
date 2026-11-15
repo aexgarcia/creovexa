@@ -61,7 +61,12 @@ describe('Product use cases', () => {
       name: 'Producto',
       description: 'Descripción',
       regularPrice: { amountMinor: 1990, currency: Currency.PEN },
+      shortName: null,
+      productBrand: null,
+      keyAttributes: [],
+      unit: null,
       imageAssetIds: [ASSET_ID],
+      image: null,
       createdAt: CREATED_AT,
       updatedAt: CREATED_AT,
     });

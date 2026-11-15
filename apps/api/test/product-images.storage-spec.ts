@@ -26,6 +26,7 @@ import {
 import { CreateCampaign } from '#app/modules/campaigns/application/use-cases/create-campaign';
 import { RequestCampaignGeneration } from '#app/modules/campaigns/application/use-cases/request-campaign-generation';
 import { entityId } from '#app/domain/entity-id';
+import { PhotoType } from '#app/modules/products/domain/photo-type';
 import { ImagePersistenceContext, uuid } from './support/image-persistence-context.js';
 
 describe('One product image (HTTP, PostgreSQL and MinIO)', () => {
@@ -88,9 +89,10 @@ describe('One product image (HTTP, PostgreSQL and MinIO)', () => {
     catalog.organizationId = f.selection.organizationId;
     return { ...f, productId: f.campaign.productId };
   }
-  function upload(productId: string, bytes = png) {
+  function upload(productId: string, bytes = png, photoType = 'CUTOUT') {
     return request(app.getHttpServer())
       .post(`/products/${productId}/image`)
+      .field('photoType', photoType)
       .attach('image', bytes, { filename: 'photo.png', contentType: 'image/png' });
   }
 
@@ -98,6 +100,21 @@ describe('One product image (HTTP, PostgreSQL and MinIO)', () => {
     const f = await fixture();
     const response = await upload(f.productId).expect(201);
     expect(response.body.data.imageAssetIds).toHaveLength(1);
+    expect(response.body.data.image).toEqual({ photoType: 'CUTOUT', hasTransparency: false });
+    const cutout = await sharp({
+      create: { width: 64, height: 64, channels: 4, background: { r: 200, g: 0, b: 0, alpha: 0 } },
+    })
+      .composite([
+        {
+          input: Buffer.from(
+            '<svg width="64" height="64"><circle cx="32" cy="32" r="20" fill="#c00"/></svg>',
+          ),
+        },
+      ])
+      .png()
+      .toBuffer();
+    const transparent = await upload(f.productId, cutout).expect(201);
+    expect(transparent.body.data.image).toEqual({ photoType: 'CUTOUT', hasTransparency: true });
     const url = response.body.data.imageUrl;
     const read = await request(app.getHttpServer()).get(url).expect(200);
     expect(read.body).toEqual(png);
@@ -124,9 +141,16 @@ describe('One product image (HTTP, PostgreSQL and MinIO)', () => {
     await upload(f.productId, Buffer.alloc(10 * 1024 * 1024 + 1)).expect(413);
     await request(app.getHttpServer())
       .post(`/products/${f.productId}/image`)
+      .field('photoType', 'CUTOUT')
       .attach('image', png, 'one.png')
       .attach('image', png, 'two.png')
       .expect(400);
+    // Sin tipo de foto, o con uno que no existe, no se guarda.
+    await request(app.getHttpServer())
+      .post(`/products/${f.productId}/image`)
+      .attach('image', png, 'photo.png')
+      .expect(400);
+    await upload(f.productId, png, 'ESTUDIO').expect(400);
     expect(
       (await request(app.getHttpServer()).get(`/products/${f.productId}`).expect(200)).body.data
         .imageAssetIds,
@@ -192,6 +216,7 @@ describe('One product image (HTTP, PostgreSQL and MinIO)', () => {
         productId: f.productId,
         assetId: uuid(),
         bytes: png,
+        photoType: PhotoType.STUDIO,
         expectedUpdatedAt: new Date(0),
         at: new Date(),
       }),

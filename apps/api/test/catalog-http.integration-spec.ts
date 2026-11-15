@@ -611,6 +611,46 @@ describe('Catalog HTTP with PostgreSQL', () => {
     ).toBe(0);
   });
 
+  it('persists the flyer data of a product and clears it with null', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/products')
+      .send({
+        ...productBody,
+        shortName: 'Pack BAO Café',
+        productBrand: 'BAO Café',
+        keyAttributes: ['100 % arábica', 'Café de altura'],
+        unit: 'por pack',
+      })
+      .expect(201);
+    expect(created.body.data).toMatchObject({
+      shortName: 'Pack BAO Café',
+      productBrand: 'BAO Café',
+      keyAttributes: ['100 % arábica', 'Café de altura'],
+      unit: 'por pack',
+      image: null,
+    });
+    const id: string = created.body.data.id;
+    clock.value = LATER;
+    await request(app.getHttpServer())
+      .patch(`/products/${id}`)
+      .send({ shortName: null, keyAttributes: ['Tostado medio'] })
+      .expect(200);
+    const read = await request(app.getHttpServer()).get(`/products/${id}`).expect(200);
+    expect(read.body.data).toMatchObject({
+      shortName: null,
+      productBrand: 'BAO Café',
+      keyAttributes: ['Tostado medio'],
+    });
+    await request(app.getHttpServer())
+      .post('/products')
+      .send({ ...productBody, keyAttributes: ['1', '2', '3', '4', '5', '6'] })
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/products')
+      .send({ ...productBody, shortName: 'x'.repeat(41) })
+      .expect(400);
+  });
+
   it('persists HTTP product creation, retrieval and partial editing', async () => {
     const created = await request(app.getHttpServer())
       .post('/products')

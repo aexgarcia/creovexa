@@ -11,7 +11,7 @@ import { useProduct } from '../hooks/use-product';
 import { useUpdateProduct } from '../hooks/use-update-product';
 import { useUploadProductImage } from '../hooks/use-upload-product-image';
 
-import { productInput, type ProductFormValues } from '../schemas/product.schema';
+import { productChanges, type ProductFormValues } from '../schemas/product.schema';
 
 import { ProductForm } from './product-form';
 
@@ -30,16 +30,10 @@ export function EditProductView({ productId }: EditProductViewProps) {
   async function handleSubmit(values: ProductFormValues, image: File | null) {
     let productSaved = false;
     try {
-      await updateProduct.mutateAsync({
-        id: productId,
-        input: {
-          name: values.name,
-          description: values.description,
-          regularPrice: productInput(values).regularPrice,
-        },
-      });
+      await updateProduct.mutateAsync({ id: productId, input: productChanges(values) });
       productSaved = true;
-      if (image) await upload.mutateAsync({ id: productId, file: image });
+      if (image && values.photoType)
+        await upload.mutateAsync({ id: productId, file: image, photoType: values.photoType });
 
       toast.success('Producto actualizado correctamente');
 

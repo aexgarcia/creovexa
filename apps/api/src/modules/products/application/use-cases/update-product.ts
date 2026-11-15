@@ -11,6 +11,10 @@ export interface UpdateProductInput {
   name?: string;
   description?: string;
   regularPrice?: { amountMinor: number; currency: string };
+  shortName?: string | null;
+  productBrand?: string | null;
+  keyAttributes?: readonly string[];
+  unit?: string | null;
   imageAssetIds?: readonly string[];
 }
 
@@ -36,6 +40,10 @@ export class UpdateProduct {
           input.regularPrice === undefined
             ? undefined
             : Money.fromMinorUnits(input.regularPrice.amountMinor, input.regularPrice.currency),
+        shortName: input.shortName,
+        productBrand: input.productBrand,
+        keyAttributes: input.keyAttributes,
+        unit: input.unit,
         imageAssetIds: input.imageAssetIds,
       },
       new Date(Math.max(this.clock.now().getTime(), product.updatedAt.getTime() + 1)),

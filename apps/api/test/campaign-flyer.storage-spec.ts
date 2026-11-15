@@ -108,6 +108,7 @@ describe('Final flyer HTTP (real database, storage and composition)', () => {
     catalog.organizationId = f.selection.organizationId;
     await request(app.getHttpServer())
       .post(`/products/${f.campaign.productId}/image`)
+      .field('photoType', 'STUDIO')
       .attach('image', photo, 'photo.png')
       .expect(201);
     const draft = await context.module.get(CreateCampaign).execute({
