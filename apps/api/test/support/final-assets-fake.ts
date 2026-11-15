@@ -1,5 +1,5 @@
 import type { CampaignFinalAssets } from '#app/modules/campaigns/application/ports/campaign-final-assets';
-// Domain/persistence suites isolate the external file reader; storage suites verify real bytes.
+// Las suites de dominio y persistencia aíslan el lector de archivos externo; las de almacenamiento verifican bytes reales.
 export const finalAssetsFake: CampaignFinalAssets = {
   async readFinal(input) {
     return {

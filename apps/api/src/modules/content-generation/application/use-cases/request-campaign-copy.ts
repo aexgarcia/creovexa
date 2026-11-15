@@ -11,8 +11,8 @@ import type { CampaignCopyRepository } from '../ports/campaign-copy-repository.j
 import type { CopyGenerator } from '../ports/copy-generator.js';
 import type { CampaignCopyStatus } from './generate-campaign-copy.js';
 
-// Accepts the request and leaves the work to the queue. Asking again while a job waits or
-// runs does not start a second one.
+// Acepta la petición y deja el trabajo a la cola. Pedirlo otra vez mientras un trabajo
+// espera o corre no inicia un segundo.
 export class RequestCampaignCopy {
   constructor(
     private readonly generations: CampaignGenerations,
@@ -42,9 +42,9 @@ export class RequestCampaignCopy {
           copy: saved,
         };
     }
-    // Fail now, before changing the campaign, when no provider could do the work.
+    // Falla ahora, antes de cambiar la campaña, si ningún proveedor podría hacer el trabajo.
     this.generator.assertAvailable();
-    // The state change, the request mark and the job commit together or not at all.
+    // El cambio de estado, la marca de pedido y el trabajo se confirman juntos o ninguno.
     const generationId = await this.transactions.run(async (transaction) => {
       const current =
         campaign.status === 'DRAFT' ? await this.generations.begin(input, transaction) : campaign;

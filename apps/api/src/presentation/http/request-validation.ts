@@ -20,7 +20,7 @@ function details(errors: ValidationError[], parent = ''): ValidationDetail[] {
   });
 }
 
-/** Explicit metatype keeps validation identical with TypeScript and the test transpiler. */
+/** El metatype explícito mantiene la validación idéntica con TypeScript y con el transpilador de las pruebas. */
 export function validateRequest(type: Type<unknown>): ValidationPipe {
   return new ValidationPipe({
     expectedType: type,

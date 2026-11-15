@@ -2,8 +2,8 @@ import type { JobHandler, JobQueue, QueuedJob } from '#app/application/ports/job
 import type { TransactionContext } from '#app/application/ports/transaction-context';
 import type { UnitOfWork } from '#app/application/ports/unit-of-work';
 
-// In-memory queue. Jobs wait until the test drains them, the way a worker would pick them up.
-// It ignores the transaction, so it cannot show that a rolled back job disappears.
+// Cola en memoria. Los trabajos esperan hasta que la prueba los vacía, como los tomaría un worker.
+// Ignora la transacción, así que no puede mostrar que un trabajo revertido desaparece.
 export class JobQueueFake implements JobQueue {
   readonly accepted: QueuedJob[] = [];
   private readonly waiting: QueuedJob[] = [];
@@ -22,7 +22,7 @@ export class JobQueueFake implements JobQueue {
     return Promise.resolve();
   }
 
-  // Runs every waiting job once. A rejected handler is a failed job, not a failed test.
+  // Ejecuta una vez cada trabajo en espera. Un handler rechazado es un trabajo fallido, no una prueba fallida.
   async drain(): Promise<void> {
     while (this.waiting.length > 0) {
       const job = this.waiting.shift()!;
@@ -31,13 +31,13 @@ export class JobQueueFake implements JobQueue {
       try {
         await handler(job.payload);
       } catch {
-        // The job runner already recorded the failure where the CMS reads it.
+        // El ejecutor de trabajos ya registró el fallo donde lo lee el CMS.
       }
     }
   }
 }
 
-// Unit suites have no database: the work simply runs.
+// Las suites unitarias no tienen base de datos: el trabajo simplemente corre.
 export const immediateUnitOfWork: UnitOfWork = {
   run: (work) => work({} as TransactionContext),
 };

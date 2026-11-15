@@ -37,8 +37,8 @@ export type ImagePreconditions =
       now: Date;
     };
 
-// Everything that must hold before image work starts. The request checks it to answer at
-// once; the job checks it again because the campaign may have changed while it waited.
+// Todo lo que debe cumplirse antes de empezar la imagen. La petición lo revisa para responder
+// de inmediato; el trabajo lo vuelve a revisar porque la campaña pudo cambiar mientras esperaba.
 export async function checkImagePreconditions(
   ports: ImagePreconditionPorts,
   input: CampaignReference & { generationId: string },
@@ -54,7 +54,7 @@ export async function checkImagePreconditions(
   };
   const copy = await ports.copies.find(selection);
   if (!copy) throw new CampaignImageError('COPY_REQUIRED');
-  // Copy was validated and frozen in phase 5. Do not reinterpret it using a newer copy policy.
+  // El copy se validó y congeló en la fase 5. No se reinterpreta con una política de copy más nueva.
   if (copy.cta !== generation.snapshot.cta) throw new CampaignImageError('INVALID_OUTPUT');
   if (typeof copy.imagePrompt !== 'string' || !copy.imagePrompt.trim())
     throw new CampaignImageError('INVALID_OUTPUT');

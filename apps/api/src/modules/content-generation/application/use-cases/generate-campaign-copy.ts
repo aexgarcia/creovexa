@@ -22,7 +22,7 @@ export interface CampaignCopyStatus {
   copy: CampaignCopy | null;
 }
 
-// Executes the copy job. Safe to run again: finished copy is returned, not regenerated.
+// Ejecuta el trabajo de copy. Se puede repetir sin riesgo: el copy terminado se devuelve, no se regenera.
 export class GenerateCampaignCopy {
   constructor(
     private readonly generations: CampaignGenerations,
@@ -31,7 +31,7 @@ export class GenerateCampaignCopy {
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
   ) {}
-  // With generationId, a job left behind by an older generation fails instead of running.
+  // Con generationId, un trabajo que quedó de una generación anterior falla en vez de ejecutarse.
   async execute(input: CampaignReference & { generationId?: string }) {
     let campaign = await this.generations.view(input, input.generationId);
     if (campaign.status !== 'DRAFT' && campaign.status !== 'GENERATING')

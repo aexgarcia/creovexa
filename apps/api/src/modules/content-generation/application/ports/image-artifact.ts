@@ -5,7 +5,7 @@ export interface ImageDimensions {
   height: number;
 }
 
-// An opaque, temporary reference issued by a trusted adapter, never a client URL.
+// Una referencia opaca y temporal emitida por un adapter de confianza, nunca una URL del cliente.
 export interface ImageArtifact extends ImageDimensions {
   reference: string;
   contentType: 'image/png' | 'image/jpeg' | 'image/webp';

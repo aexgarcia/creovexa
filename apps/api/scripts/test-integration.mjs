@@ -30,12 +30,12 @@ const environment = {
   DATABASE_URL: url.toString(),
   TEST_DATABASE_URL: url.toString(),
   CREOVEXA_TEST_SCHEMA: schema,
-  // pg-boss limits schema names to 50 characters; the test schema alone is 46.
+  // pg-boss limita los nombres de esquema a 50 caracteres; el esquema de pruebas ya ocupa 46.
   JOB_SCHEMA: jobSchema,
 };
 const storageTests = process.argv.includes('--storage');
 if (storageTests && !environment.TEST_STORAGE_ENDPOINT) {
-  // Only the local Docker service may use development root credentials as a test fallback.
+  // Solo el servicio local de Docker puede usar las credenciales root de desarrollo como respaldo de las pruebas.
   const rootEnv = new URL('../../../.env', import.meta.url);
   const local = existsSync(rootEnv) ? parseEnv(readFileSync(rootEnv, 'utf8')) : {};
   environment.TEST_STORAGE_ENDPOINT = `http://127.0.0.1:${local.MINIO_PORT || '9000'}`;
@@ -74,7 +74,7 @@ try {
   try {
     if (created && /^creovexa_test_[0-9a-f]{32}$/.test(schema)) {
       await administrator.query('DROP SCHEMA "' + schema + '" CASCADE');
-      // Background jobs keep their tables next to the test schema.
+      // Los trabajos en segundo plano guardan sus tablas junto al esquema de pruebas.
       await administrator.query('DROP SCHEMA IF EXISTS "' + jobSchema + '" CASCADE');
     }
   } finally {

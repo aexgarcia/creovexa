@@ -269,10 +269,10 @@ export function campaignUseCases() {
   };
 }
 
-// Unit suites have no database, so there is no transaction to take part in.
+// Las suites unitarias no tienen base de datos, así que no hay transacción en la que participar.
 export const NO_TRANSACTION = {} as TransactionContext;
 
-// The real published contract of campaigns over the in-memory repository.
+// El contrato publicado real de campaigns sobre el repositorio en memoria.
 export function campaignGenerationsFake(
   repository: CampaignRepositoryFake,
   lookups: CampaignLookups = new CampaignLookupsFake(),

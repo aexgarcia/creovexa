@@ -6,7 +6,7 @@ import type {
 } from '../types/stored-campaign.types';
 import type { GenerationJob } from '../types/generation-job';
 
-// The flyer job of the current generation, and the flyer once it is ready.
+// El trabajo del flyer de la generación actual, y el flyer cuando esté listo.
 export interface CampaignImageStatus extends GenerationJob {
   contentId: string | null;
   finalAssetUrl: string | null;
@@ -57,7 +57,7 @@ export const campaignApi = {
       ).data,
     );
   },
-  // Only asks for the flyer; the API answers at once and composes it in the background.
+  // Solo pide el flyer; la API responde de inmediato y lo compone en segundo plano.
   async generateImage(id: string, generationId: string): Promise<CampaignImageStatus> {
     const result = await apiRequest<{ data: CampaignImageStatus }>(
       `/campaigns/${encodeURIComponent(id)}/image`,

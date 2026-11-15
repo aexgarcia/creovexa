@@ -5,8 +5,8 @@ import type { Product } from '../entities/product.js';
 export interface ProductRepository {
   findById(organizationId: EntityId, productId: EntityId): Promise<Product | null>;
   list(organizationId: EntityId, pagination: Pagination): Promise<Page<Product>>;
-  /** Insert only; enforce product.organizationId === organizationId. */
+  /** Solo inserta; exige product.organizationId === organizationId. */
   add(organizationId: EntityId, product: Product): Promise<void>;
-  /** Update an existing product in this organization only; never an upsert. */
+  /** Solo actualiza un producto existente de esta organización; nunca hace upsert. */
   save(organizationId: EntityId, product: Product, expectedUpdatedAt?: Date): Promise<void>;
 }

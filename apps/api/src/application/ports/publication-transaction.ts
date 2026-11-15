@@ -1,7 +1,7 @@
 import type { CampaignRepository } from '#app/modules/campaigns/domain/repositories/campaign.repository';
 import type { PublicationRepository } from '#app/modules/publications/domain/repositories/publication.repository';
 
-/** One database commit for the two repository contracts, with no external calls inside work. */
+/** Un solo commit de base de datos para los dos contratos de repositorio, sin llamadas externas dentro de work. */
 export interface PublicationRepositories {
   campaigns: CampaignRepository;
   publications: PublicationRepository;

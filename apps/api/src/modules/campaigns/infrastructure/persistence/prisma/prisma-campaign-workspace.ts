@@ -14,7 +14,7 @@ export class PrismaCampaignWorkspace implements CampaignWorkspace {
     transaction: TransactionContext,
     expectedVersion?: number,
   ): Promise<boolean> {
-    // A no-op update locks the owner row using Prisma's configured schema.
+    // Un update sin cambios bloquea la fila dueña usando el esquema configurado en Prisma.
     const result = await prismaTransaction(transaction).campaign.updateMany({
       where: {
         id: generation.campaignId,

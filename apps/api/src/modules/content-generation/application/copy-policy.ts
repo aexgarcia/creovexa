@@ -1,6 +1,6 @@
 import type { GenerationSnapshotData } from '#app/modules/campaigns/contract';
 import { CopyGenerationError, type CampaignCopy } from './ports/copy-generator.js';
-// Only factual text from the frozen snapshot and neutral editorial phrases is eligible.
+// Solo se admiten textos factuales del snapshot congelado y frases editoriales neutras.
 export function copyChoices(input: GenerationSnapshotData) {
   const amount = (price: { amountMinor: number; currency: string }) =>
     price.currency +

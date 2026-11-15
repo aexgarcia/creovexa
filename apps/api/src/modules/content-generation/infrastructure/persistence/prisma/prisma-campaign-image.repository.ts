@@ -23,7 +23,7 @@ export async function databaseTime(tx: Prisma.TransactionClient): Promise<Date> 
   return row.now;
 }
 
-// Serialize claims, asset registration and completion on the same campaign row.
+// Serializa las reservas, el registro de archivos y el cierre sobre la misma fila de campaña.
 export async function lockImageCampaign(
   generations: CampaignGenerations,
   tx: Prisma.TransactionClient,
@@ -133,7 +133,7 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
         },
         transactionContext(tx),
       );
-      // Recheck after all writes: a worker that waited for locks cannot commit an expired lease.
+      // Revisa de nuevo tras todas las escrituras: un worker que esperó bloqueos no puede confirmar una reserva vencida.
       await requireImageLease(tx, selection, lease.token);
       const completed = await tx.campaignImageJob.updateMany({
         where: {
@@ -169,7 +169,7 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
     const existing = await tx.campaignImageJob.findUnique({
       where: { generationId: selection.generationId },
     });
-    // Finished work and work in progress stay as they are.
+    // El trabajo terminado y el trabajo en curso quedan como están.
     if (
       existing &&
       (existing.status === 'READY' || (existing.status === 'RUNNING' && existing.expiresAt > at))

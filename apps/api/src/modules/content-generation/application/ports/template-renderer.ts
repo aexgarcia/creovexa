@@ -6,7 +6,7 @@ export const TEMPLATE_RENDERER = Symbol('TEMPLATE_RENDERER');
 
 export interface RenderCampaignTemplateInput extends CampaignImageSelection {
   operationId: EntityId;
-  // Campaign-owned visual to compose, regardless of whether it originated from visual AI.
+  // Imagen de la campaña que se compone, venga o no de la IA visual.
   mainImage: EntityId;
   copy: {
     headline: string;
@@ -14,12 +14,12 @@ export interface RenderCampaignTemplateInput extends CampaignImageSelection {
     cta: string;
     hashtags: readonly string[];
   };
-  // Authoritative product, price, dates, CTA, logo and immutable template revision.
+  // Producto, precio, fechas, CTA, logo y revisión inmutable de plantilla, como fuente de verdad.
   snapshot: GenerationSnapshotData;
 }
 
 export interface TemplateRenderer {
   assertAvailable(): void;
-  // Resolve only owned assets and trusted templates; escape values and deny arbitrary network.
+  // Resuelve solo archivos propios y plantillas de confianza; escapa los valores y bloquea la red.
   render(input: RenderCampaignTemplateInput): Promise<ImageArtifact>;
 }

@@ -21,7 +21,7 @@ import {
   requireImageLease,
 } from './persistence/prisma/prisma-campaign-image.repository.js';
 
-// Writes the assets a generation produces and reads back the ones its own operation stored.
+// Escribe los archivos que produce una generación y relee los que guardó su propia operación.
 export class MinioStorageProvider implements StorageProvider {
   constructor(
     private readonly database: PrismaClient,
@@ -69,7 +69,7 @@ export class MinioStorageProvider implements StorageProvider {
         sha256,
       });
       if (!created) {
-        // An earlier upload may have succeeded before metadata committed. Never overwrite it.
+        // Una subida anterior pudo completarse antes de confirmar los metadatos. Nunca la sobrescribas.
         const stored = await this.readObject(objectKey);
         if (digest(stored) !== sha256) throw new CampaignImageError('INVALID_OUTPUT');
       }
@@ -102,7 +102,7 @@ export class MinioStorageProvider implements StorageProvider {
     }
   }
 
-  // The renderer reads back the base image this same operation stored. Foreign assets look absent.
+  // El compositor relee la imagen base que guardó esta misma operación. Los archivos ajenos parecen inexistentes.
   async read(
     organizationId: EntityId,
     assetId: EntityId,

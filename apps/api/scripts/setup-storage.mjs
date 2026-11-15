@@ -7,7 +7,7 @@ import {
   GetBucketPolicyCommand,
 } from '@aws-sdk/client-s3';
 
-// Explicit development setup; keep existing API secrets and never print credential values.
+// Configuración explícita para desarrollo: conserva los secretos existentes de la API y nunca imprime credenciales.
 const apiFile = new URL('../.env', import.meta.url);
 const rootFile = new URL('../../../.env', import.meta.url);
 if (!existsSync(apiFile))

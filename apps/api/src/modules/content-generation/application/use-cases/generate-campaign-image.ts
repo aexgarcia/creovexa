@@ -24,7 +24,7 @@ import type {
 import type { TemplateRenderer } from '../ports/template-renderer.js';
 
 export interface GenerateCampaignImageInput extends CampaignReference {
-  // Pin the reviewed copy's generation; never silently generate a newer revision.
+  // Fija la generación del copy revisado; nunca genera en silencio una revisión más nueva.
   generationId: string;
 }
 
@@ -147,15 +147,15 @@ export class GenerateCampaignImage {
       if (baseAsset.id === finalAsset.id) throw new CampaignImageError('INVALID_OUTPUT');
       this.assertLeaseTime(lease);
       const at = this.clock.now();
-      // Campaigns records the content inside the same transaction that closes the reservation.
+      // Campaigns registra el contenido dentro de la misma transacción que cierra la reserva.
       return await this.images.complete(lease, { copy: visualCopy, baseAsset, finalAsset }, at);
     } catch (error) {
-      // Never delete assets here: a commit may have succeeded before a transport failure.
-      // Expiry recovers the reservation if the repository is temporarily unreachable.
+      // Nunca borres archivos aquí: el commit pudo completarse antes de un fallo de red.
+      // El vencimiento recupera la reserva si el repositorio no responde por un momento.
       try {
         await this.images.release(lease);
       } catch {
-        /* Preserve the original failure. */
+        /* Conserva el fallo original. */
       }
       throw error;
     }

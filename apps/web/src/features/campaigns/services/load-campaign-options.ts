@@ -1,6 +1,6 @@
 import type { ApiPage } from '@/lib/api-client';
 
-// The API stays paginated; the form searches the complete catalog, not just page one.
+// La API sigue paginada; el formulario busca en todo el catálogo, no solo en la primera página.
 export async function loadCampaignOptions<T extends { id: string }>(
   fetchPage: (page: number, signal?: AbortSignal) => Promise<ApiPage<T>>,
   signal?: AbortSignal,

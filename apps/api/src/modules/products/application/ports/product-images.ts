@@ -14,10 +14,10 @@ export interface SavedProductImage {
 }
 export interface ProductImages {
   assertAvailable(): void;
-  // Upload immutable bytes, then atomically register metadata and replace the current image.
+  // Sube bytes inmutables y luego, de forma atómica, registra los metadatos y reemplaza la imagen actual.
   save(
     input: ProductImageSelection & { bytes: Uint8Array; at: Date; expectedUpdatedAt: Date },
   ): Promise<void>;
-  // Historical reads are allowed for snapshots; always check both owner and product.
+  // Se permiten lecturas históricas para los snapshots; siempre comprueba el dueño y el producto.
   read(input: ProductImageSelection): Promise<SavedProductImage | null>;
 }

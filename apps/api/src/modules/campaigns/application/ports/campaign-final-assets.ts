@@ -2,7 +2,7 @@ import type { EntityId } from '#app/domain/entity-id';
 
 export const CAMPAIGN_FINAL_ASSETS = Symbol('CAMPAIGN_FINAL_ASSETS');
 
-// Identifies one generation of one campaign inside its organization.
+// Identifica una generación de una campaña dentro de su organización.
 export interface CampaignImageSelection {
   organizationId: EntityId;
   campaignId: EntityId;
@@ -20,7 +20,7 @@ export interface StoredCampaignAsset extends CampaignImageSelection {
 }
 
 export interface CampaignFinalAssets {
-  // Read only a verified final PNG owned by this campaign and generation.
+  // Lee solo un PNG final verificado que pertenece a esta campaña y generación.
   readFinal(
     input: CampaignImageSelection & { assetId: EntityId },
   ): Promise<{ bytes: Uint8Array; asset: StoredCampaignAsset } | null>;

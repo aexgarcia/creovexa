@@ -8,7 +8,7 @@ export interface Product {
   description: string;
   regularPrice: { amountMinor: number; currency: Currency };
   imageAssetIds: string[];
-  /** URL resolved by the API for the single stored image. */
+  /** URL que resuelve la API para la única imagen guardada. */
   imageUrl?: string | null;
   createdAt: string;
   updatedAt: string;

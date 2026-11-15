@@ -142,7 +142,7 @@ describe('Final flyer HTTP (real database, storage and composition)', () => {
       .post(`/campaigns/${input.campaignId}/image`)
       .send({ generationId: input.generationId });
   }
-  // Requests the flyer, lets the worker run and returns the finished status.
+  // Pide el flyer, deja correr al worker y devuelve el estado final.
   async function generated(input: Awaited<ReturnType<typeof fixture>>) {
     const accepted = await post(input).expect(202);
     expect(accepted.body.data).toMatchObject({ status: 'PENDING', finalAssetUrl: null });

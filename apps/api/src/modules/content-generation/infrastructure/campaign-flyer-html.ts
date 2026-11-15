@@ -23,7 +23,7 @@ function date(value: string): string {
   }).format(new Date(value));
 }
 
-// Trusted square layout v1. No client HTML/CSS, external fonts, URLs or executable values.
+// Diseño cuadrado de confianza v1. Sin HTML ni CSS del cliente, fuentes externas, URLs ni valores ejecutables.
 export function campaignFlyerHtml(
   input: RenderCampaignTemplateInput,
   mainImage: string,

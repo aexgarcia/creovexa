@@ -47,7 +47,7 @@ export interface StoredCampaign {
     cta: string;
     hashtags: string[];
     assetIds: string[];
-    /** Only the composed flyer; never a fallback to the product photo. */
+    /** Solo el flyer compuesto; nunca la foto del producto como respaldo. */
     finalAssetUrl?: string | null;
     createdAt: string;
   } | null;

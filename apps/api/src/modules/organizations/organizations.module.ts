@@ -77,7 +77,7 @@ import { OrganizationController } from './presentation/organization.controller.j
       useFactory: (logos: OrganizationLogos) => new GetOrganizationLogo(logos),
     },
   ],
-  // Other modules may only check that an organization exists and read its logo.
+  // Otros módulos solo pueden comprobar que una organización existe y leer su logo.
   exports: [PrismaOrganizationLookup, ORGANIZATION_LOGOS],
 })
 export class OrganizationsModule {}

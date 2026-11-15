@@ -7,18 +7,18 @@ export const IMAGE_GENERATOR = Symbol('IMAGE_GENERATOR');
 
 export interface GenerateImageInput extends CampaignImageSelection {
   operationId: EntityId;
-  // Trusted private artifact loaded from the single product image pinned in the snapshot.
+  // Archivo privado de confianza, cargado desde la única imagen del producto fijada en el snapshot.
   referenceImage: ImageArtifact;
   imagePrompt: string;
   copy: Pick<CampaignCopy, 'headline' | 'caption' | 'cta' | 'hashtags'>;
-  // Product, promotion, brand/logo reference and instructions are frozen for this generation.
+  // Producto, promoción, referencia de marca y logo, e instrucciones quedan congelados para esta generación.
   snapshot: GenerationSnapshotData;
 }
 
 export interface ImageGenerator {
   assertAvailable(): void;
-  // Use visual AI with the supplied photo; preserve product identity and leave exact text
-  // and logo composition to the renderer. Resolve only scoped references, never client URLs.
-  // Bound provider calls and return failures explicitly; do not silently reuse the source photo.
+  // Usa la IA visual con la foto recibida; conserva la identidad del producto y deja el texto exacto
+  // y el logo al compositor. Resuelve solo referencias acotadas, nunca URLs del cliente.
+  // Acota las llamadas al proveedor y devuelve los fallos explícitamente; no reutiliza en silencio la foto original.
   generate(input: GenerateImageInput): Promise<ImageArtifact>;
 }

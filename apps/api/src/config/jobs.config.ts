@@ -1,15 +1,15 @@
 import { applicationEnvironment } from './environment.js';
 
 export interface JobsConfig {
-  // Whether this process executes queued jobs, besides being able to queue them.
+  // Si este proceso ejecuta los trabajos encolados, además de poder encolarlos.
   worker: boolean;
-  // PostgreSQL schema for the queue tables; null derives it from the database schema.
+  // Esquema de PostgreSQL para las tablas de la cola; con null se deriva del esquema de la base de datos.
   schema: string | null;
 }
 
 export const JOBS_CONFIG = Symbol('JOBS_CONFIG');
 
-// pg-boss rejects longer schema names.
+// pg-boss rechaza nombres de esquema más largos.
 const SCHEMA = /^[a-z_][a-z0-9_]{0,49}$/;
 
 export function readJobsConfig(environment: NodeJS.ProcessEnv): JobsConfig {

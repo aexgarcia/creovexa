@@ -265,7 +265,7 @@ Aplicar:
 * funciones pequeñas
 * una responsabilidad por función
 * evitar duplicación
-* evitar comentarios innecesarios
+* evitar comentarios innecesarios; los que se escriban, en español (los identificadores del código siguen en inglés)
 * early returns cuando mejoren claridad
 * evitar boolean parameters ambiguos
 * evitar clases God Object

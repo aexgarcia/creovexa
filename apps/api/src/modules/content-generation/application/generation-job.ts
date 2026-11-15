@@ -1,10 +1,10 @@
 export const GENERATE_COPY_JOB = 'generate-campaign-copy';
 export const GENERATE_IMAGE_JOB = 'generate-campaign-image';
 
-// What the CMS sees while a job is waiting, running or finished.
+// Lo que ve el CMS mientras un trabajo espera, corre o terminó.
 export type GenerationJobStatus = 'PENDING' | 'RUNNING' | 'READY' | 'FAILED';
 
-// The persisted state of the job row, before it is combined with the campaign.
+// El estado guardado de la fila del trabajo, antes de combinarlo con la campaña.
 export type GenerationJobState =
   | { status: 'QUEUED' }
   | { status: 'RUNNING' }

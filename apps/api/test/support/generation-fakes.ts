@@ -19,7 +19,7 @@ export function validCopy(input = domainFixture().snapshot.data): CampaignCopy {
   };
 }
 
-// One copy row per test, mirroring the states the Prisma repository persists.
+// Una fila de copy por prueba, con los mismos estados que guarda el repositorio de Prisma.
 export class CopyRepositoryFake implements CampaignCopyRepository {
   saved: CampaignCopy | null = null;
   busy = false;

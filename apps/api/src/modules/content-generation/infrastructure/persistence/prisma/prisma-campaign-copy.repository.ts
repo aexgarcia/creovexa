@@ -35,7 +35,7 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
   }
   async claim(lease: CopyLease) {
     return this.client.$transaction(async (tx) => {
-      // Campaigns locks its own row and confirms this generation is still the current one.
+      // Campaigns bloquea su propia fila y confirma que esta generación sigue siendo la actual.
       if (!(await this.generations.lock(selectionOf(lease), transactionContext(tx))))
         throw new StaleGenerationResultError();
       const existing = await tx.campaignCopy.findUnique({
@@ -64,7 +64,7 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
   }
   async complete(lease: CopyLease, content: CampaignCopy) {
     await this.client.$transaction(async (tx) => {
-      // Campaigns locks its own row and confirms this generation is still the current one.
+      // Campaigns bloquea su propia fila y confirma que esta generación sigue siendo la actual.
       if (!(await this.generations.lock(selectionOf(lease), transactionContext(tx))))
         throw new StaleGenerationResultError();
       const result = await tx.campaignCopy.updateMany({
@@ -94,7 +94,7 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
     const existing = await tx.campaignCopy.findUnique({
       where: { generationId: selection.generationId },
     });
-    // Finished copy and work in progress stay as they are.
+    // El copy terminado y el trabajo en curso quedan como están.
     if (
       existing &&
       (existing.status === 'READY' || (existing.status === 'RUNNING' && existing.expiresAt > at))

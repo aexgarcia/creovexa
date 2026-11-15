@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { campaignApi } from '../services/campaign-api.service';
 import { GENERATION_POLL_MS, isInProgress } from '../types/generation-job';
 
-// Requests the flyer and follows its background job until it finishes.
+// Pide el flyer y sigue su trabajo en segundo plano hasta que termina.
 export function useCampaignImage(id: string, enabled: boolean) {
   const client = useQueryClient();
   const queryKey = ['campaign-image', id];
@@ -24,7 +24,7 @@ export function useCampaignImage(id: string, enabled: boolean) {
     },
   });
   const ready = status.data?.status === 'READY';
-  // The finished flyer becomes the campaign's candidate content: reload the campaign once.
+  // El flyer terminado pasa a ser el contenido candidato de la campaña: recarga la campaña una vez.
   useEffect(() => {
     if (!ready) return;
     void Promise.all([

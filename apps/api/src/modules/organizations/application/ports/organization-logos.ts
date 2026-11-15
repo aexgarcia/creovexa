@@ -15,6 +15,6 @@ export interface OrganizationLogos {
   save(
     input: OrganizationLogoSelection & { bytes: Uint8Array; at: Date; expectedUpdatedAt: Date },
   ): Promise<void>;
-  // Assets are immutable and historical reads are restricted to their organization.
+  // Los archivos son inmutables y las lecturas históricas se limitan a su organización.
   read(input: OrganizationLogoSelection): Promise<SavedOrganizationLogo | null>;
 }

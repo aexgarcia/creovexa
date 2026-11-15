@@ -95,7 +95,7 @@ function imageOutput(value: unknown): { bytes: Buffer; contentType: ImageArtifac
       if (image) throw new CampaignImageError('INVALID_OUTPUT');
       image = object(item.inlineData);
     } else if (typeof item.text !== 'string') {
-      // Never fetch returned fileData URLs, execute tool calls or accept arbitrary resources.
+      // Nunca descarga las URLs de fileData devueltas, ni ejecuta llamadas a herramientas ni acepta recursos arbitrarios.
       throw new CampaignImageError('INVALID_OUTPUT');
     }
   }
@@ -175,7 +175,7 @@ export class GeminiImageGenerator implements ImageGenerator {
         },
       });
       const signal = AbortSignal.timeout(config.timeoutMs);
-      // One request only: retrying an ambiguous billed generation can charge twice.
+      // Una sola petición: reintentar una generación cobrada y de resultado ambiguo puede cobrar dos veces.
       const response = await this.http(
         'https://generativelanguage.googleapis.com/v1/models/' +
           encodeURIComponent(config.model) +

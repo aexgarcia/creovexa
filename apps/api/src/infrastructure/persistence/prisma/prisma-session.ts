@@ -3,7 +3,7 @@ import type { Prisma } from './generated/client.js';
 
 export type PrismaSession = PrismaService | Prisma.TransactionClient;
 
-/** Reuse an explicit transaction instead of opening an independent nested commit. */
+/** Reutiliza una transacción explícita en lugar de abrir un commit anidado independiente. */
 export function inPrismaTransaction<T>(
   session: PrismaSession,
   work: (tx: Prisma.TransactionClient) => Promise<T>,

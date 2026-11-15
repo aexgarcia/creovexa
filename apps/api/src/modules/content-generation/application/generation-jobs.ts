@@ -11,10 +11,10 @@ import { CopyGenerationError } from './ports/copy-generator.js';
 import type { GenerateCampaignCopy } from './use-cases/generate-campaign-copy.js';
 import type { GenerateCampaignImage } from './use-cases/generate-campaign-image.js';
 
-// Failure shown when the cause is not one of the known generation errors.
+// Falla que se muestra cuando la causa no es uno de los errores de generación conocidos.
 const UNEXPECTED = 'FAILED';
 
-// Runs queued generation work and leaves the reason of a failure where the CMS can read it.
+// Ejecuta las generaciones encoladas y deja el motivo de un fallo donde el CMS pueda leerlo.
 export class GenerationJobs {
   constructor(
     private readonly generateCopy: GenerateCampaignCopy,
@@ -29,7 +29,7 @@ export class GenerationJobs {
     try {
       await this.generateCopy.execute(generation);
     } catch (error) {
-      // Another worker holds the job, or the campaign moved on: nothing to report.
+      // Otro worker tiene el trabajo, o la campaña ya avanzó: no hay nada que informar.
       if (error instanceof CopyGenerationError && error.code === 'BUSY') return;
       if (error instanceof StaleGenerationResultError) return;
       const code = error instanceof CopyGenerationError ? error.code : UNEXPECTED;

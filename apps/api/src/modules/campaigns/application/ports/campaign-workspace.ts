@@ -2,10 +2,10 @@ import type { TransactionContext } from '#app/application/ports/transaction-cont
 import type { CampaignRepository } from '../../domain/repositories/campaign.repository.js';
 import type { CampaignImageSelection } from './campaign-final-assets.js';
 
-// Campaign persistence bound to a transaction another module started.
+// Persistencia de la campaña ligada a una transacción que inició otro módulo.
 export interface CampaignWorkspace {
   repositoryIn(transaction: TransactionContext): CampaignRepository;
-  // Locks the campaign row; false unless this generation is current and GENERATING.
+  // Bloquea la fila de la campaña; false salvo que esta generación sea la actual y esté en GENERATING.
   lock(
     generation: CampaignImageSelection,
     transaction: TransactionContext,

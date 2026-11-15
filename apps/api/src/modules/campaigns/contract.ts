@@ -1,5 +1,5 @@
-// Published contract of the campaigns module.
-// Other modules may import this file and nothing else from campaigns.
+// Contrato publicado del módulo campaigns.
+// Otros módulos pueden importar este archivo y nada más de campaigns.
 import type { EntityId } from '#app/domain/entity-id';
 import type { TransactionContext } from '#app/application/ports/transaction-context';
 import type { CampaignStatus } from './domain/campaign-status.js';
@@ -48,7 +48,7 @@ export interface CampaignGenerationView {
   campaignId: EntityId;
   status: `${CampaignStatus}`;
   version: number;
-  // The generation in progress or last requested, with the data frozen for it.
+  // La generación en curso o la última pedida, con los datos congelados para ella.
   generation: { id: EntityId; number: number; snapshot: GenerationSnapshotData } | null;
   candidateContent: GeneratedCampaignContent | null;
 }
@@ -61,24 +61,24 @@ export interface RecordGeneratedContentInput extends GenerationReference {
 }
 
 export interface CampaignGenerations {
-  // Reads the campaign. With generationId, fails unless it is the current generation.
+  // Lee la campaña. Con generationId, falla si no es la generación actual.
   view(campaign: CampaignReference, generationId?: string): Promise<CampaignGenerationView>;
-  // Captures the snapshot and moves a campaign that allows it to GENERATING.
-  // With a transaction, the change commits together with the caller's work.
+  // Captura el snapshot y pasa a GENERATING una campaña que lo permite.
+  // Con una transacción, el cambio se confirma junto con el trabajo del llamador.
   begin(
     campaign: CampaignReference,
     transaction?: TransactionContext,
   ): Promise<CampaignGenerationView>;
-  // Fails when the campaign promotion has ended at the given instant.
+  // Falla si la promoción de la campaña ya terminó en el instante dado.
   assertPromotionActive(campaign: CampaignReference, at: Date): Promise<void>;
-  // Inside the caller's transaction: serializes work on the campaign and reports whether
-  // the generation is still current and GENERATING, at the expected version when given.
+  // Dentro de la transacción del llamador: serializa el trabajo sobre la campaña e informa si
+  // la generación sigue siendo la actual y está en GENERATING, en la versión esperada si se indica.
   lock(
     generation: GenerationReference,
     transaction: TransactionContext,
     expectedVersion?: number,
   ): Promise<boolean>;
-  // Inside the caller's transaction: stores the content and moves to PENDING_APPROVAL.
+  // Dentro de la transacción del llamador: guarda el contenido y pasa a PENDING_APPROVAL.
   recordContent(
     input: RecordGeneratedContentInput,
     transaction: TransactionContext,

@@ -5,7 +5,7 @@ import { ApiExceptionFilter } from '#app/presentation/http/api-exception.filter'
 import { HTTP_LOGGER } from '#app/presentation/http/http-logging';
 import { DevelopmentOrganizationGuard } from '#app/presentation/http/request-context';
 
-// HTTP pieces every business module needs: active organization, logging and error mapping.
+// Piezas HTTP que necesita todo módulo de negocio: organización activa, logs y traducción de errores.
 @Module({
   providers: [
     catalogHttpConfigProvider,

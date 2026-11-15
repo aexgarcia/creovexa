@@ -20,7 +20,7 @@ describe('Flyer composition with real Chromium', () => {
   beforeAll(async () => {
     directory = await mkdtemp(join(tmpdir(), 'creovexa-render-test-'));
     artifacts = new LocalImageArtifacts(directory);
-    // Synthetic raster fixture, not a provider call or a user-uploaded SVG.
+    // Imagen de prueba sintética, no una llamada al proveedor ni un SVG subido por un usuario.
     visual = await sharp(
       Buffer.from(
         `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080"><defs><radialGradient id="b"><stop stop-color="#556bff"/><stop offset="1" stop-color="#101629"/></radialGradient><linearGradient id="m"><stop stop-color="#7481a6"/><stop offset="1" stop-color="#151e35"/></linearGradient></defs><rect width="1080" height="1080" fill="url(#b)"/><ellipse cx="580" cy="650" rx="290" ry="70" fill="#080c20" opacity=".6"/><path d="M540 310 C345 310 305 545 375 660 C425 750 655 745 706 641 C775 495 720 310 540 310Z" fill="url(#m)" stroke="#a3b4ec" stroke-width="4"/><path d="M540 320 L540 480" stroke="#131b2e" stroke-width="8"/><rect x="520" y="351" width="40" height="85" rx="20" fill="#98b2ff"/><path d="M378 566 C440 625 639 627 700 563" fill="none" stroke="#91a6ff" stroke-width="7"/></svg>`,

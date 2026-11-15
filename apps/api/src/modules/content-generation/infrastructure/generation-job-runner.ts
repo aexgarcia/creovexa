@@ -3,7 +3,7 @@ import type { JobsConfig } from '#app/config/jobs.config';
 import { GENERATE_COPY_JOB, GENERATE_IMAGE_JOB } from '../application/generation-job.js';
 import type { GenerationJobs } from '../application/generation-jobs.js';
 
-// Connects the generation jobs to the queue in processes configured to execute work.
+// Conecta los trabajos de generación a la cola en los procesos configurados para ejecutarlos.
 export class GenerationJobRunner {
   constructor(
     private readonly queue: JobQueue,

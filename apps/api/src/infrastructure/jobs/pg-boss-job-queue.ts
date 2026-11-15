@@ -8,11 +8,11 @@ interface JobLogger {
   log(event: { event: string; job: string; key?: string; error?: string }): void;
 }
 
-// Each job gets one attempt: handlers already bound their own provider calls, and repeating
-// an image generation after an ambiguous failure could be charged twice.
+// Cada trabajo tiene un solo intento: los handlers ya acotan sus llamadas al proveedor, y repetir
+// una generación de imagen tras un fallo ambiguo podría cobrarse dos veces.
 const ATTEMPT_SECONDS = 360;
 
-// Queue tables live in their own schema, so migrations of the app never touch them.
+// Las tablas de la cola viven en su propio esquema, así las migraciones de la app nunca las tocan.
 export function jobSchema(database: DatabaseConfig, configured: string | null): string {
   const schema =
     configured ?? (database.schema === 'public' ? 'pgboss' : database.schema + '_jobs');
@@ -40,7 +40,7 @@ export class PgBossJobQueue implements JobQueue {
   async enqueue(job: QueuedJob, transaction?: TransactionContext): Promise<void> {
     const boss = await this.queue(job.name);
     const client = transaction ? prismaTransaction(transaction) : null;
-    // A null id means a job with this key is already waiting or running, which is the goal.
+    // Un id null significa que ya hay un trabajo con esta clave esperando o corriendo, que es lo buscado.
     await boss.send(job.name, job.payload, {
       singletonKey: job.key,
       ...(client
@@ -81,7 +81,7 @@ export class PgBossJobQueue implements JobQueue {
     await boss?.stop({ graceful: true, timeout: 30_000 });
   }
 
-  // Connects on first use, so a process that never queues or works needs no database.
+  // Se conecta en el primer uso: un proceso que nunca encola ni ejecuta trabajos no necesita base de datos.
   private start(): Promise<PgBoss> {
     this.boss ??= (async () => {
       const url = new URL(this.database.url);

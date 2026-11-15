@@ -13,35 +13,35 @@ export interface CampaignImageLease extends CampaignImageSelection {
 }
 
 export interface CampaignImageCompletion {
-  // Exactly the persisted copy; campaigns turns it into the content awaiting approval.
+  // Exactamente el copy guardado; campaigns lo convierte en el contenido que espera aprobación.
   copy: { headline: string; caption: string; cta: string; hashtags: readonly string[] };
   baseAsset: StoredCampaignAsset;
   finalAsset: StoredCampaignAsset;
 }
 
 export interface CampaignImageRepository {
-  // Atomically reserve only the current GENERATING revision with persisted copy.
-  // Reject an active reservation; allow reclaiming an expired one with a new token.
+  // Reserva de forma atómica solo la revisión actual en GENERATING con copy guardado.
+  // Rechaza una reserva activa; permite reclamar una vencida con un token nuevo.
   claim(lease: CampaignImageLease): Promise<boolean>;
-  // In one transaction: verify token, expiry at commit, version, owner and current generation;
-  // verify stored asset metadata; have campaigns record the content and PENDING_APPROVAL; close the reservation.
-  // Never permit an older worker to commit after its lease was reclaimed.
+  // En una transacción: verifica token, vencimiento al confirmar, versión, dueño y generación actual;
+  // verifica los metadatos de los archivos guardados; hace que campaigns registre el contenido y PENDING_APPROVAL; cierra la reserva.
+  // Nunca permite que un worker anterior confirme después de que se reclamó su reserva.
   complete(
     lease: CampaignImageLease,
     result: CampaignImageCompletion,
     at: Date,
   ): Promise<GeneratedCampaignContent>;
-  // Only release this token's active reservation. Already-completed work is a no-op.
+  // Libera solo la reserva activa de este token. Si el trabajo ya terminó, no hace nada.
   release(lease: CampaignImageLease): Promise<void>;
-  // Job state for the CMS; a reservation that expired without finishing counts as failed.
+  // Estado del trabajo para el CMS; una reserva que venció sin terminar cuenta como fallida.
   state(selection: CampaignImageSelection, now: Date): Promise<GenerationJobState | null>;
-  // Marks the image as requested, inside the transaction that queues its job.
+  // Marca la imagen como pedida, dentro de la transacción que encola su trabajo.
   queue(
     selection: CampaignImageSelection,
     expectedVersion: number,
     at: Date,
     transaction: TransactionContext,
   ): Promise<void>;
-  // Records why the job failed. Never overwrites completed work.
+  // Registra por qué falló el trabajo. Nunca sobrescribe trabajo terminado.
   fail(selection: CampaignImageSelection, failureCode: string, at: Date): Promise<void>;
 }

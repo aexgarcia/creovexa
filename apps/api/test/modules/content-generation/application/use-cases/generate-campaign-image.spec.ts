@@ -37,7 +37,7 @@ import { GenerateCampaignImage } from '#app/modules/content-generation/applicati
 import type { CampaignGenerations } from '#app/modules/campaigns/contract';
 import type { GenerationJobState } from '#app/modules/content-generation/application/generation-job';
 
-// Test-only adapters: no provider requests, rendering browser, storage service or production binding.
+// Adapters solo para pruebas: sin llamadas al proveedor, navegador, servicio de almacenamiento ni cableado de producción.
 class ImageRepositoryFake implements CampaignImageRepository {
   active: CampaignImageLease | null = null;
   results: CampaignImageCompletion[] = [];

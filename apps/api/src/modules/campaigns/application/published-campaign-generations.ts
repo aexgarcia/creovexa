@@ -22,8 +22,8 @@ import { loadCampaignResources } from './load-campaign-resources.js';
 import type { CampaignLookups } from './ports/campaign-lookups.js';
 import type { CampaignWorkspace } from './ports/campaign-workspace.js';
 
-// What campaigns offers to the module that executes a generation. It translates between
-// the campaign aggregate and the plain data of the published contract.
+// Lo que campaigns ofrece al módulo que ejecuta una generación. Traduce entre
+// el agregado de campaña y los datos planos del contrato publicado.
 export class PublishedCampaignGenerations implements CampaignGenerations {
   constructor(
     private readonly campaigns: CampaignRepository,

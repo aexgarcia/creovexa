@@ -1,4 +1,4 @@
-// Generation runs in the background; the API reports where each job is.
+// La generación corre en segundo plano; la API informa en qué punto está cada trabajo.
 export type GenerationJobStatus = 'PENDING' | 'RUNNING' | 'READY' | 'FAILED';
 
 export interface GenerationJob {
@@ -7,7 +7,7 @@ export interface GenerationJob {
   failureCode: string | null;
 }
 
-// How often the CMS asks again while a job waits or runs.
+// Cada cuánto vuelve a preguntar el CMS mientras un trabajo espera o corre.
 export const GENERATION_POLL_MS = 2000;
 
 export function isInProgress(job: GenerationJob | null | undefined): boolean {

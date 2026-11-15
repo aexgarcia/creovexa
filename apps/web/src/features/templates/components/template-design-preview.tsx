@@ -1,7 +1,7 @@
 import { TemplatePreview } from './template-preview';
 import { defaultTemplateDesign, type TemplateDesign } from '../types/template-design';
 
-/** Visual sample only; it is not a saved or rendered campaign asset. */
+/** Solo una muestra visual; no es un archivo de campaña guardado ni compuesto. */
 export function TemplateDesignPreview({
   width = 1080,
   height = 1080,

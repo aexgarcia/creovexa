@@ -162,7 +162,7 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
       ) => new GenerateCampaignCopy(generations, copies, generator, ids, clock),
     },
 
-    // Image and composition
+    // Imagen y composición
     {
       provide: LocalImageArtifacts,
       useFactory: () => new LocalImageArtifacts(resolve('.local/image-artifacts')),
@@ -253,7 +253,7 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
         ),
     },
     {
-      // The image use case already holds every port the request has to check.
+      // El caso de uso de imagen ya tiene todos los ports que la petición debe revisar.
       provide: RequestCampaignImage,
       inject: [GenerateCampaignImage, PrismaCampaignImageRepository, JOB_QUEUE, UNIT_OF_WORK],
       useFactory: (
@@ -273,7 +273,7 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
       ) => new GetCampaignImage(generations, images, clock),
     },
 
-    // Background execution
+    // Ejecución en segundo plano
     {
       provide: GenerationJobs,
       inject: [

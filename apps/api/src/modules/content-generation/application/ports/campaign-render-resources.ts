@@ -11,8 +11,8 @@ export interface RenderRasterImage extends ImageDimensions {
 
 export interface CampaignRenderResources {
   assertAvailable(): void;
-  // Resolve the pinned template and only owned raster assets from this exact operation.
-  // A referenced but unreadable logo must fail, rather than disappear from the final piece.
+  // Resuelve la plantilla fijada y solo imágenes propias de esta misma operación.
+  // Un logo referenciado pero ilegible debe fallar, en vez de desaparecer de la pieza final.
   load(input: RenderCampaignTemplateInput): Promise<{
     mainImage: RenderRasterImage;
     logo: RenderRasterImage | null;

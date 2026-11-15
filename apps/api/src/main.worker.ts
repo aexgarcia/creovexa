@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ConsoleLogger } from '@nestjs/common';
 import { WorkerModule } from '#app/worker.module';
 
-// Executes queued jobs without serving HTTP. Same code as the API, another entry point.
+// Ejecuta los trabajos encolados sin servir HTTP. El mismo código que la API, otro punto de entrada.
 async function bootstrap() {
   process.env.JOB_WORKER = 'true';
   const app = await NestFactory.createApplicationContext(WorkerModule, {

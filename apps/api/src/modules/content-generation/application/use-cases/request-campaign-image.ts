@@ -17,12 +17,12 @@ export interface CampaignImageStatus {
   generationId: string;
   status: GenerationJobStatus;
   failureCode: string | null;
-  // Present once the flyer is recorded and waiting for approval.
+  // Presente cuando el flyer ya está registrado y espera aprobación.
   content: Pick<GeneratedCampaignContent, 'id' | 'assetIds'> | null;
 }
 
-// Accepts the request and leaves the work to the queue. Asking again while a job waits or
-// runs does not start a second one.
+// Acepta la petición y deja el trabajo a la cola. Pedirlo otra vez mientras un trabajo
+// espera o corre no inicia un segundo.
 export class RequestCampaignImage {
   constructor(
     private readonly ports: ImagePreconditionPorts,
@@ -32,7 +32,7 @@ export class RequestCampaignImage {
   ) {}
 
   async execute(input: CampaignReference & { generationId: string }): Promise<CampaignImageStatus> {
-    // Answer the predictable failures now instead of from a failed job.
+    // Responde ahora los fallos previsibles, en vez de esperar a que falle el trabajo.
     const ready = await checkImagePreconditions(this.ports, input);
     if (ready.done)
       return {
@@ -76,7 +76,7 @@ export class GetCampaignImage {
       { organizationId: campaign.organizationId, campaignId: campaign.campaignId, generationId },
       this.clock.now(),
     );
-    // No request yet, or a finished job whose content belongs to an already replaced state.
+    // Aún no hay petición, o el trabajo terminado pertenece a un estado que ya se reemplazó.
     if (!state || state.status === 'READY') return null;
     return { generationId, ...publicStatus(state), content: null };
   }

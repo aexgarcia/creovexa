@@ -36,7 +36,7 @@ export class MinioOrganizationLogos implements OrganizationLogos {
         contentType: metadata.contentType,
         sha256,
       });
-      // Asset ids are new per upload, so an occupied key is never this upload's object.
+      // Cada subida usa un id de archivo nuevo, así que una clave ocupada nunca es de esta subida.
       if (!created) throw new OrganizationLogoError('UNAVAILABLE');
       await this.database.$transaction(async (tx) => {
         const changed = await tx.organization.updateMany({
@@ -57,7 +57,7 @@ export class MinioOrganizationLogos implements OrganizationLogos {
           },
         });
       });
-      // Replaced logos remain readable for historical snapshots. Never delete after an ambiguous commit.
+      // Los logos reemplazados siguen legibles para los snapshots históricos. Nunca borres tras un commit ambiguo.
     } catch (error) {
       if (error instanceof OrganizationLogoError) throw error;
       if (error instanceof InvalidImageFileError) throw new OrganizationLogoError('INVALID_IMAGE');

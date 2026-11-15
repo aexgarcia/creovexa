@@ -16,7 +16,7 @@ import type {
   StoredCampaignAsset,
 } from '../application/ports/campaign-final-assets.js';
 
-// Reads assets already recorded for a campaign. Writing them belongs to content generation.
+// Lee los archivos ya registrados de una campaña. Escribirlos le corresponde a content-generation.
 export class StoredCampaignAssets implements CampaignFinalAssets {
   constructor(
     private readonly database: PrismaClient,
@@ -64,7 +64,7 @@ export class StoredCampaignAssets implements CampaignFinalAssets {
     return result;
   }
 
-  // Internal reader for owned assets. Foreign assets look absent.
+  // Lector interno de archivos propios. Los ajenos parecen inexistentes.
   async read(
     organizationId: EntityId,
     assetId: EntityId,

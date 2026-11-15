@@ -9,7 +9,7 @@ export interface CampaignCopy {
   imagePrompt: string;
 }
 
-// The copy job of the current generation, and the copy once it is ready.
+// El trabajo del copy de la generación actual, y el copy cuando esté listo.
 export interface CampaignCopyStatus extends GenerationJob {
   copy: CampaignCopy | null;
 }
@@ -23,7 +23,7 @@ export const campaignCopyService = {
       )
     ).data;
   },
-  // Only asks for the copy; the API answers at once and generates it in the background.
+  // Solo pide el copy; la API responde de inmediato y lo genera en segundo plano.
   async generate(id: string) {
     return (
       await apiRequest<{ data: CampaignCopyStatus }>(

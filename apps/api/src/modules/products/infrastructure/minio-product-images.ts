@@ -40,7 +40,7 @@ export class MinioProductImages implements ProductImages {
         contentType: metadata.contentType,
         sha256,
       });
-      // Asset ids are new per upload, so an occupied key is never this upload's object.
+      // Cada subida usa un id de archivo nuevo, así que una clave ocupada nunca es de esta subida.
       if (!created) throw new ProductImageError('UNAVAILABLE');
       await this.database.$transaction(async (tx) => {
         const result = await tx.product.updateMany({
@@ -66,7 +66,7 @@ export class MinioProductImages implements ProductImages {
           },
         });
       });
-      // Do not delete after an ambiguous commit; earlier images stay readable for snapshots.
+      // No borres tras un commit ambiguo; las imágenes anteriores siguen legibles para los snapshots.
     } catch (error) {
       if (error instanceof ProductImageError) throw error;
       if (error instanceof InvalidImageFileError) throw new ProductImageError('INVALID_IMAGE');

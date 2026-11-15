@@ -78,7 +78,7 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
   const previewKey = content && finalAssetUrl ? `${content.id}:${finalAssetUrl}` : null;
   const canReview = Boolean(previewKey && loadedFlyer === previewKey && failedFlyer !== previewKey);
   const isApproved = Boolean(content && campaign.approvedContentId === content.id);
-  // Generation runs in the background; these follow its jobs instead of a pending request.
+  // La generación corre en segundo plano; estos siguen sus trabajos en lugar de una petición pendiente.
   const copyJob = copy.data;
   const copyReady = copyJob?.status === 'READY' ? copyJob : null;
   const copyBusy = generate.isPending || isInProgress(copyJob);
@@ -91,7 +91,7 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
       await approve.mutateAsync(content.id);
       setApprovedMessage('Revisión aprobada correctamente.');
     } catch {
-      // The mutation exposes a safe error below.
+      // La mutación muestra un error seguro más abajo.
     }
   }
   async function handleGenerateFlyer() {

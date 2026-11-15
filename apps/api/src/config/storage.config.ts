@@ -12,7 +12,7 @@ export function readOptionalStorageConfig(environment: NodeJS.ProcessEnv): Stora
   return readStorageConfig(environment);
 }
 
-// Called by the adapter factory when image storage is enabled; never log this object.
+// La llama la fábrica del adapter cuando el almacenamiento de imágenes está activo; nunca registres este objeto en logs.
 export function readStorageConfig(environment: NodeJS.ProcessEnv): StorageConfig {
   try {
     const endpoint = new URL(environment.STORAGE_ENDPOINT ?? '');

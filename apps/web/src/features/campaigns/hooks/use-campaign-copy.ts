@@ -12,7 +12,7 @@ export function useCampaignCopy(id: string, version: number) {
     queryFn: ({ signal }) => campaignCopyService.get(id, signal),
     retry: false,
     refetchOnMount: 'always',
-    // Keep asking only while the background job has not finished.
+    // Sigue preguntando solo mientras el trabajo en segundo plano no haya terminado.
     refetchInterval: (current) => (isInProgress(current.state.data) ? GENERATION_POLL_MS : false),
   });
   const generate = useMutation({

@@ -9,7 +9,7 @@ export interface LoadProductImageInput extends CampaignImageSelection {
 
 export interface ProductImageSource {
   assertAvailable(): void;
-  // Read the exact saved image from the snapshot, checking its owner and product.
-  // Return a private temporary reference to the same bytes; do not generate or replace it.
+  // Lee la imagen exacta guardada en el snapshot, comprobando su dueño y su producto.
+  // Devuelve una referencia privada y temporal a los mismos bytes; no la genera ni la reemplaza.
   load(input: LoadProductImageInput): Promise<ImageArtifact>;
 }

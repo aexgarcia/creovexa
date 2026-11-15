@@ -8,7 +8,7 @@ import { PrismaService } from '#app/infrastructure/persistence/prisma/prisma.ser
 import { PrismaUnitOfWork } from '#app/infrastructure/persistence/prisma/prisma-unit-of-work';
 import { PgBossJobQueue } from './pg-boss-job-queue.js';
 
-// Background work shared by every module: the queue, its configuration and transactions.
+// Trabajo en segundo plano compartido por todos los módulos: la cola, su configuración y las transacciones.
 @Module({
   imports: [DatabaseModule],
   providers: [

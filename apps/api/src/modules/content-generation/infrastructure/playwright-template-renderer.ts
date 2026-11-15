@@ -130,7 +130,7 @@ export class PlaywrightTemplateRenderer implements TemplateRenderer {
       try {
         await browser?.close();
       } catch {
-        // Keep the safe rendering error if the browser disconnected during cleanup.
+        // Conserva el error seguro de composición si el navegador se desconectó durante la limpieza.
       } finally {
         this.rendering = false;
       }

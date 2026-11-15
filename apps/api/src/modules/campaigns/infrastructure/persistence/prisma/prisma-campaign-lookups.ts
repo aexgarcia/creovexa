@@ -1,7 +1,7 @@
 import type { PrismaService } from '#app/infrastructure/persistence/prisma/prisma.service';
 import type { CampaignLookups } from '../../../application/ports/campaign-lookups.js';
 
-/** Queries implement the consumer's ports without importing other modules' entities. */
+/** Las consultas implementan los ports del consumidor sin importar entidades de otros módulos. */
 export class PrismaCampaignLookups implements CampaignLookups {
   constructor(private readonly database: PrismaService) {}
 

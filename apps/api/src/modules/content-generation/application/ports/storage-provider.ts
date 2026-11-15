@@ -12,7 +12,7 @@ export interface StoreCampaignAssetInput extends CampaignImageSelection {
 
 export interface StorageProvider {
   assertAvailable(): void;
-  // Private immutable storage, idempotent per owner/generation/operation/purpose.
-  // Validate actual bytes, MIME and dimensions; never trust reference metadata alone.
+  // Almacenamiento privado e inmutable, idempotente por dueño, generación, operación y propósito.
+  // Valida los bytes reales, el MIME y las dimensiones; nunca confía solo en los metadatos de la referencia.
   store(input: StoreCampaignAssetInput): Promise<StoredCampaignAsset>;
 }

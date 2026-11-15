@@ -16,13 +16,13 @@ export interface PutObjectInput {
   sha256: string;
 }
 
-// Private, immutable object storage shared by every module that keeps files.
-// Callers own their metadata rows and decide what a stored object means.
+// Almacenamiento de objetos privado e inmutable, compartido por todo módulo que guarda archivos.
+// Cada llamador es dueño de sus filas de metadatos y decide qué significa un objeto guardado.
 export interface ObjectStorage {
-  // Bucket that receives new objects; null when storage is not configured.
+  // Bucket que recibe los objetos nuevos; null si el almacenamiento no está configurado.
   readonly bucket: string | null;
-  // Never overwrites. Resolves false when the key already holds an object.
+  // Nunca sobrescribe. Resuelve false si la clave ya tiene un objeto.
   putIfAbsent(input: PutObjectInput): Promise<boolean>;
-  // Reads from the configured bucket and fails with TOO_LARGE beyond maxBytes.
+  // Lee del bucket configurado y falla con TOO_LARGE si supera maxBytes.
   read(key: string, maxBytes: number): Promise<Buffer>;
 }

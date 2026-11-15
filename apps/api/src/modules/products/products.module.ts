@@ -75,7 +75,7 @@ import { ProductsController } from './presentation/products.controller.js';
       useFactory: (images: ProductImages) => new GetProductImage(images),
     },
   ],
-  // Campaign generation reads the stored product photo through this port.
+  // La generación de campañas lee la foto guardada del producto a través de este port.
   exports: [PRODUCT_IMAGES],
 })
 export class ProductsModule {}

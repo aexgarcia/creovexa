@@ -44,7 +44,7 @@ export class PrismaCampaignRepository implements CampaignRepository {
   }
 
   async findById(organizationId: EntityId, campaignId: EntityId): Promise<Campaign | null> {
-    // Repeatable read keeps the root and relation queries in one consistent snapshot.
+    // Repeatable read mantiene la raíz y las relaciones en una misma instantánea consistente.
     return inPrismaTransaction(
       this.database,
       async (tx) => {

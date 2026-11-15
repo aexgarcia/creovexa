@@ -21,7 +21,7 @@ export interface OpenAIImageConfig {
 
 export function readImageGenerationConfig(env: NodeJS.ProcessEnv): ImageGenerationConfig {
   const provider = env.IMAGE_PROVIDER?.trim() || 'disabled';
-  // A copy API key must never implicitly enable potentially billable image generation.
+  // Una clave de API para copy nunca debe activar de forma implícita la generación de imágenes, que puede cobrarse.
   if (provider === 'disabled') return { provider };
   if (provider === 'openai') {
     const model = env.OPENAI_IMAGE_MODEL?.trim() || 'gpt-image-2';

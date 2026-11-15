@@ -9,7 +9,7 @@ import { MAX_IMAGE_BYTES } from '#app/infrastructure/image-files';
 export { MAX_IMAGE_BYTES } from '#app/infrastructure/image-files';
 type ArtifactScope = CampaignImageSelection & { operationId: string };
 
-// Server-owned staging directory. References are opaque UUIDs, never paths or URLs.
+// Carpeta temporal del servidor. Las referencias son UUID opacos, nunca rutas ni URLs.
 export class LocalImageArtifacts {
   private readonly root: string;
   constructor(root: string) {

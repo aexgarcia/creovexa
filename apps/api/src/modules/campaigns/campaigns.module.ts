@@ -97,7 +97,7 @@ import { CampaignsController } from './presentation/campaigns.controller.js';
         new GetCampaignFinalAsset(repo, assets),
     },
   ],
-  // The only thing other modules can inject: the published contract.
+  // Lo único que otros módulos pueden inyectar: el contrato publicado.
   exports: [CAMPAIGN_GENERATIONS],
 })
 export class CampaignsModule {}

@@ -1,7 +1,7 @@
 declare const transactionContext: unique symbol;
 
-// Opaque handle to a database transaction in progress. It lets one module ask another
-// to take part in its transaction without either of them knowing the database client.
+// Referencia opaca a una transacción de base de datos en curso. Permite que un módulo pida a otro
+// participar en su transacción sin que ninguno de los dos conozca el cliente de la base de datos.
 export interface TransactionContext {
   readonly [transactionContext]: true;
 }
