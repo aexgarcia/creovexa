@@ -27,6 +27,30 @@ describe('copyBrief', () => {
     expect(text).not.toContain(snapshot().product.id);
     expect(text).not.toContain(snapshot().organization.id);
   });
+  it('sends the language region and only the contact channels the caption may name', () => {
+    const data = snapshot();
+    const brief = copyBrief({
+      ...data,
+      organization: {
+        ...data.organization,
+        contact: {
+          whatsapp: '+51 999 000 111',
+          website: null,
+          instagram: '@cafe',
+          address: 'Av. Lima 1',
+        },
+      },
+    });
+    expect(brief.region).toEqual({
+      country: data.organization.region.country,
+      locale: data.organization.region.locale,
+    });
+    expect(brief.contact).toEqual({ whatsapp: '+51 999 000 111', instagram: '@cafe' });
+    expect(JSON.stringify(brief)).not.toContain('Av. Lima 1');
+    expect(
+      copyBrief({ ...data, organization: { ...data.organization, contact: null } }).contact,
+    ).toBeNull();
+  });
   it('adds the discount only when the campaign asks for it', () => {
     expect(copyBrief(snapshot()).discount).toBeNull();
     const data = snapshot();
@@ -91,6 +115,19 @@ describe('validateCopy', () => {
       CopyGenerationError,
     );
   });
+  it('fixes the hashtag format and validates the result', () => {
+    expect(
+      validateCopy({ ...validCopy(), hashtags: [' #Cafe', 'Altura '] }, snapshot()).hashtags,
+    ).toEqual(['#Cafe', '#Altura']);
+  });
+  it.each([[['#Cafe', ' #Cafe']], [['#Café de altura']], [[' #Gratis']]])(
+    'still rejects hashtags %j after fixing their format',
+    (hashtags) => {
+      expect(() => validateCopy({ ...validCopy(), hashtags }, snapshot())).toThrow(
+        CopyGenerationError,
+      );
+    },
+  );
   it('rejects a missing subheadline field', () => {
     const rest: Partial<ReturnType<typeof validCopy>> = validCopy();
     delete rest.subheadline;

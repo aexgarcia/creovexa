@@ -3,7 +3,12 @@ import { domainFixture } from '../../../support/campaign-fakes.js';
 import { validCopy } from '../../../support/generation-fakes.js';
 const input = domainFixture().snapshot.data;
 const copy = validCopy(input);
-const config = { apiKey: 'test-secret', model: 'test-model', timeoutMs: 100 };
+const config = {
+  apiKey: 'test-secret',
+  model: 'test-model',
+  reasoningEffort: null,
+  timeoutMs: 100,
+};
 const response = () =>
   new Response(
     JSON.stringify({
@@ -12,14 +17,23 @@ const response = () =>
     }),
   );
 describe('OpenAICopyGenerator', () => {
-  it('uses minimal reasoning for the selected gpt-5-mini model', async () => {
+  it('sends the configured reasoning effort to any model', async () => {
+    const http = vi.fn<typeof fetch>().mockResolvedValue(response());
+    await new OpenAICopyGenerator(
+      { ...config, model: 'gpt-6-luna', reasoningEffort: 'low' },
+      http,
+    ).generate(input);
+    const sent = JSON.parse(http.mock.calls[0]![1]!.body as string);
+    expect(sent.model).toBe('gpt-6-luna');
+    expect(sent.reasoning).toEqual({ effort: 'low' });
+    expect(sent.max_output_tokens).toBe(6000);
+    expect(sent.text.format.strict).toBe(true);
+  });
+  it('omits the reasoning effort when it is not configured, even for gpt-5-mini', async () => {
     const http = vi.fn<typeof fetch>().mockResolvedValue(response());
     await new OpenAICopyGenerator({ ...config, model: 'gpt-5-mini' }, http).generate(input);
     const sent = JSON.parse(http.mock.calls[0]![1]!.body as string);
-    expect(sent.model).toBe('gpt-5-mini');
-    expect(sent.reasoning).toEqual({ effort: 'minimal' });
-    expect(sent.max_output_tokens).toBe(6000);
-    expect(sent.text.format.strict).toBe(true);
+    expect(sent).not.toHaveProperty('reasoning');
   });
   it('requests strict structured output and validates the returned content', async () => {
     const http = vi.fn<typeof fetch>().mockResolvedValue(response());

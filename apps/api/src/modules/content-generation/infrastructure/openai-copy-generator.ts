@@ -52,8 +52,8 @@ export class OpenAICopyGenerator implements CopyGenerator {
           },
           body: JSON.stringify({
             model: this.config.model,
-            ...(this.config.model === 'gpt-5-mini' || this.config.model.startsWith('gpt-5-mini-')
-              ? { reasoning: { effort: 'minimal' } }
+            ...(this.config.reasoningEffort
+              ? { reasoning: { effort: this.config.reasoningEffort } }
               : {}),
             store: false,
             max_output_tokens: 6000,
