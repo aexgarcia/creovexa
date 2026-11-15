@@ -1,7 +1,7 @@
 # ADR-0009 · Estrategia de generación del flyer: IA completa con verificación o composición
 
-- **Estado:** Propuesto · se cierra tras la prueba de calidad descrita abajo
-- **Fecha:** 2026-11-14
+- **Estado:** Aceptado
+- **Fecha:** 2026-11-14 · propuesto y cerrado tras la prueba de calidad del mismo día
 - **Ámbito:** generación visual (fase 6)
 
 ## Contexto
@@ -20,43 +20,56 @@ El objetivo de producto es otro: que la IA reciba todos los datos y genere **el 
 | Costo de corregir un texto | Otra generación de imagen | Ninguno |
 | Variedad entre campañas | Alta | Dos layouts y dos paletas |
 
-## Decisión propuesta
+## Prueba de calidad
 
-Soportar ambas como **estrategias** detrás de un mismo port de composición, con la opción A como modo principal si supera la prueba de calidad.
+Se pedían entre 15 y 20 generaciones reales. Se hicieron 36 por API y 14 en ChatGPT, con `gpt-image-2` en calidad `low` y lectura con `gpt-5-mini`. Los datos, los scripts y la forma de repetirla están en [`apps/api/evaluation/flyer-quality`](../../apps/api/evaluation/flyer-quality/README.md).
+
+| Ronda | Qué se probó | Precios y fechas | Otros textos | Hallazgo |
+| --- | --- | --- | --- | --- |
+| 1 · API, 17 flyers | Datos actuales del sistema; la IA dibuja el logo | 17/17 | Nombre, titular y CTA exactos en 17/17 | El logo salió recoloreado o ilegible sobre fondos oscuros: su texto se leyó bien solo en el 59 % |
+| 2 · ChatGPT, 7 casos | [Modelo de datos nuevo](../arquitectura/datos-del-flyer.md); la IA dibuja el logo | Sin errores | Sin errores | El eslogan del logo de Buscaditos cambió en 3 de 6 flyers. El café, con muchos elementos, se vio sobrecargado |
+| 3 · API, 11 flyers | Logo original pegado por el sistema sobre una placa | 8/8 en la corrida completa | 47/47 | En 1 de 8 la IA no dejó libre la esquina y la placa tapó el titular sin que la verificación lo notara |
+| 4 · API, 8 flyers | Logo directo o con velo; revisión de la esquina | 8/8 | 47/47 | 4 logos directos y 4 con velo; ningún texto tapado. El autor publicaría los 8 |
+
+En todas las rondas: ningún error del proveedor; de 11 a 17 s y unos US$ 0.025 por flyer, con la verificación incluida. Las rondas 2 a 4 respetaron el producto y su foto, con detalles menores: un producto recortado en el borde, un ícono con letras que nadie pidió y un texto impreso del producto que se perdió. La revisión humana los detecta.
+
+El criterio era el 80 % de precios y fechas correctos al primer intento. Salió el 100 % en las 36 generaciones por API.
+
+## Decisión
+
+`AI_FULL` es el modo principal. `COMPOSED` se conserva como alternativa, detrás del mismo port de composición.
 
 **Modo `AI_FULL`:**
 
-1. El generador recibe la foto del producto y el logo como imágenes de referencia, más los textos exactos del snapshot (nombre, precios, fechas, CTA, titular).
-2. **Verificación automática:** un modelo con visión lee el flyer generado y devuelve, en formato estructurado, los precios, el nombre y las fechas que ve. Se comparan contra el snapshot. Si algo no coincide, la generación falla con `IMAGE_VERIFICATION_FAILED` y no llega a aprobación.
-3. **Aprobación humana obligatoria**, que ya existe.
+1. **Brief y prompt.** El sistema resuelve el kit de marca, el producto, la plantilla y la campaña en un brief: textos exactos con su jerarquía, formato, dirección de arte y restricciones. Con el brief arma el prompt. Los campos y las reglas están en [datos para generar el flyer](../arquitectura/datos-del-flyer.md).
+2. **Generación.** El modelo de imagen recibe **solo la foto del producto** y el prompt, en calidad baja por defecto. El logo no se envía: la IA deja vacía una esquina, en el tono que el logo necesita.
+3. **Logo superpuesto.** El sistema pega el logo original, sin recolorearlo ni redibujarlo:
+   - directo sobre el fondo, si el contorno del logo contrasta con lo que dibujó la IA;
+   - si no, sobre un velo translúcido de bordes difusos.
+4. **Verificación automática.** Antes de pasar a aprobación:
+   - un modelo de visión transcribe el flyer final sin conocer los textos esperados, y el sistema compara precios, fechas y textos con el snapshot;
+   - otra lectura revisa el recorte de la esquina en la imagen de la IA: si hay texto, el logo lo taparía.
+   
+   Si algo no coincide, la generación falla con `IMAGE_VERIFICATION_FAILED` y no llega a aprobación. No se reintenta sola, por la misma razón que en [ADR-0008](0008-cola-de-trabajos-y-worker.md): cada intento se cobra. Quien la pidió puede regenerarla.
+5. **Aprobación humana obligatoria**, que ya existe.
 
-**Modo `COMPOSED`:** el flujo híbrido actual, sin cambios. Se conserva para quien necesite exactitud garantizada o cuando el proveedor no rinda.
+**Modo `COMPOSED`:** el flujo híbrido actual, sin cambios. Queda para quien necesite exactitud garantizada sin regenerar, o si el proveedor deja de rendir.
 
-El modo se elige por despliegue al inicio (igual que el proveedor, [ADR-0006](0006-proveedores-de-ia-por-despliegue.md)); llevarlo a la plantilla queda como evolución posible.
-
-## Prueba de calidad previa
-
-Antes de aceptar este ADR: entre 15 y 20 generaciones reales en modo `AI_FULL`, con productos y precios reales, midiendo:
-
-- porcentaje con todos los precios y fechas correctos;
-- porcentaje con el logo reconocible y sin deformar;
-- porcentaje con el producto fiel a la foto;
-- costo y tiempo por generación.
-
-Criterio sugerido: si menos del 80 % sale correcto al primer intento, `COMPOSED` sigue siendo el modo por defecto y `AI_FULL` queda como opción.
-
-No se conoce todavía la tasa de acierto del modelo configurado con texto en español y precios; por eso la decisión queda propuesta.
+El modo se elige por despliegue al inicio, igual que el proveedor ([ADR-0006](0006-proveedores-de-ia-por-despliegue.md)). Llevarlo a la plantilla queda como evolución posible.
 
 ## Alternativas descartadas
 
-- **Solo IA completa, sin verificación:** un precio mal escrito llegaría a depender únicamente de la atención de quien aprueba.
-- **Eliminar ya el compositor:** está implementado y probado; quitarlo antes de medir la opción A deja al producto sin respaldo.
-- **Componer con `sharp` y SVG en lugar de Chromium:** más liviano, pero pierde el ajuste automático de texto; se reconsidera solo si `COMPOSED` queda como modo principal y Chromium resulta un problema de costo.
+- **Solo IA completa, sin verificación:** un precio mal escrito dependería únicamente de la atención de quien aprueba. La prueba no encontró errores de precio, pero sí un logo que tapaba el titular y que solo una revisión dirigida detectó.
+- **Que la IA dibuje el logo:** lo recolorea, lo vuelve ilegible sobre fondos oscuros y cambia el texto pequeño (rondas 1 y 2).
+- **Pegar el logo sobre una placa sólida:** se lee siempre, pero el autor la descartó porque se ve como una tarjeta encima del diseño.
+- **Eliminar ya el compositor:** está implementado y probado; quitarlo deja al producto sin respaldo.
 
 ## Consecuencias
 
-- La verificación suma una llamada de visión por generación (costo y latencia).
-- En modo `AI_FULL` cada corrección de texto cuesta una imagen nueva.
-- Los ports `ImageGenerator`, `TemplateRenderer` y `StorageProvider` casi no cambian; se agrega un port `FlyerVerifier` y un selector de estrategia.
-- Si `AI_FULL` queda como modo principal, Chromium deja de ser requisito del despliegue básico.
-- La regla "la IA nunca es fuente de precios" se reformula: **la IA puede dibujarlos, pero el sistema los verifica contra el snapshot antes de que una persona apruebe**.
+- Cada generación suma dos lecturas de visión, el flyer y la esquina: menos de US$ 0.002 y unos segundos más.
+- Cada corrección de texto cuesta una imagen nueva, unos US$ 0.025 en calidad baja.
+- Se agregan los ports `FlyerVerifier` (lectura de visión) y un compositor del logo con `sharp`, ya dependencia de `apps/api`. `ImageGenerator` pasa a recibir el brief. `TemplateRenderer` queda solo para `COMPOSED`.
+- El modelo de datos crece según [datos para generar el flyer](../arquitectura/datos-del-flyer.md): kit de marca con colores propuestos desde el logo, tipo de foto, nombre corto, marca del producto, atributos clave, plantillas con composición y estilo, y objetivo de la campaña.
+- Un logo oscuro en una plantilla oscura se resuelve mejor con la variante clara del kit de marca. Sin ella, queda el velo.
+- Con `AI_FULL` como modo principal, Chromium deja de ser requisito del despliegue básico.
+- La regla "la IA nunca es fuente de precios" se reformula: **la IA puede dibujarlos, pero el sistema los verifica contra el snapshot antes de que una persona apruebe**. El logo nunca lo dibuja la IA.

@@ -25,7 +25,7 @@ Pendiente de la fase 6 según su historial: regeneración de imagen, historial c
 | Plan original | Ajuste | Decisión |
 | --- | --- | --- |
 | Fase 7: n8n como orquestador | Cola de trabajos en PostgreSQL y worker propio; n8n opcional | [ADR-0008](../adr/0008-cola-de-trabajos-y-worker.md) |
-| Fase 6: IA genera imagen base y Playwright compone | Se evalúa IA completa con verificación; composición como modo alternativo | [ADR-0009](../adr/0009-estrategia-de-generacion-del-flyer.md) (propuesto) |
+| Fase 6: IA genera imagen base y Playwright compone | IA completa con logo superpuesto y verificación; composición como modo alternativo | [ADR-0009](../adr/0009-estrategia-de-generacion-del-flyer.md) |
 | Fase 9: autenticación al final | Adelantar identidad y contexto de organización antes de la fase 8 | [ADR-0012](../adr/0012-autenticacion-antes-de-publicar.md) (propuesto) |
 
 ## Hoja de ruta
@@ -49,7 +49,7 @@ Cada paso es un cambio pequeño y verificable con la suite de tests existente.
 
 ### Etapa C · Cerrar la generación
 
-6. Prueba de calidad de IA completa (15 a 20 generaciones reales) y cierre de [ADR-0009](../adr/0009-estrategia-de-generacion-del-flyer.md).
+6. ~~Prueba de calidad de IA completa y cierre de [ADR-0009](../adr/0009-estrategia-de-generacion-del-flyer.md).~~ Hecho: 36 generaciones por API, 100 % de precios y fechas correctos; `AI_FULL` queda como modo principal.
 7. Implementar la estrategia elegida, regeneración e historial de versiones. Con esto se cierra la fase 6.
 
 ### Etapa D · Publicar
