@@ -42,7 +42,7 @@ const NEUTRAL: BrandColors = {
 };
 
 // El mismo estilo que los demás select del CMS.
-const selectClass = 'w-full rounded border bg-background p-2 text-sm';
+const selectClass = 'h-11 w-full rounded-[10px] border border-input bg-control px-3 text-sm';
 
 /** País y moneda. Al cambiar de país se ajustan la zona horaria y el idioma regional. */
 export function RegionFields({
@@ -138,13 +138,13 @@ export function BrandColorFields({
         )}
       </div>
       {shown ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {COLOR_FIELDS.map(({ key, label }) => (
-            <div key={key} className="flex items-center gap-3">
+            <div key={key} className="min-w-0 space-y-2">
               <Input
                 id={`brand-color-${key}`}
                 type="color"
-                className="h-9 w-12 shrink-0 cursor-pointer p-1"
+                className="h-12 w-full cursor-pointer rounded-xl p-1"
                 value={shown[key].toLowerCase()}
                 onChange={(event) =>
                   onChange({ ...shown, [key]: event.target.value.toUpperCase() })
@@ -152,7 +152,9 @@ export function BrandColorFields({
               />
               <Label htmlFor={`brand-color-${key}`} className="font-normal">
                 {label}
-                <span className="ml-2 font-mono text-xs text-muted-foreground">{shown[key]}</span>
+                <span className="mt-1 block font-mono text-xs text-muted-foreground">
+                  {shown[key]}
+                </span>
               </Label>
             </div>
           ))}

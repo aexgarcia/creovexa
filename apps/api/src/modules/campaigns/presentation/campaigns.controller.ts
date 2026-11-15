@@ -39,11 +39,22 @@ import {
   CreateCampaignRequest,
   ApproveCampaignRequest,
   UpdateCampaignRequest,
+  RestoreCampaignVersionRequest,
   type PromotionRequest,
 } from './campaign.requests.js';
 import { UpdateCampaignDraft } from '../application/use-cases/update-campaign-draft.js';
 import { ApproveCampaign } from '../application/use-cases/approve-campaign.js';
-import { CampaignEnvelope, CampaignPageResponse, campaignResponse } from './campaign.responses.js';
+import {
+  ListCampaignVersions,
+  RestoreCampaignVersion,
+} from '../application/use-cases/campaign-versions.js';
+import {
+  CampaignEnvelope,
+  CampaignPageResponse,
+  CampaignVersionsEnvelope,
+  campaignResponse,
+  campaignVersionResponse,
+} from './campaign.responses.js';
 
 function promotionInput(promotion: PromotionRequest | undefined) {
   return promotion
@@ -67,7 +78,49 @@ export class CampaignsController {
     @Inject(ListCampaigns) private readonly listCampaigns: ListCampaigns,
     @Inject(GetCampaignFinalAsset) private readonly getFinalAsset: GetCampaignFinalAsset,
     @Inject(UpdateCampaignDraft) private readonly updateDraft: UpdateCampaignDraft,
+    @Inject(ListCampaignVersions) private readonly listVersions: ListCampaignVersions,
+    @Inject(RestoreCampaignVersion) private readonly restoreVersion: RestoreCampaignVersion,
   ) {}
+
+  @Get(':id/versions')
+  @ApiOperation({ summary: 'Historial de versiones del flyer, de la más nueva a la más antigua' })
+  @ApiParam({ name: 'id', type: String, format: 'uuid' })
+  @ApiOkResponse({ type: CampaignVersionsEnvelope })
+  async versions(
+    @OrganizationId() organizationId: string,
+    @Param('id', new ParseUUIDPipe()) campaignId: string,
+  ): Promise<CampaignVersionsEnvelope> {
+    const versions = await this.listVersions.execute({ organizationId, campaignId });
+    return { data: versions.map((version) => campaignVersionResponse(campaignId, version)) };
+  }
+
+  @Post(':id/versions/:generationId/restore')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Volver a una versión anterior del flyer',
+    description: 'Su contenido queda pendiente de aprobación; quita la aprobación que hubiera.',
+  })
+  @ApiParam({ name: 'id', type: String, format: 'uuid' })
+  @ApiParam({ name: 'generationId', type: String, format: 'uuid' })
+  @ApiBody({ type: RestoreCampaignVersionRequest })
+  @ApiOkResponse({ type: CampaignEnvelope })
+  async restore(
+    @OrganizationId() organizationId: string,
+    @Param('id', new ParseUUIDPipe()) campaignId: string,
+    @Param('generationId', new ParseUUIDPipe()) generationId: string,
+    @Body(validateRequest(RestoreCampaignVersionRequest)) body: RestoreCampaignVersionRequest,
+  ): Promise<CampaignEnvelope> {
+    return {
+      data: campaignResponse(
+        await this.restoreVersion.execute({
+          organizationId,
+          campaignId,
+          generationId,
+          expectedVersion: body.expectedVersion,
+        }),
+      ),
+    };
+  }
 
   @Post(':id/approve')
   @HttpCode(200)

@@ -70,6 +70,10 @@ export class CopyRepositoryFake implements CampaignCopyRepository {
     }
     return Promise.resolve();
   }
+  store(_selection: CopySelection, content: CampaignCopy) {
+    this.saved = content;
+    return Promise.resolve();
+  }
   editFlyerTexts(_selection: CopySelection, texts: FlyerTexts): Promise<CopyEditResult> {
     if (this.editResult !== 'UPDATED') return Promise.resolve(this.editResult);
     if (!this.saved) return Promise.resolve('COPY_NOT_READY');

@@ -49,6 +49,16 @@ export class PublishedCampaignGenerations implements CampaignGenerations {
     return generationView(updated);
   }
 
+  async regenerate(reference: CampaignReference, transaction: TransactionContext) {
+    const campaigns = this.workspace.repositoryIn(transaction);
+    const campaign = await loadCampaign(reference, campaigns);
+    const resources = await loadCampaignResources(campaign, this.lookups);
+    const snapshot = GenerationSnapshot.capture(resources, campaign.brief);
+    const updated = campaign.requestRegeneration(this.ids.next(), snapshot, this.clock.now());
+    await campaigns.save(campaign.organizationId, updated, campaign.version);
+    return generationView(updated);
+  }
+
   async assertPromotionActive(reference: CampaignReference, at: Date) {
     (await loadCampaign(reference, this.campaigns)).promotion?.assertNotExpired(at);
   }

@@ -16,6 +16,10 @@ import {
 } from './application/ports/campaign-final-assets.js';
 import { PublishedCampaignGenerations } from './application/published-campaign-generations.js';
 import { ApproveCampaign } from './application/use-cases/approve-campaign.js';
+import {
+  ListCampaignVersions,
+  RestoreCampaignVersion,
+} from './application/use-cases/campaign-versions.js';
 import { CreateCampaign } from './application/use-cases/create-campaign.js';
 import { GetCampaign } from './application/use-cases/get-campaign.js';
 import { GetCampaignFinalAsset } from './application/use-cases/get-campaign-final-asset.js';
@@ -90,6 +94,17 @@ import { CampaignsController } from './presentation/campaigns.controller.js';
       inject: [PrismaCampaignRepository, CLOCK],
       useFactory: (repo: PrismaCampaignRepository, clock: Clock) =>
         new RecordCampaignGenerationFailure(repo, clock),
+    },
+    {
+      provide: ListCampaignVersions,
+      inject: [PrismaCampaignRepository],
+      useFactory: (repo: PrismaCampaignRepository) => new ListCampaignVersions(repo),
+    },
+    {
+      provide: RestoreCampaignVersion,
+      inject: [PrismaCampaignRepository, CLOCK],
+      useFactory: (repo: PrismaCampaignRepository, clock: Clock) =>
+        new RestoreCampaignVersion(repo, clock),
     },
     {
       provide: ApproveCampaign,

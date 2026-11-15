@@ -135,6 +135,24 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
       });
     });
   }
+  async store(
+    selection: CopySelection,
+    content: CampaignCopy,
+    at: Date,
+    transaction: TransactionContext,
+  ) {
+    await prismaTransaction(transaction).campaignCopy.create({
+      data: {
+        ...selectionOf(selection),
+        token: randomUUID(),
+        status: 'READY',
+        expiresAt: at,
+        failureCode: null,
+        content: { ...content },
+      },
+    });
+  }
+
   async editFlyerTexts(
     selection: CopySelection,
     texts: FlyerTexts,

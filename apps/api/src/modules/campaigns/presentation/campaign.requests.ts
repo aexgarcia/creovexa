@@ -29,6 +29,19 @@ export class ApproveCampaignRequest {
   contentId!: string;
 }
 
+// Recuperar una versión anterior (ADR-0026).
+export class RestoreCampaignVersionRequest {
+  @ApiProperty({
+    type: Number,
+    minimum: 0,
+    description: 'La versión de la campaña que se estaba viendo, tal como la devolvió la API.',
+  })
+  @IsInt()
+  @Min(0)
+  @Max(Number.MAX_SAFE_INTEGER)
+  expectedVersion!: number;
+}
+
 export class PromotionRequest {
   @ApiProperty({ type: Number, minimum: 0, maximum: Number.MAX_SAFE_INTEGER })
   @IsInt()

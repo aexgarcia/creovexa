@@ -2,6 +2,8 @@ export enum CampaignResource {
   ORGANIZATION = 'ORGANIZATION',
   PRODUCT = 'PRODUCT',
   TEMPLATE_REVISION = 'TEMPLATE_REVISION',
+  // Una generación de la campaña, al recuperar una versión.
+  VERSION = 'VERSION',
 }
 
 export class CampaignResourceNotFoundError extends Error {

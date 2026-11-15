@@ -550,6 +550,54 @@ describe('Catalog HTTP with PostgreSQL', () => {
     });
   }
 
+  it('regenerates, lists versions and restores an earlier one without reusing numbers', async () => {
+    const candidate = await candidateCampaign();
+    const base = '/campaigns/' + candidate.id;
+    // Sin copy guardado para la versión 1, la regeneración pide uno nuevo.
+    const regenerated = await request(app.getHttpServer())
+      .post(base + '/regenerate')
+      .expect(202);
+    expect(regenerated.body.data).toMatchObject({ status: 'PENDING' });
+    await queue.drain();
+    const second = await database.campaign.findUniqueOrThrow({ where: { id: candidate.id } });
+    expect(second.status).toBe('GENERATING');
+    const versions = (
+      await request(app.getHttpServer())
+        .get(base + '/versions')
+        .expect(200)
+    ).body.data;
+    expect(versions.map((version: { number: number }) => version.number)).toEqual([2, 1]);
+    expect(versions[1]).toMatchObject({
+      current: false,
+      content: { headline: 'Oferta', finalAssetUrl: expect.stringContaining('/assets/') },
+    });
+    const restored = await request(app.getHttpServer())
+      .post(base + '/versions/' + candidate.generation!.id + '/restore')
+      .send({ expectedVersion: Number(second.version) })
+      .expect(200);
+    expect(restored.body.data).toMatchObject({
+      status: 'PENDING_APPROVAL',
+      candidateContent: { id: candidate.candidateContent!.id },
+    });
+    // La vigente vuelve a ser la 1, que no tiene copy guardado: la tercera versión pide uno y
+    // recibe el número 3, no el 2 que siguió a la vigente.
+    const third = await request(app.getHttpServer())
+      .post(base + '/regenerate')
+      .expect(202);
+    expect(third.body.data).toMatchObject({ status: 'PENDING' });
+    const numbers = await database.campaignGeneration.findMany({
+      where: { campaignId: candidate.id },
+      orderBy: { number: 'asc' },
+      select: { number: true },
+    });
+    expect(numbers.map((row) => Number(row.number))).toEqual([1, 2, 3]);
+    const stale = await request(app.getHttpServer())
+      .post(base + '/versions/' + candidate.generation!.id + '/restore')
+      .send({ expectedVersion: Number(second.version) })
+      .expect(409);
+    expect(stale.body.error.code).toBe('CAMPAIGN_CONFLICT');
+  });
+
   it('persists exactly one concurrent approval and retains the reviewed content', async () => {
     const candidate = await candidateCampaign();
     const path = `/campaigns/${candidate.id}/approve`;

@@ -10,12 +10,9 @@ apps/
   api/                    # NestJS; antes creovexa-back
 packages/
   config/                 # TypeScript, ESLint y Prettier compartidos
-automation/
-  n8n/                    # Documentación; workflows desde la fase 7
 infrastructure/
   docker/
-    compose.yaml          # PostgreSQL, MinIO y n8n locales
-    postgres/             # Inicialización de la base independiente de n8n
+    compose.yaml          # PostgreSQL y MinIO locales
     minio/                # Imagen construida desde el código oficial
 scripts/                  # Preparación de entorno y comprobación de salud
 SDD/                      # Documentación: arquitectura, ADRs, contratos, fases e historial
@@ -44,11 +41,11 @@ pnpm db:seed:dev
 pnpm dev
 ```
 
-`setup:env` crea `.env`, `apps/api/.env` y `apps/web/.env.local` a partir de sus ejemplos. Genera contraseñas y clave de cifrado aleatorias y conserva las variables existentes. Si falta `DATABASE_URL` en la API, la añade usando las credenciales de PostgreSQL del entorno raíz, sin imprimirlas. Estos archivos se ignoran en Git. No uses `pnpm setup`: ese es un comando propio del gestor de paquetes.
+`setup:env` crea `.env`, `apps/api/.env` y `apps/web/.env.local` a partir de sus ejemplos. Genera contraseñas aleatorias y conserva las variables existentes. Si falta `DATABASE_URL` en la API, la añade usando las credenciales de PostgreSQL del entorno raíz, sin imprimirlas. Estos archivos se ignoran en Git. No uses `pnpm setup`: ese es un comando propio del gestor de paquetes.
 
-`db:migrate` aplica las migraciones versionadas mediante `prisma migrate deploy`; no resetea la base ni modifica la base independiente de n8n. El cliente Prisma se genera automáticamente al comprobar tipos, ejecutar pruebas o compilar. Consulta [persistencia comercial](SDD/historial/fase-3.md), [campañas](SDD/historial/fase-3.md) y [publicaciones](SDD/historial/fase-3.md) para sus límites y pruebas de PostgreSQL.
+`db:migrate` aplica las migraciones versionadas mediante `prisma migrate deploy`; no resetea la base. El cliente Prisma se genera automáticamente al comprobar tipos, ejecutar pruebas o compilar. Consulta [persistencia comercial](SDD/historial/fase-3.md), [campañas](SDD/historial/fase-3.md) y [publicaciones](SDD/historial/fase-3.md) para sus límites y pruebas de PostgreSQL.
 
-Las aplicaciones se ejecutan en el host con recarga automática; los tres servicios de infraestructura se ejecutan en Docker. También puedes usar `pnpm dev:web` y `pnpm dev:api` por separado.
+Las aplicaciones se ejecutan en el host con recarga automática; los dos servicios de infraestructura se ejecutan en Docker. También puedes usar `pnpm dev:web` y `pnpm dev:api` por separado.
 
 `db:seed:dev` prepara una organización local y configura `DEV_ORGANIZATION_ID` en `apps/api/.env`; repetirlo conserva la organización existente. No añade productos ni plantillas. Reinicia la API después de ejecutarlo. Hasta incorporar autenticación en la fase 9, el catálogo funciona con esa organización fija en desarrollo; sin configuración responde 503 y no se permite habilitarla en producción. Swagger está en <http://localhost:3001/docs> y el contrato en <http://localhost:3001/openapi.json>. Consulta [la API de catálogo](SDD/historial/fase-4.md) para ejemplos y límites.
 
@@ -56,16 +53,15 @@ Las aplicaciones se ejecutan en el host con recarga automática; los tres servic
 | ------------- | --------------------- | ----------------------- |
 | CMS           | http://localhost:3000 | `/health`               |
 | API           | http://localhost:3001 | `/health`               |
-| n8n           | http://localhost:5678 | `/healthz/readiness`    |
 | MinIO S3      | http://localhost:9000 | `/minio/health/live`    |
 | MinIO consola | http://localhost:9001 | —                       |
 | PostgreSQL    | localhost:5432        | `pg_isready` en Compose |
 
-En la primera visita a n8n se crea el usuario propietario desde su interfaz. Para MinIO, consulta `MINIO_ROOT_USER` y `MINIO_ROOT_PASSWORD` en tu `.env` local.
+Para MinIO, consulta `MINIO_ROOT_USER` y `MINIO_ROOT_PASSWORD` en tu `.env` local.
 
 Los puertos de infraestructura se pueden cambiar en `.env`. El puerto de API se configura con `API_PORT` en `apps/api/.env`; actualiza `NEXT_PUBLIC_API_URL` en `apps/web/.env.local` si lo cambias. El CMS usa el puerto 3000, y `CORS_ORIGIN` limita el origen aceptado por la API. Las URLs públicas del frontend no deben contener secretos.
 
-El healthcheck de las aplicaciones comprueba que responden por HTTP; es una comprobación de vida, no de disponibilidad de PostgreSQL. El cliente abre conexiones al ejecutar consultas y las libera al cerrar NestJS. PostgreSQL y MinIO tienen comprobaciones propias; la de n8n espera también la conexión a su base y sus migraciones.
+El healthcheck de las aplicaciones comprueba que responden por HTTP; es una comprobación de vida, no de disponibilidad de PostgreSQL. El cliente abre conexiones al ejecutar consultas y las libera al cerrar NestJS. PostgreSQL y MinIO tienen comprobaciones propias.
 
 ## Comandos
 
@@ -85,7 +81,7 @@ pnpm infra:status
 pnpm infra:down
 ```
 
-`infra:check` valida Compose sin imprimir secretos ni requerir el motor en ejecución. `infra:down` conserva los volúmenes. Las credenciales de PostgreSQL y n8n deben conservarse junto con esos volúmenes: cambiar el `.env` no actualiza automáticamente usuarios existentes ni recifra credenciales guardadas.
+`infra:check` valida Compose sin imprimir secretos ni requerir el motor en ejecución. `infra:down` conserva los volúmenes. Las credenciales de PostgreSQL deben conservarse junto con su volumen: cambiar el `.env` no actualiza usuarios existentes. n8n se ha retirado de Compose conforme al ADR-0008. Los contenedores, bases y volúmenes preexistentes se conservan; su limpieza es manual.
 
 `test:integration` requiere PostgreSQL disponible. Crea un esquema aleatorio `creovexa_test_…`, aplica las migraciones y elimina únicamente ese esquema al terminar, incluso si falla una prueba. Usa `TEST_DATABASE_URL` si está definida y, en caso contrario, `DATABASE_URL` de la API. Las pruebas unitarias y HTTP no necesitan una conexión a PostgreSQL.
 

@@ -1,3 +1,4 @@
+import type { CampaignVersionResult } from '../application/use-cases/campaign-versions.js';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Currency } from '#app/domain/value-objects/money';
 import { PaginationResponse } from '#app/presentation/http/pagination.dto';
@@ -97,5 +98,68 @@ export function campaignResponse(result: CampaignResult): CampaignResponse {
     version: result.version,
     createdAt: result.createdAt,
     updatedAt: result.updatedAt,
+  };
+}
+
+class VersionPriceResponse {
+  @ApiProperty({ type: Number }) amountMinor!: number;
+  @ApiProperty({ type: String }) currency!: string;
+}
+class VersionPricesResponse {
+  @ApiProperty({ type: VersionPriceResponse }) regular!: VersionPriceResponse;
+  @ApiProperty({ type: VersionPriceResponse, nullable: true })
+  promotion!: VersionPriceResponse | null;
+}
+class VersionContentResponse {
+  @ApiProperty({ type: String, format: 'uuid' }) id!: string;
+  @ApiProperty({ type: String }) headline!: string;
+  @ApiProperty({ type: String, nullable: true }) subheadline!: string | null;
+  @ApiProperty({ type: String }) caption!: string;
+  @ApiProperty({ type: String }) cta!: string;
+  @ApiProperty({ type: [String] }) hashtags!: string[];
+  @ApiProperty({ type: String, nullable: true }) finalAssetUrl!: string | null;
+  @ApiProperty({ type: String, format: 'date-time' }) createdAt!: string;
+}
+export class CampaignVersionResponse {
+  @ApiProperty({ type: String, format: 'uuid' }) generationId!: string;
+  @ApiProperty({ type: Number }) number!: number;
+  @ApiProperty({ type: String, format: 'date-time' }) requestedAt!: string;
+  @ApiProperty({ type: Boolean, description: 'La versión vigente de la campaña' })
+  current!: boolean;
+  @ApiProperty({
+    type: VersionContentResponse,
+    nullable: true,
+    description: 'null si falló o sigue en curso',
+  })
+  content!: VersionContentResponse | null;
+  @ApiProperty({ type: String, nullable: true, description: 'Motivo si la generación falló' })
+  failure!: string | null;
+  @ApiProperty({ type: VersionPricesResponse, description: 'Precios congelados en su snapshot' })
+  prices!: VersionPricesResponse;
+}
+export class CampaignVersionsEnvelope {
+  @ApiProperty({ type: [CampaignVersionResponse] }) data!: CampaignVersionResponse[];
+}
+
+export function campaignVersionResponse(
+  campaignId: string,
+  version: CampaignVersionResult,
+): CampaignVersionResponse {
+  const content = version.content;
+  return {
+    ...version,
+    content: content && {
+      id: content.id,
+      headline: content.headline,
+      subheadline: content.subheadline,
+      caption: content.caption,
+      cta: content.cta,
+      hashtags: content.hashtags,
+      finalAssetUrl:
+        content.assetIds.length === 1
+          ? `/campaigns/${campaignId}/assets/${content.assetIds[0]}`
+          : null,
+      createdAt: content.createdAt,
+    },
   };
 }

@@ -71,6 +71,8 @@ import {
 import { GenerateCampaignImage } from './application/use-cases/generate-campaign-image.js';
 import { RequestCampaignCopy } from './application/use-cases/request-campaign-copy.js';
 import { UpdateCampaignCopy } from './application/use-cases/update-campaign-copy.js';
+import { RegenerateCampaign } from './application/use-cases/regenerate-campaign.js';
+import { CampaignRegenerationController } from './presentation/campaign-regeneration.controller.js';
 import {
   GetCampaignImage,
   RequestCampaignImage,
@@ -103,7 +105,7 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
     TemplatesModule,
     CampaignsModule,
   ],
-  controllers: [CampaignCopyController, CampaignImageController],
+  controllers: [CampaignCopyController, CampaignImageController, CampaignRegenerationController],
   providers: [
     copyGenerationConfigProvider,
     imageGenerationConfigProvider,
@@ -150,6 +152,25 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
         copies: PrismaCampaignCopyRepository,
         clock: Clock,
       ) => new UpdateCampaignCopy(generations, copies, clock),
+    },
+    {
+      provide: RegenerateCampaign,
+      inject: [
+        CAMPAIGN_GENERATIONS,
+        PrismaCampaignCopyRepository,
+        COPY_GENERATOR,
+        JOB_QUEUE,
+        UNIT_OF_WORK,
+        CLOCK,
+      ],
+      useFactory: (
+        generations: CampaignGenerations,
+        copies: PrismaCampaignCopyRepository,
+        generator: CopyGenerator,
+        queue: JobQueue,
+        transactions: UnitOfWork,
+        clock: Clock,
+      ) => new RegenerateCampaign(generations, copies, generator, queue, transactions, clock),
     },
     {
       provide: RequestCampaignCopy,

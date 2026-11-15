@@ -20,7 +20,10 @@ import {
 import { CampaignObjective } from '#app/modules/campaigns/domain/campaign-objective';
 import { DEFAULT_FLYER_DESIGN } from '#app/domain/value-objects/flyer-design';
 import type { CampaignLookups } from '#app/modules/campaigns/application/ports/campaign-lookups';
-import type { CampaignRepository } from '#app/modules/campaigns/domain/repositories/campaign.repository';
+import type {
+  CampaignRepository,
+  CampaignVersion,
+} from '#app/modules/campaigns/domain/repositories/campaign.repository';
 import { ConcurrentCampaignModificationError } from '#app/modules/campaigns/domain/errors/campaign.errors';
 import { CreateCampaign } from '#app/modules/campaigns/application/use-cases/create-campaign';
 import { RequestCampaignGeneration } from '#app/modules/campaigns/application/use-cases/request-campaign-generation';
@@ -229,7 +232,23 @@ export class CampaignRepositoryFake implements CampaignRepository {
     EntityId,
     { campaignId: EntityId; operation: GenerationOperation }
   >();
+  readonly failures = new Map<EntityId, CampaignVersion['failure']>();
   saveCount = 0;
+
+  listVersions(organizationId: EntityId, campaignId: EntityId): Promise<CampaignVersion[]> {
+    if (this.records.get(campaignId)?.organizationId !== organizationId) return Promise.resolve([]);
+    const contents = [...this.contents.values()];
+    return Promise.resolve(
+      [...this.generations.values()]
+        .filter((item) => item.campaignId === campaignId)
+        .map(({ operation }) => ({
+          generation: operation,
+          content: contents.find((item) => item.generationId === operation.id) ?? null,
+          failure: this.failures.get(operation.id) ?? null,
+        }))
+        .sort((a, b) => b.generation.number - a.generation.number),
+    );
+  }
 
   findById(organizationId: EntityId, campaignId: EntityId): Promise<Campaign | null> {
     const campaign = this.records.get(campaignId);
@@ -294,6 +313,8 @@ export class CampaignRepositoryFake implements CampaignRepository {
     if (generation && !previousGeneration)
       this.generations.set(generation.id, { campaignId: campaign.id, operation: generation });
     if (content && !this.contents.has(content.id)) this.contents.set(content.id, content);
+    if (generation && campaign.generationFailure)
+      this.failures.set(generation.id, campaign.generationFailure);
     this.records.set(campaign.id, campaign);
     this.saveCount++;
     return Promise.resolve();

@@ -144,6 +144,7 @@ function fixture() {
     queue: vi.fn<CampaignCopyRepository['queue']>(),
     fail: vi.fn<CampaignCopyRepository['fail']>(),
     editFlyerTexts: vi.fn<CampaignCopyRepository['editFlyerTexts']>(),
+    store: vi.fn<CampaignCopyRepository['store']>(),
   } satisfies CampaignCopyRepository;
   const referenceImage: ImageArtifact = {
     reference: 'test:product-photo',

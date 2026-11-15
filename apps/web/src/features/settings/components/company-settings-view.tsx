@@ -1,6 +1,22 @@
 'use client';
-import { Building2, Save, ImageIcon } from 'lucide-react';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  Building2,
+  Save,
+  ImageIcon,
+  AlignLeft,
+  Palette,
+  MessageCircle,
+  ShieldCheck,
+  Globe,
+} from 'lucide-react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type CSSProperties,
+} from 'react';
 import Image from 'next/image';
 import { ApiError } from '@/lib/api-client';
 import { PageHeader } from '@/components/layout/page-header';
@@ -8,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useCompanySettings } from '../hooks/use-company-settings';
 import { useUpdateCompanySettings } from '../hooks/use-update-company-settings';
 import { useUploadOrganizationLogo } from '../hooks/use-upload-organization-logo';
@@ -18,7 +35,15 @@ import type {
 } from '../services/company-settings.service';
 import { BrandColorFields, RegionFields } from './brand-kit-fields';
 import { LogoVariantField } from './logo-variant-field';
-import { BrandVoiceFields, splitWords, type BrandVoiceDraft } from './brand-voice-fields';
+import {
+  BrandTypographyFields,
+  BrandContactFields,
+  BrandTextRulesFields,
+  splitWords,
+  type BrandVoiceDraft,
+} from './brand-voice-fields';
+import { BrandSummary } from './brand-summary';
+import { FormSection } from '@/components/layout/form-section';
 
 const EMPTY_CONTACT = { whatsapp: null, website: null, instagram: null, address: null };
 function voiceDraft(settings: OrganizationSettings): BrandVoiceDraft {
@@ -33,23 +58,23 @@ function voiceDraft(settings: OrganizationSettings): BrandVoiceDraft {
 
 export function CompanySettingsView() {
   const query = useCompanySettings();
-  if (query.isLoading) return <p role="status">Cargando configuración…</p>;
-  if (query.error || !query.data)
+  if (query.isPending)
     return (
-      <div role="alert">
-        <p>{query.error?.message ?? 'No se encontró la organización.'}</p>
-        <Button onClick={() => void query.refetch()}>Reintentar</Button>
+      <div role="status" aria-label="Cargando configuración" className="space-y-6">
+        <Skeleton className="h-12 w-64" />
+        <Skeleton className="h-[500px] w-full rounded-2xl" />
       </div>
     );
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Configuración de empresa"
-        description="Información utilizada para preparar tus campañas."
-      />
-      <OrganizationForm key={query.data.id} settings={query.data} />
-    </div>
-  );
+  if (query.error || !query.data)
+    return (
+      <div role="alert" className="space-y-3 rounded-2xl border bg-card p-6">
+        <p>{query.error?.message ?? 'No se encontró la organización.'}</p>
+        <Button variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}>
+          Reintentar
+        </Button>
+      </div>
+    );
+  return <OrganizationForm key={query.data.id} settings={query.data} />;
 }
 function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
   const [name, setName] = useState(settings.name);
@@ -102,13 +127,13 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
   }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy.current || fileError) return;
+    if (busy.current || variantPending || fileError) return;
     setMessage('');
     setError('');
     update.reset();
     upload.reset();
     if (!name.trim()) {
-      setMessage('Introduce el nombre de la empresa.');
+      setError('Introduce el nombre de la empresa.');
       return;
     }
     busy.current = true;
@@ -158,169 +183,330 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
       setSaving(false);
     }
   }
+  const [variantPending, setVariantPending] = useState(false);
+  const navigationRef = useRef<HTMLElement>(null);
+  const [navigationHeight, setNavigationHeight] = useState(0);
+  useLayoutEffect(() => {
+    const navigation = navigationRef.current;
+    if (!navigation) return;
+    const measure = () => setNavigationHeight(Math.ceil(navigation.getBoundingClientRect().height));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(navigation);
+    return () => observer.disconnect();
+  }, []);
+  const blocked = saving || variantPending;
+  const dirty =
+    Boolean(logoFile) ||
+    name !== settings.name ||
+    description !== settings.description ||
+    tone !== (settings.brandTone ?? '') ||
+    industry !== (settings.industry ?? '') ||
+    JSON.stringify(region) !== JSON.stringify(settings.region) ||
+    JSON.stringify(colors) !== JSON.stringify(settings.brandColors) ||
+    JSON.stringify(voice) !== JSON.stringify(voiceDraft(settings));
+  const saveAction = (
+    <Button type="submit" disabled={blocked || Boolean(fileError)}>
+      <Save className="size-4" />
+      {saving ? 'Guardando…' : 'Guardar cambios'}
+    </Button>
+  );
+  const sections = [
+    { id: 'company', label: 'Empresa', icon: Building2 },
+    { id: 'voice', label: 'Voz y estilo', icon: AlignLeft },
+    { id: 'logos', label: 'Logos', icon: ImageIcon },
+    { id: 'colors', label: 'Colores', icon: Palette },
+    { id: 'contact', label: 'Contacto', icon: MessageCircle },
+    { id: 'rules', label: 'Reglas del texto', icon: ShieldCheck },
+    { id: 'region', label: 'Región', icon: Globe },
+  ];
   return (
-    <form onSubmit={submit} className="grid items-start gap-6 xl:grid-cols-[1fr_360px]">
-      <fieldset disabled={saving} className="space-y-6 rounded-xl border bg-card p-6">
-        <div>
-          <h2 className="text-lg font-semibold">Información de empresa</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Dale a tus campañas la voz de tu marca.
-          </p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="organization-name">Nombre de empresa</Label>
-          <Input
-            id="organization-name"
-            required
-            maxLength={200}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="organization-description">Descripción</Label>
-          <Textarea
-            rows={5}
-            id="organization-description"
-            maxLength={5000}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="organization-industry">Rubro (opcional)</Label>
-          <Input
-            id="organization-industry"
-            maxLength={80}
-            placeholder="Ej. cafetería, tienda de tecnología, clínica dental"
-            value={industry}
-            onChange={(e) => setIndustry(e.target.value)}
-          />
-          <p className="text-xs text-muted-foreground">Orienta el estilo visual de tus flyers.</p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="organization-tone">Tono de marca (opcional)</Label>
-          <Input
-            id="organization-tone"
-            maxLength={200}
-            placeholder="Ej. cercano y profesional"
-            value={tone}
-            onChange={(e) => setTone(e.target.value)}
-          />
-        </div>
-        <div className="space-y-4 border-t pt-5">
-          <h3 className="text-sm font-medium">Voz y estilo de la marca</h3>
-          <BrandVoiceFields draft={voice} onChange={setVoice} />
-        </div>
-        <div className="space-y-4 border-t pt-5">
-          <h3 className="text-sm font-medium">Región</h3>
-          <RegionFields region={region} onChange={setRegion} />
-        </div>
-        <div className="space-y-2 border-t pt-5">
-          <Label htmlFor="brand-logo">Logo de empresa</Label>
-          <Input
-            ref={fileInput}
-            id="brand-logo"
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            onChange={(event) => chooseLogo(event.target.files?.[0] ?? null)}
-            aria-describedby="logo-help"
-          />
-          <p id="logo-help" className="text-sm text-muted-foreground">
-            PNG, JPEG o WebP · Máximo 10 MB. Un PNG transparente suele quedar mejor en el flyer. Se
-            usará en las nuevas campañas.
-          </p>
-          {logoFile && <p className="break-all text-sm">Logo pendiente: {logoFile.name}</p>}
-          {(logoFile || fileError) && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                chooseLogo(null);
-                if (fileInput.current) fileInput.current.value = '';
-              }}
+    <form
+      onSubmit={submit}
+      onChange={() => {
+        setMessage('');
+        setError('');
+      }}
+      className="space-y-6"
+      style={
+        {
+          '--settings-sticky-offset': `calc(4rem + ${navigationHeight}px + 1.5rem)`,
+        } as CSSProperties
+      }
+    >
+      <PageHeader
+        title="Configuración de empresa"
+        description="Tu kit de marca. La IA lo usa en cada flyer y en cada texto que escribe por ti."
+        actions={
+          <div className="flex flex-wrap items-center gap-3">
+            {dirty && <span className="text-xs text-amber-400">Cambios sin guardar</span>}
+            {saveAction}
+          </div>
+        }
+      />
+      <nav
+        ref={navigationRef}
+        aria-label="Secciones de configuración"
+        className="sticky top-16 z-10 flex flex-wrap gap-1 border-b bg-background/95 py-3 backdrop-blur"
+      >
+        {sections.map(({ id, label, icon: Icon }) => (
+          <a
+            key={id}
+            href={'#settings-' + id}
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            <Icon className="size-3.5" />
+            {label}
+          </a>
+        ))}
+      </nav>
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <fieldset disabled={blocked} className="min-w-0 space-y-5">
+          <legend className="sr-only">Kit de marca de la empresa</legend>
+          <div id="settings-company" className="scroll-mt-[var(--settings-sticky-offset)]">
+            <FormSection
+              title="Empresa"
+              description="Quién eres y a qué te dedicas."
+              icon={Building2}
             >
-              Descartar selección
-            </Button>
-          )}
-          {fileError && (
-            <p role="alert" className="text-sm text-destructive">
-              {fileError}
+              <div className="space-y-2">
+                <Label htmlFor="organization-name">
+                  Nombre de empresa <span className="text-brand-cyan">*</span>
+                </Label>
+                <Input
+                  id="organization-name"
+                  required
+                  maxLength={200}
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="organization-description">Descripción</Label>
+                <Textarea
+                  id="organization-description"
+                  rows={3}
+                  maxLength={5000}
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder="Qué vendes, a quién y qué te diferencia."
+                  className="rounded-[10px] bg-control px-3.5 py-3 text-sm md:text-sm dark:bg-control"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="organization-industry">
+                    Rubro{' '}
+                    <span className="ml-auto text-xs font-normal text-muted-foreground">
+                      Opcional
+                    </span>
+                  </Label>
+                  <Input
+                    id="organization-industry"
+                    maxLength={80}
+                    placeholder="Ej. cafetería, tienda de tecnología"
+                    value={industry}
+                    onChange={(event) => setIndustry(event.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Orienta el estilo visual de tus flyers.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="organization-tone">
+                    Tono de marca{' '}
+                    <span className="ml-auto text-xs font-normal text-muted-foreground">
+                      Opcional
+                    </span>
+                  </Label>
+                  <Input
+                    id="organization-tone"
+                    maxLength={200}
+                    placeholder="Ej. cercano y profesional"
+                    value={tone}
+                    onChange={(event) => setTone(event.target.value)}
+                  />
+                </div>
+              </div>
+            </FormSection>
+          </div>
+          <div id="settings-voice" className="scroll-mt-[var(--settings-sticky-offset)]">
+            <FormSection
+              title="Voz y estilo"
+              description="Cómo se ve y se siente tu marca."
+              icon={AlignLeft}
+            >
+              <BrandTypographyFields draft={voice} onChange={setVoice} />
+            </FormSection>
+          </div>
+          <div id="settings-logos" className="scroll-mt-[var(--settings-sticky-offset)]">
+            <FormSection
+              title="Logos"
+              description="Tu logo original se conserva en las nuevas campañas."
+              icon={ImageIcon}
+            >
+              <div className="space-y-4 rounded-xl border bg-control p-4">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="grid h-20 w-32 shrink-0 place-items-center rounded-xl border bg-[#f3eff7] p-3">
+                    {logoUrl && failedLogo !== logoUrl ? (
+                      <Image
+                        src={logoUrl}
+                        alt="Logo principal"
+                        width={128}
+                        height={80}
+                        unoptimized
+                        className="h-full w-full object-contain"
+                        onError={() => setFailedLogo(logoUrl)}
+                      />
+                    ) : (
+                      <Building2 className="size-8 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-[13px] font-semibold">Logo principal</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {logoFile
+                        ? 'Seleccionado · sin guardar'
+                        : settings.logoAssetId
+                          ? 'Guardado'
+                          : 'Sin subir'}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      PNG transparente recomendado. Máximo 10 MB.
+                    </p>
+                  </div>
+                </div>
+                <Label htmlFor="brand-logo">
+                  {settings.logoAssetId ? 'Reemplazar logo principal' : 'Subir logo principal'}
+                </Label>
+                <Input
+                  ref={fileInput}
+                  id="brand-logo"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) chooseLogo(file);
+                  }}
+                  aria-describedby="logo-help"
+                  className="min-w-0"
+                />
+                <p id="logo-help" className="text-xs text-muted-foreground">
+                  Se guarda al confirmar los cambios, después del perfil de empresa.
+                </p>
+                {logoFile && (
+                  <p className="break-all text-xs text-muted-foreground">
+                    Pendiente: {logoFile.name}
+                  </p>
+                )}
+                {(logoFile || fileError) && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      chooseLogo(null);
+                      if (fileInput.current) fileInput.current.value = '';
+                    }}
+                  >
+                    Descartar selección
+                  </Button>
+                )}
+                {fileError && (
+                  <p role="alert" className="text-xs text-destructive">
+                    {fileError}
+                  </p>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Las variantes se guardan al subirlas o quitarlas. Guarda primero los cambios del
+                perfil.
+              </p>
+              <LogoVariantField
+                variant="dark-background"
+                settings={settings}
+                disabled={dirty || blocked}
+                onPendingChange={setVariantPending}
+              />
+              <LogoVariantField
+                variant="icon"
+                settings={settings}
+                disabled={dirty || blocked}
+                onPendingChange={setVariantPending}
+              />
+            </FormSection>
+          </div>
+          <div id="settings-colors" className="scroll-mt-[var(--settings-sticky-offset)]">
+            <FormSection
+              title="Colores de marca"
+              description="La paleta de tus flyers, propuesta desde el logo o personalizada."
+              icon={Palette}
+            >
+              <BrandColorFields
+                custom={colors}
+                suggested={settings.logoTraits?.suggestedColors ?? null}
+                onChange={setColors}
+              />
+            </FormSection>
+          </div>
+          <div id="settings-contact" className="scroll-mt-[var(--settings-sticky-offset)]">
+            <FormSection
+              title="Contacto"
+              description="Solo aparece en los flyers cuya plantilla lo pide."
+              icon={MessageCircle}
+            >
+              <BrandContactFields draft={voice} onChange={setVoice} />
+            </FormSection>
+          </div>
+          <div id="settings-rules" className="scroll-mt-[var(--settings-sticky-offset)]">
+            <FormSection
+              title="Reglas del texto"
+              description="Lo que siempre debe respetar tu comunicación."
+              icon={ShieldCheck}
+            >
+              <BrandTextRulesFields draft={voice} onChange={setVoice} />
+            </FormSection>
+          </div>
+          <div id="settings-region" className="scroll-mt-[var(--settings-sticky-offset)]">
+            <FormSection
+              title="Región"
+              description="Formato de precios, idioma y hora de tus promociones."
+              icon={Globe}
+            >
+              <RegionFields region={region} onChange={setRegion} />
+            </FormSection>
+          </div>
+          {error && (
+            <p
+              role="alert"
+              className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive"
+            >
+              {error}
             </p>
           )}
-        </div>
-        <div className="space-y-4 border-t pt-5">
-          <LogoVariantField variant="dark-background" settings={settings} />
-          <LogoVariantField variant="icon" settings={settings} />
-        </div>
-        <div className="border-t pt-5">
-          <BrandColorFields
-            custom={colors}
-            suggested={settings.logoTraits?.suggestedColors ?? null}
-            onChange={setColors}
-          />
-        </div>
-        <fieldset disabled className="space-y-4 border-t pt-5">
-          <legend className="text-sm text-muted-foreground">Próximamente</legend>
-          <div className="space-y-2">
-            <Label htmlFor="brand-cta">CTA predeterminado</Label>
-            <Input id="brand-cta" placeholder="Próximamente" />
-          </div>
-        </fieldset>
-        {error && (
-          <p role="alert" className="text-destructive">
-            {error}
-          </p>
-        )}
-        {message && <p role="status">{message}</p>}
-        <Button type="submit" disabled={saving || Boolean(fileError)}>
-          <Save className="mr-2 size-4" />
-          {saving ? 'Guardando…' : 'Guardar cambios'}
-        </Button>
-      </fieldset>
-      <aside className="space-y-5 rounded-xl border bg-card p-6">
-        <h2 className="font-semibold">Vista previa de marca</h2>
-        <div className="flex min-h-56 flex-col items-center justify-center rounded-xl border border-dashed bg-muted/20 p-6 text-center">
-          {logoUrl && failedLogo !== logoUrl ? (
-            <Image
-              src={logoUrl}
-              alt={`Logo de ${name || 'tu empresa'}`}
-              width={128}
-              height={128}
-              unoptimized
-              className="h-24 w-32 object-contain"
-              onError={() => setFailedLogo(logoUrl)}
-            />
-          ) : (
-            <Building2 className="size-12 text-primary" />
+          {message && (
+            <p
+              role="status"
+              className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 text-sm"
+            >
+              {message}
+            </p>
           )}
-          <p className="mt-4 break-words text-xl font-semibold">{name || 'Tu empresa'}</p>
-          <p className="mt-2 text-sm text-muted-foreground">{tone || 'Define tu tono de marca'}</p>
-        </div>
-        <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">
-          {description}
-        </p>
-        {flyerColors && (
-          <div
-            className="flex h-8 overflow-hidden rounded-md border"
-            aria-label="Colores de marca que usará el flyer"
-          >
-            {Object.values(flyerColors).map((color, i) => (
-              <span key={i} className="flex-1" style={{ backgroundColor: color }} />
-            ))}
-          </div>
-        )}
-        <div className="flex items-center gap-3 border-t pt-4 text-sm text-muted-foreground">
-          <ImageIcon className="size-5 shrink-0" />
-          {logoUrl && failedLogo === logoUrl
-            ? 'No se pudo cargar la vista previa del logo.'
-            : logoFile
-              ? 'Vista previa del logo seleccionado'
-              : settings.logoAssetId
-                ? 'Logo de empresa guardado'
-                : 'Sin logo configurado'}
-        </div>
-      </aside>
+        </fieldset>
+        <BrandSummary
+          name={name}
+          industry={industry}
+          tone={tone}
+          logoUrl={logoUrl ?? null}
+          colors={flyerColors}
+          voice={voice}
+          hasLogo={Boolean(logoFile || settings.logoAssetId)}
+          pendingLogo={Boolean(logoFile)}
+        />
+      </div>
+      <div className="sticky bottom-0 z-10 flex justify-end border-t bg-background/95 py-4 backdrop-blur xl:static xl:border-0">
+        {saveAction}
+      </div>
     </form>
   );
 }

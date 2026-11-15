@@ -76,6 +76,12 @@ export interface CampaignGenerations {
     campaign: CampaignReference,
     transaction?: TransactionContext,
   ): Promise<CampaignGenerationView>;
+  // Dentro de la transacción del llamador: captura un snapshot nuevo y empieza otra versión de una
+  // campaña con flyer, fallida o trabada en GENERATING (ADR-0026).
+  regenerate(
+    campaign: CampaignReference,
+    transaction: TransactionContext,
+  ): Promise<CampaignGenerationView>;
   // Falla si la promoción de la campaña ya terminó en el instante dado.
   assertPromotionActive(campaign: CampaignReference, at: Date): Promise<void>;
   // Dentro de la transacción del llamador: serializa el trabajo sobre la campaña e informa si

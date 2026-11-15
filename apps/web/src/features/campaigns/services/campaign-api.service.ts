@@ -1,11 +1,13 @@
 import { apiRequest, apiUrl, type ApiPage } from '@/lib/api-client';
 import type {
+  CampaignVersion,
   CreateStoredCampaignInput,
   StoredCampaign,
   UpdateStoredCampaignInput,
   StoredPublication,
 } from '../types/stored-campaign.types';
 import type { GenerationJob } from '../types/generation-job';
+import type { CampaignCopyStatus } from './campaign-copy.service';
 
 // El trabajo del flyer de la generación actual, y el flyer cuando esté listo.
 export interface CampaignImageStatus extends GenerationJob {
@@ -82,6 +84,45 @@ export const campaignApi = {
       { signal },
     );
     return result.data && resolveImageStatus(result.data);
+  },
+  // Empieza otra versión del flyer. Si los textos anteriores siguen valiendo, vuelven READY.
+  async regenerate(id: string): Promise<CampaignCopyStatus> {
+    return (
+      await apiRequest<{ data: CampaignCopyStatus }>(
+        `/campaigns/${encodeURIComponent(id)}/regenerate`,
+        { method: 'POST' },
+      )
+    ).data;
+  },
+  async versions(id: string, signal?: AbortSignal): Promise<CampaignVersion[]> {
+    const result = await apiRequest<{ data: CampaignVersion[] }>(
+      `/campaigns/${encodeURIComponent(id)}/versions`,
+      { signal },
+    );
+    return result.data.map((version) => ({
+      ...version,
+      content: version.content && {
+        ...version.content,
+        finalAssetUrl: version.content.finalAssetUrl?.startsWith('/')
+          ? apiUrl(version.content.finalAssetUrl)
+          : version.content.finalAssetUrl,
+      },
+    }));
+  },
+  // Vuelve a una versión anterior; queda pendiente de aprobación.
+  async restoreVersion(
+    id: string,
+    generationId: string,
+    expectedVersion: number,
+  ): Promise<StoredCampaign> {
+    return resolveImages(
+      (
+        await apiRequest<{ data: StoredCampaign }>(
+          `/campaigns/${encodeURIComponent(id)}/versions/${encodeURIComponent(generationId)}/restore`,
+          { method: 'POST', body: JSON.stringify({ expectedVersion }) },
+        )
+      ).data,
+    );
   },
   publications(id: string, page = 1, signal?: AbortSignal): Promise<ApiPage<StoredPublication>> {
     return apiRequest(`/campaigns/${encodeURIComponent(id)}/publications?page=${page}&limit=20`, {

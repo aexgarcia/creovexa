@@ -36,10 +36,31 @@ Actualizado: 15 de noviembre de 2026. Este inventario distingue controles implem
 | Referencias al editar                                      | Conectadas a API; hasta dos imágenes. Cada alta o baja crea una revisión inmediatamente              | Se bloquean con cambios sin guardar para evitar perderlos al cargar la revisión nueva                                     |
 | Referencias en miniaturas                                  | No se dibujan en el esquema local                                                                    | El esquema no simula una aplicación de estilo por IA                                                                      |
 
+## Configuración de empresa
+
+| Elemento                                | Estado actual                                                                                                                                            | Pendiente                                                                       |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Perfil, región, voz, colores y contacto | Conectados a API; formulario organizado por secciones                                                                                                    | —                                                                               |
+| Resumen lateral e indicador del kit     | Se calculan con los valores del formulario, incluidos cambios sin guardar. Se cuentan cinco apartados: logo, colores, rubro/tono, contacto y texto legal | No interpretarlo como medición de calidad ni como garantía de generación        |
+| Muestras de tipografía «Aa»             | Aproximaciones visuales; la selección sí se guarda                                                                                                       | El flyer definitivo lo diseña el generador; no son fuentes finales garantizadas |
+| Logo principal                          | Se guarda al confirmar, después del perfil. Un fallo de subida conserva la selección para reintentar                                                     | —                                                                               |
+| Variantes del logo                      | Subida y baja inmediatas, señaladas en pantalla. Bloqueadas con cambios sin guardar; el formulario se bloquea mientras se modifica una variante          | —                                                                               |
+| Colores del logo                        | Propuestos desde el logo ya guardado; un logo seleccionado todavía no tiene nueva paleta hasta subirse                                                   | —                                                                               |
+| Estilo visual y palabras prohibidas     | Campos funcionales con expresiones separadas por coma y contadores                                                                                       | La edición mediante etiquetas individuales del prototipo queda pendiente        |
+| CTA predeterminado                      | Texto «Próximamente», sin control operativo                                                                                                              | Definir el campo y conectarlo antes de habilitarlo                              |
+
+## Dashboard: demostración estática
+
+Por instrucción del usuario, la pantalla está adaptada visualmente pero usa únicamente los datos locales de `src/features/dashboard/mocks/dashboard-preview.ts`. **No consulta `GET /dashboard`.** Su aviso de demostración está siempre visible.
+
+- Son estáticos todos los KPI, distribución de estados, nombres y fechas de campañas, porcentaje del kit, publicaciones por red, rendimiento de IA, gráfica semanal y ofertas por vencer.
+- Los nombres de campaña de ejemplo no enlazan a IDs inventados. Los accesos a productos, configuración y campañas sí navegan a secciones reales.
+- Se conserva el servicio y hook de consulta existentes para una conexión posterior. Los componentes anteriores de métricas reales ya no se montan; revisar su reutilización o retirada al conectar la vista definitiva. Quedan pendientes conexión a métricas reales, completitud del kit y promociones por vencer; algunos de esos datos todavía no pertenecen al endpoint actual.
+- La detección real de campañas trabadas sigue pendiente. No se deduce un bloqueo solo de `GENERATING` y no se muestran alertas falsas sobre campañas de la organización.
+- Ningún indicador de publicación ni de rendimiento demuestra que se hayan hecho envíos a redes o llamadas a IA.
+
 ## Vistas aún por adaptar al nuevo diseño
 
-- **Configuración:** perfil y kit de marca ya consultan API; falta trasladar la composición del prototipo.
-- **Dashboard:** métricas y campañas recientes consultan API; falta el diseño nuevo. El porcentaje de kit completo y la detección de campañas trabadas del prototipo no están implementados; no copiar sus números fijos ni deducir bloqueo solo del estado `GENERATING`.
 - **Cuentas sociales:** el servicio actual usa mocks en memoria. Conectar y desconectar no enlaza cuentas reales ni realiza OAuth. Sustituir por integración real y revisar la señalización de demostración al adaptar esta vista.
 - **Campañas y publicaciones:** conservar los flujos existentes al adaptar sus pantallas. La publicación efectiva en Meta y TikTok sigue pendiente; no presentar los datos persistidos de publicaciones como prueba de envío a esas redes.
 

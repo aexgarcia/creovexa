@@ -288,3 +288,62 @@ test('publication listing retains independent failures, last attempt and nullabl
   };
   assert.deepEqual(await campaignApi.publications('campaign/1', 2), page);
 });
+
+test('regenerating starts another version and returns the copy job at once', async () => {
+  globalThis.fetch = async (url, options) => {
+    assert.ok(url.endsWith('/campaigns/campaign%2F1/regenerate'));
+    assert.equal(options.method, 'POST');
+    return Response.json(
+      { data: { generationId: 'g2', status: 'READY', failureCode: null, copy: null } },
+      { status: 202 },
+    );
+  };
+  assert.equal((await campaignApi.regenerate('campaign/1')).status, 'READY');
+});
+
+test('versions resolve the flyer URL of each version against the API', async () => {
+  globalThis.fetch = async (url) => {
+    assert.ok(url.endsWith('/campaigns/c1/versions'));
+    return Response.json({
+      data: [
+        {
+          generationId: 'g1',
+          number: 1,
+          requestedAt: '2026-11-15T00:00:00.000Z',
+          current: false,
+          content: {
+            id: 'content-1',
+            headline: 'Oferta',
+            finalAssetUrl: '/campaigns/c1/assets/a1',
+          },
+          failure: null,
+          prices: { regular: { amountMinor: 2000, currency: 'PEN' }, promotion: null },
+        },
+        {
+          generationId: 'g2',
+          number: 2,
+          requestedAt: '2026-11-15T01:00:00.000Z',
+          current: true,
+          content: null,
+          failure: 'VERIFICATION_FAILED',
+          prices: { regular: { amountMinor: 2000, currency: 'PEN' }, promotion: null },
+        },
+      ],
+    });
+  };
+  const versions = await campaignApi.versions('c1');
+  assert.match(versions[0].content.finalAssetUrl, /^https?:\/\/.+\/campaigns\/c1\/assets\/a1$/);
+  assert.equal(versions[1].content, null);
+});
+
+test('restoring a version sends the viewed campaign version', async () => {
+  globalThis.fetch = async (url, options) => {
+    assert.ok(url.endsWith('/campaigns/c1/versions/g1/restore'));
+    assert.equal(options.method, 'POST');
+    assert.deepEqual(JSON.parse(options.body), { expectedVersion: 7 });
+    return Response.json({
+      data: { id: 'c1', status: 'PENDING_APPROVAL', productImageUrl: null, candidateContent: null },
+    });
+  };
+  assert.equal((await campaignApi.restoreVersion('c1', 'g1', 7)).status, 'PENDING_APPROVAL');
+});

@@ -59,6 +59,9 @@ export interface CampaignState {
   promotion: Promotion | null;
   status: CampaignStatus;
   generation: GenerationOperation | null;
+  // El número más alto entre todas las generaciones de la campaña; la vigente puede ser una
+  // anterior si se recuperó una versión. Al rehidratar, si falta, es el de la vigente.
+  lastGenerationNumber?: number;
   candidateContent: GeneratedContent | null;
   approvedContentId: EntityId | null;
   approvedSocialAccountIds: readonly EntityId[];
@@ -125,6 +128,7 @@ export class Campaign {
       ...briefDetails(input, at),
       status: CampaignStatus.DRAFT,
       generation: null,
+      lastGenerationNumber: 0,
       candidateContent: null,
       approvedContentId: null,
       approvedSocialAccountIds: Object.freeze([]),
@@ -165,6 +169,13 @@ export class Campaign {
         requestedAt,
       });
     }
+    const lastGenerationNumber = state.lastGenerationNumber ?? generation?.number ?? 0;
+    if (
+      !Number.isSafeInteger(lastGenerationNumber) ||
+      lastGenerationNumber < (generation?.number ?? 0) ||
+      (generation === null && lastGenerationNumber !== 0)
+    )
+      throw new InvalidCampaignError('lastGenerationNumber');
     const content = state.candidateContent;
     if (content !== null) {
       if (
@@ -246,6 +257,7 @@ export class Campaign {
       ...base.#state,
       status: state.status,
       generation,
+      lastGenerationNumber,
       candidateContent: content,
       approvedContentId: state.approvedContentId,
       approvedSocialAccountIds: Object.freeze(accounts),
@@ -276,11 +288,57 @@ export class Campaign {
     return this.beginGeneration(id, snapshot, at);
   }
 
+  // Una versión nueva con los datos actuales (ADR-0026). Desde GENERATING sirve para destrabar
+  // un trabajo detenido: el trabajo anterior queda obsoleto.
   requestRegeneration(id: string, snapshot: GenerationSnapshot, at: Date): Campaign {
-    if (![CampaignStatus.PENDING_APPROVAL, CampaignStatus.APPROVED].includes(this.status)) {
-      throw new InvalidCampaignTransitionError();
-    }
+    if (!this.canChangeVersion()) throw new InvalidCampaignTransitionError();
     return this.beginGeneration(id, snapshot, at);
+  }
+
+  /**
+   * Vuelve a una versión anterior (ADR-0026): su generación pasa a ser la vigente y su contenido
+   * el candidato, pendiente de aprobación. Quita la aprobación que hubiera.
+   */
+  restoreVersion(generation: GenerationOperation, content: GeneratedContent, at: Date): Campaign {
+    if (!this.canChangeVersion()) throw new InvalidCampaignTransitionError();
+    if (
+      !(content instanceof GeneratedContent) ||
+      content.organizationId !== this.organizationId ||
+      content.campaignId !== this.id ||
+      content.generationId !== generation.id ||
+      content.revision !== generation.number ||
+      !content.snapshot.equals(generation.snapshot) ||
+      generation.number > this.lastGenerationNumber
+    )
+      throw new ContentRevisionMismatchError();
+    this.assertSnapshotMatches(generation.snapshot);
+    if (this.status === CampaignStatus.PENDING_APPROVAL && this.candidateContent?.id === content.id)
+      return this;
+    return this.change(
+      {
+        status: CampaignStatus.PENDING_APPROVAL,
+        generation: Object.freeze({ ...generation }),
+        candidateContent: content,
+        approvedContentId: null,
+        approvedSocialAccountIds: Object.freeze([]),
+        failureOrigin: null,
+        generationFailure: null,
+      },
+      at,
+    );
+  }
+
+  // Antes de publicar se puede cambiar de versión; después, la publicación usa la aprobada.
+  private canChangeVersion(): boolean {
+    return (
+      [
+        CampaignStatus.PENDING_APPROVAL,
+        CampaignStatus.APPROVED,
+        CampaignStatus.GENERATING,
+      ].includes(this.status) ||
+      (this.status === CampaignStatus.FAILED &&
+        this.failureOrigin === CampaignFailureOrigin.GENERATION)
+    );
   }
 
   requireGeneration(id: string): GenerationOperation {
@@ -423,7 +481,9 @@ export class Campaign {
   private beginGeneration(id: string, snapshot: GenerationSnapshot, at: Date): Campaign {
     const generationId = entityId(id, 'generationId');
     if (this.generation?.id === generationId) throw new InvalidCampaignError('generationId');
-    const number = (this.generation?.number ?? 0) + 1;
+    // El máximo de la campaña, no el de la vigente: tras recuperar una versión anterior, el
+    // siguiente número ya puede estar usado.
+    const number = this.lastGenerationNumber + 1;
     if (!Number.isSafeInteger(number)) throw new InvalidCampaignError('generationNumber');
     this.assertSnapshotMatches(snapshot);
     this.promotion?.assertNotExpired(at);
@@ -437,6 +497,7 @@ export class Campaign {
           snapshot,
           requestedAt,
         }),
+        lastGenerationNumber: number,
         candidateContent: null,
         approvedContentId: null,
         approvedSocialAccountIds: Object.freeze([]),
@@ -524,6 +585,9 @@ export class Campaign {
   }
   get generation(): GenerationOperation | null {
     return this.#state.generation;
+  }
+  get lastGenerationNumber(): number {
+    return this.#state.lastGenerationNumber ?? this.#state.generation?.number ?? 0;
   }
   get candidateContent(): GeneratedContent | null {
     return this.#state.candidateContent;

@@ -27,9 +27,13 @@ const COPY: Record<LogoVariant, { label: string; help: string }> = {
 export function LogoVariantField({
   variant,
   settings,
+  disabled = false,
+  onPendingChange,
 }: {
   variant: LogoVariant;
   settings: OrganizationSettings;
+  disabled?: boolean;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const client = useQueryClient();
   const [error, setError] = useState('');
@@ -40,20 +44,24 @@ export function LogoVariantField({
   const upload = useMutation({
     mutationFn: (file: File) => companySettingsService.uploadLogoVariant(variant, file),
     retry: false,
+    onMutate: () => onPendingChange?.(true),
+    onSettled: () => onPendingChange?.(false),
     onSuccess: save,
     onError: fail,
   });
   const remove = useMutation({
     mutationFn: () => companySettingsService.removeLogoVariant(variant),
     retry: false,
+    onMutate: () => onPendingChange?.(true),
+    onSettled: () => onPendingChange?.(false),
     onSuccess: save,
     onError: fail,
   });
   const busy = upload.isPending || remove.isPending;
   return (
-    <div className="space-y-2">
+    <div className="space-y-3 rounded-xl border bg-control p-4">
       <Label htmlFor={`logo-${variant}`}>{COPY[variant].label}</Label>
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         {url && (
           <div
             className={`flex h-12 w-20 items-center justify-center rounded border p-1 ${
@@ -74,7 +82,8 @@ export function LogoVariantField({
           id={`logo-${variant}`}
           type="file"
           accept="image/png,image/jpeg,image/webp"
-          disabled={busy}
+          disabled={busy || disabled}
+          className="min-w-0 flex-1 basis-48"
           onChange={(event) => {
             const file = event.target.files?.[0];
             event.target.value = '';
@@ -88,7 +97,15 @@ export function LogoVariantField({
           }}
         />
         {url && (
-          <Button type="button" variant="outline" disabled={busy} onClick={() => remove.mutate()}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy || disabled}
+            onClick={() => {
+              setError('');
+              remove.mutate();
+            }}
+          >
             Quitar
           </Button>
         )}

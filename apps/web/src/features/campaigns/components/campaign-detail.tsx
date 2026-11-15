@@ -29,6 +29,8 @@ import { CampaignPublications } from './campaign-publications';
 import { CampaignImage } from './campaign-image';
 import { useCampaignImage } from '../hooks/use-campaign-image';
 import { failureMessage, isInProgress } from '../types/generation-job';
+import { CampaignVersions } from './campaign-versions';
+import { useRegenerateStoredCampaign } from '../hooks/use-campaign-versions';
 
 function dateLabel(value: string) {
   return new Date(value).toLocaleDateString('es-PE', {
@@ -57,6 +59,7 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
     campaign?.version ?? 0,
   );
   const [approvedMessage, setApprovedMessage] = useState('');
+  const regenerate = useRegenerateStoredCampaign(campaignId);
   if (isLoading)
     return (
       <div role="status" className="space-y-6">
@@ -89,6 +92,16 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
   const copyBusy = generate.isPending || isInProgress(copyJob);
   const flyerJob = flyer.status.data;
   const flyerBusy = flyer.request.isPending || isInProgress(flyerJob);
+  // ADR-0026: con flyer, tras un fallo o con un trabajo que falló se puede empezar otra versión.
+  const canRegenerate =
+    ['PENDING_APPROVAL', 'APPROVED', 'FAILED'].includes(campaign.status) ||
+    (campaign.status === 'GENERATING' &&
+      !copyBusy &&
+      !flyerBusy &&
+      (copyJob?.status === 'FAILED' || flyerJob?.status === 'FAILED'));
+  const canChangeVersion = ['PENDING_APPROVAL', 'APPROVED', 'FAILED', 'GENERATING'].includes(
+    campaign.status,
+  );
   async function handleApprove() {
     if (!content || !canReview || approve.isPending) return;
     setApprovedMessage('');
@@ -198,16 +211,39 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
                 {approve.isPending ? 'Aprobando…' : 'Aprobar esta revisión'}
               </Button>
             )}
-            <Button variant="outline" disabled aria-describedby="campaign-pending-actions">
-              <RotateCcw className="size-4" /> Regenerar
-            </Button>
+            {canRegenerate && (
+              <Button
+                variant="outline"
+                disabled={regenerate.isPending || isFetching}
+                aria-describedby="campaign-regenerate-help"
+                onClick={() => regenerate.mutate()}
+              >
+                {regenerate.isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <RotateCcw className="size-4" />
+                )}
+                {regenerate.isPending ? 'Preparando versión…' : 'Regenerar'}
+              </Button>
+            )}
             <Button variant="outline" disabled aria-describedby="campaign-pending-actions">
               <Send className="size-4" /> Publicar
             </Button>
           </div>
           <p id="campaign-pending-actions" className="text-xs text-muted-foreground">
-            Regenerar y publicar: próximamente.
+            Publicar: próximamente.
           </p>
+          {canRegenerate && (
+            <p id="campaign-regenerate-help" className="text-xs text-muted-foreground">
+              Regenerar crea otra versión con los datos actuales y conserva tus textos si siguen
+              siendo válidos. La actual queda en el historial.
+            </p>
+          )}
+          {regenerate.error && (
+            <p role="alert" className="text-sm text-destructive">
+              {regenerate.error.message}
+            </p>
+          )}
           {campaign.status === 'PENDING_APPROVAL' && (
             <p className="text-xs text-muted-foreground">
               {finalAssetUrl
@@ -343,6 +379,11 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
               }
             />
           )}
+          <CampaignVersions
+            campaignId={campaign.id}
+            campaignVersion={campaign.version}
+            canRestore={canChangeVersion}
+          />
           <div className="rounded-xl border bg-card p-6">
             <CampaignPublications key={campaign.id} campaignId={campaign.id} />
           </div>

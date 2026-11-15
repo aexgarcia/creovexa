@@ -63,7 +63,7 @@ class CampaignCopyResponse {
   @ApiProperty({ type: CampaignCopyContent, nullable: true, description: 'Presente si READY' })
   copy!: CampaignCopyContent | null;
 }
-class CampaignCopyEnvelope {
+export class CampaignCopyEnvelope {
   @ApiProperty({ type: CampaignCopyResponse, nullable: true }) data!: CampaignCopyResponse | null;
 }
 @ApiTags('Campaign copy')

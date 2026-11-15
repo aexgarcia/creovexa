@@ -83,7 +83,7 @@ Crea la siguiente rama desde ese `main` actualizado.
 
 Un solo job instala las dependencias con `--frozen-lockfile` y ejecuta formato, validación del schema, lint, tipos, pruebas unitarias, HTTP e integración de la API y compilación de ambas aplicaciones. Así evitamos duplicar instalaciones para el tamaño actual del proyecto. La caché de pnpm usa el lockfile; las versiones de Node y pnpm provienen de los archivos existentes.
 
-Las verificaciones no requieren secretos de GitHub. El job inicia un PostgreSQL desechable para `test:integration`; localmente este comando utiliza un esquema temporal en la conexión configurada. La prueba e2e sigue cubriendo el arranque HTTP y `/health` de la API de forma independiente de PostgreSQL. MinIO, n8n y navegación del CMS permanecen fuera de estas pruebas.
+Las verificaciones no requieren secretos de GitHub. El job inicia un PostgreSQL desechable para `test:integration`; localmente este comando utiliza un esquema temporal en la conexión configurada. La prueba e2e sigue cubriendo el arranque HTTP y `/health` de la API de forma independiente de PostgreSQL. MinIO y navegación del CMS permanecen fuera de estas pruebas.
 
 El workflow solo necesita permiso de lectura sobre el repositorio y no despliega aplicaciones.
 

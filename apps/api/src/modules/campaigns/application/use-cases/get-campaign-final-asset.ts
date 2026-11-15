@@ -11,9 +11,15 @@ export class GetCampaignFinalAsset {
   async execute(input: CampaignSelection & { assetId: string }) {
     const campaign = await loadCampaign(input, this.campaigns);
     const assetId = entityId(input.assetId);
-    const content = campaign.candidateContent;
-    if (!content || content.assetIds.length !== 1 || content.assetIds[0] !== assetId)
-      throw new CampaignImageError('NOT_FOUND');
+    // El flyer de la candidata o el de cualquier versión anterior de la campaña (ADR-0026).
+    const owns = (content: { assetIds: readonly string[] } | null) =>
+      content?.assetIds.length === 1 && content.assetIds[0] === assetId;
+    const content = owns(campaign.candidateContent)
+      ? campaign.candidateContent!
+      : (await this.campaigns.listVersions(campaign.organizationId, campaign.id))
+          .map((version) => version.content)
+          .find(owns);
+    if (!content) throw new CampaignImageError('NOT_FOUND');
     const result = await this.assets.readFinal({
       organizationId: campaign.organizationId,
       campaignId: campaign.id,

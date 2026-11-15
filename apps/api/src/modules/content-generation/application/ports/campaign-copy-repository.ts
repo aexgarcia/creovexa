@@ -27,6 +27,14 @@ export interface CampaignCopyRepository {
   queue(selection: CopySelection, at: Date, transaction: TransactionContext): Promise<void>;
   // Registra por qué falló el trabajo. Nunca sobrescribe un copy READY.
   fail(selection: CopySelection, failureCode: string, at: Date): Promise<void>;
+  // Guarda como READY un copy ya validado, dentro de la transacción que inicia la generación.
+  // Lo usa la regeneración para reusar los textos de la versión anterior (ADR-0026).
+  store(
+    selection: CopySelection,
+    content: CampaignCopy,
+    at: Date,
+    transaction: TransactionContext,
+  ): Promise<void>;
   // Reemplaza titular y subtítulo de un copy READY, serializado con la reserva de la imagen.
   // Falla con StaleGenerationResultError si la generación dejó de ser la vigente.
   editFlyerTexts(selection: CopySelection, texts: FlyerTexts, now: Date): Promise<CopyEditResult>;

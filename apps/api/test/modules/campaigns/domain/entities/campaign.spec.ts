@@ -86,11 +86,62 @@ describe('Campaign', () => {
     },
   );
 
-  it.each(['draft', 'generating', 'failed'] as const)('rejects regeneration from %s', (state) => {
+  it('rejects regeneration from draft', () => {
     const fixture = domainFixture();
     expect(() =>
-      fixture[state].requestRegeneration(NEXT_GENERATION, fixture.snapshot, new Date(LATER)),
+      fixture.draft.requestRegeneration(NEXT_GENERATION, fixture.snapshot, new Date(LATER)),
     ).toThrow(InvalidCampaignTransitionError);
+  });
+
+  // ADR-0026: una regeneración fallida o trabada se puede reintentar con otra versión.
+  it.each(['generating', 'failed'] as const)('regenerates from %s', (state) => {
+    const fixture = domainFixture();
+    const next = fixture[state].requestRegeneration(
+      NEXT_GENERATION,
+      fixture.snapshot,
+      new Date(LATER),
+    );
+    expect(next.status).toBe(CampaignStatus.GENERATING);
+    expect(next.generation?.number).toBe(2);
+    expect(next.generationFailure).toBeNull();
+  });
+
+  describe('restoreVersion', () => {
+    it('makes an earlier version current again, pending approval, without reusing its number', () => {
+      const { approved, content, snapshot } = domainFixture();
+      const first = approved.generation!;
+      const regenerating = approved.requestRegeneration(NEXT_GENERATION, snapshot, new Date(LATER));
+      const restored = regenerating.restoreVersion(first, content, new Date(LATER));
+      expect(restored.status).toBe(CampaignStatus.PENDING_APPROVAL);
+      expect(restored.generation).toEqual(first);
+      expect(restored.candidateContent).toBe(content);
+      expect(restored.approvedContentId).toBeNull();
+      expect(restored.lastGenerationNumber).toBe(2);
+      // La siguiente versión usa el número más alto, no el de la vigente.
+      const third = restored.requestRegeneration(
+        '00000000-0000-4000-8000-000000000333',
+        snapshot,
+        new Date(LATER),
+      );
+      expect(third.generation?.number).toBe(3);
+    });
+    it('removes an existing approval and is a no-op for the current candidate', () => {
+      const { approved, pending, content } = domainFixture();
+      const restored = approved.restoreVersion(approved.generation!, content, new Date(LATER));
+      expect(restored.status).toBe(CampaignStatus.PENDING_APPROVAL);
+      expect(restored.approvedContentId).toBeNull();
+      expect(pending.restoreVersion(pending.generation!, content, new Date(LATER))).toBe(pending);
+    });
+    it('rejects drafts and content from another generation', () => {
+      const { draft, approved, content, snapshot } = domainFixture();
+      expect(() => draft.restoreVersion(approved.generation!, content, new Date(LATER))).toThrow(
+        InvalidCampaignTransitionError,
+      );
+      const regenerating = approved.requestRegeneration(NEXT_GENERATION, snapshot, new Date(LATER));
+      expect(() =>
+        regenerating.restoreVersion(regenerating.generation!, content, new Date(LATER)),
+      ).toThrow(ContentRevisionMismatchError);
+    });
   });
 
   it.each(['pending', 'approved'] as const)(

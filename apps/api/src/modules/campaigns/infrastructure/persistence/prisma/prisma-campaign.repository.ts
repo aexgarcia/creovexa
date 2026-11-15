@@ -11,13 +11,16 @@ import {
 } from '#app/infrastructure/persistence/persistence.errors';
 import { translatePrismaError } from '#app/infrastructure/persistence/prisma/translate-prisma-error';
 import type { Campaign } from '../../../domain/entities/campaign.js';
-import type { CampaignRepository } from '../../../domain/repositories/campaign.repository.js';
+import type {
+  CampaignRepository,
+  CampaignVersion,
+} from '../../../domain/repositories/campaign.repository.js';
 import { CampaignStatus } from '../../../domain/campaign-status.js';
 import {
   ConcurrentCampaignModificationError,
   InvalidCampaignError,
 } from '../../../domain/errors/campaign.errors.js';
-import { CampaignMapper, campaignRelations, snapshotJson } from './campaign.mapper.js';
+import { CampaignMapper, campaignRelations, snapshotJson, versionOf } from './campaign.mapper.js';
 import { readGenerationSnapshot, readPromotion } from './campaign-json.mapper.js';
 
 export class PrismaCampaignRepository implements CampaignRepository {
@@ -171,13 +174,11 @@ export class PrismaCampaignRepository implements CampaignRepository {
         const generation = campaign.generation;
         if (!generation) throw new InvalidCampaignError('generation');
         const generationRow = CampaignMapper.generation(campaign, generation);
-        const storedGeneration =
-          previous.currentGenerationId === null
-            ? null
-            : await tx.campaignGeneration.findUniqueOrThrow({
-                where: { id: previous.currentGenerationId },
-              });
-        if (generation.id === previous.currentGenerationId) {
+        // La vigente puede ser la misma, una nueva o una anterior que se recupera (ADR-0026).
+        const storedGeneration = await tx.campaignGeneration.findUnique({
+          where: { id: generation.id },
+        });
+        if (storedGeneration) {
           // El snapshot se compara ya leído: los guardados antes de que tuviera más datos se leen
           // con valores vacíos y no coinciden byte a byte con su forma actual.
           if (
@@ -189,7 +190,11 @@ export class PrismaCampaignRepository implements CampaignRepository {
           )
             throw new PersistenceConflictError();
         } else {
-          if (BigInt(generation.number) !== (storedGeneration?.number ?? 0n) + 1n)
+          const latest = await tx.campaignGeneration.aggregate({
+            where: { organizationId, campaignId: campaign.id },
+            _max: { number: true },
+          });
+          if (BigInt(generation.number) !== (latest._max.number ?? 0n) + 1n)
             throw new PersistenceConflictError();
           await tx.campaignGeneration.create({
             data: { ...generationRow, snapshot: snapshotJson(generation.snapshot) },
@@ -197,10 +202,11 @@ export class PrismaCampaignRepository implements CampaignRepository {
         }
         if (campaign.candidateContent) {
           const content = CampaignMapper.content(campaign.candidateContent);
-          if (previous.candidateContentId === content.id) {
-            const storedContent = await tx.generatedContent.findUniqueOrThrow({
-              where: { id: content.id },
-            });
+          const storedContent = await tx.generatedContent.findUnique({
+            where: { id: content.id },
+          });
+          // El contenido de una versión recuperada ya existe y no cambia.
+          if (storedContent) {
             if (!isDeepStrictEqual(storedContent, content)) throw new PersistenceConflictError();
           } else {
             await tx.generatedContent.create({ data: content });
@@ -227,5 +233,14 @@ export class PrismaCampaignRepository implements CampaignRepository {
     } catch (error) {
       translatePrismaError(error);
     }
+  }
+
+  async listVersions(organizationId: EntityId, campaignId: EntityId): Promise<CampaignVersion[]> {
+    const rows = await this.database.campaignGeneration.findMany({
+      where: { organizationId, campaignId },
+      include: { content: true, failure: true },
+      orderBy: { number: 'desc' },
+    });
+    return rows.map(versionOf);
   }
 }

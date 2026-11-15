@@ -11,7 +11,6 @@ const apiEnvironment = { ...readEnvironment('apps/api/.env'), ...process.env };
 const checks = [
   ['web', 'http://127.0.0.1:3000/health'],
   ['api', `http://127.0.0.1:${apiEnvironment.API_PORT ?? 3001}/health`],
-  ['n8n', `http://127.0.0.1:${environment.N8N_PORT ?? 5678}/healthz/readiness`],
   ['minio', `http://127.0.0.1:${environment.MINIO_PORT ?? 9000}/minio/health/live`],
 ];
 const selectedChecks = checks.filter(

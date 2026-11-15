@@ -106,3 +106,28 @@ export interface StoredPublication {
   createdAt: string;
   updatedAt: string;
 }
+
+// Una versión del flyer de la campaña (ADR-0026), de la más nueva a la más antigua.
+export interface CampaignVersion {
+  generationId: string;
+  number: number;
+  requestedAt: string;
+  current: boolean;
+  // null si la generación falló o sigue en curso.
+  content: {
+    id: string;
+    headline: string;
+    subheadline: string | null;
+    caption: string;
+    cta: string;
+    hashtags: string[];
+    finalAssetUrl: string | null;
+    createdAt: string;
+  } | null;
+  failure: string | null;
+  // Los precios congelados en esa versión: pueden no ser los actuales.
+  prices: {
+    regular: { amountMinor: number; currency: string };
+    promotion: { amountMinor: number; currency: string } | null;
+  };
+}

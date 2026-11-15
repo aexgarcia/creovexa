@@ -6,6 +6,7 @@ import type {
   GeneratedContent as ContentRow,
 } from '#app/infrastructure/persistence/prisma/generated/client';
 import { Campaign, type GenerationOperation } from '../../../domain/entities/campaign.js';
+import type { CampaignVersion } from '../../../domain/repositories/campaign.repository.js';
 import { GeneratedContent } from '../../../domain/entities/generated-content.js';
 import { CampaignObjective } from '../../../domain/campaign-objective.js';
 import {
@@ -23,6 +24,8 @@ import {
 export const campaignRelations = {
   currentGeneration: { include: { failure: true } },
   candidateContent: true,
+  // Solo la de número más alto: la vigente puede ser una anterior recuperada (ADR-0026).
+  generations: { select: { number: true }, orderBy: { number: 'desc' }, take: 1 },
 } satisfies Prisma.CampaignInclude;
 export type CampaignRecord = Prisma.CampaignGetPayload<{ include: typeof campaignRelations }>;
 
@@ -70,6 +73,7 @@ export class CampaignMapper {
       promotion: readPromotion(row.promotion),
       status: CampaignStatus[row.status],
       generation,
+      lastGenerationNumber: Number(row.generations[0]?.number ?? 0),
       candidateContent:
         content === null
           ? null
@@ -157,4 +161,38 @@ export class CampaignMapper {
       createdAt: content.createdAt,
     };
   }
+}
+
+type VersionRecord = Prisma.CampaignGenerationGetPayload<{
+  include: { content: true; failure: true };
+}>;
+
+// Una generación guardada con su contenido o su fallo, como versión del historial (ADR-0026).
+export function versionOf(row: VersionRecord): CampaignVersion {
+  const generation: GenerationOperation = Object.freeze({
+    id: entityId(row.id),
+    number: Number(row.number),
+    snapshot: readGenerationSnapshot(row.snapshot),
+    requestedAt: row.requestedAt.getTime(),
+  });
+  const content = row.content;
+  return {
+    generation,
+    content:
+      content === null
+        ? null
+        : GeneratedContent.create(
+            {
+              id: content.id,
+              organizationId: content.organizationId,
+              campaignId: content.campaignId,
+              generationId: content.generationId,
+              revision: generation.number,
+            },
+            generation.snapshot,
+            content,
+            content.createdAt,
+          ),
+    failure: row.failure === null ? null : GenerationFailureCode[row.failure.code],
+  };
 }
