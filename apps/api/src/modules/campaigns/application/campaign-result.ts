@@ -22,6 +22,8 @@ export function campaignResult(campaign: Campaign) {
     id: campaign.id as string,
     organizationId: campaign.organizationId as string,
     title: campaign.title,
+    objective: campaign.objective,
+    occasion: campaign.occasion,
     productId: campaign.productId as string,
     templateId: campaign.templateId as string,
     templateRevisionId: campaign.templateRevisionId as string,

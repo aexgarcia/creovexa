@@ -116,6 +116,40 @@ describe('Campaign HTTP with real use cases', () => {
     expect(result.body.data.promotion).toBeNull();
   });
 
+  it('edits a draft with its objective, occasion and promotion terms', async () => {
+    const server = app.getHttpServer();
+    const created = await request(server).post('/campaigns').send(body).expect(201);
+    expect(created.body.data).toMatchObject({ objective: 'PROMOTION', occasion: null });
+    const id = created.body.data.id as string;
+    const edit = {
+      ...body,
+      objective: 'LAUNCH',
+      occasion: 'Navidad',
+      promotion: { ...body.promotion, conditions: 'Solo en tienda', showDiscount: true },
+      expectedVersion: 0,
+    };
+    const edited = await request(server)
+      .patch('/campaigns/' + id)
+      .send(edit)
+      .expect(200);
+    expect(edited.body.data).toMatchObject({
+      objective: 'LAUNCH',
+      occasion: 'Navidad',
+      version: 1,
+      promotion: { conditions: 'Solo en tienda', showDiscount: true },
+    });
+    const stale = await request(server)
+      .patch('/campaigns/' + id)
+      .send(edit)
+      .expect(409);
+    expect(stale.body.error.code).toBe('CAMPAIGN_CONFLICT');
+    const invalid = await request(server)
+      .patch('/campaigns/' + id)
+      .send({ ...edit, expectedVersion: 1, objective: 'SALE', occasion: 'x'.repeat(61) })
+      .expect(400);
+    expect(invalid.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
   it('shows candidate content, approves the exact revision and rejects a repeated approval', async () => {
     repository.records.set(CAMPAIGN, domainFixture().pending);
     const detail = await request(app.getHttpServer())
@@ -284,6 +318,7 @@ describe('Campaign HTTP with real use cases', () => {
     expect(result.body.paths['/campaigns']).toHaveProperty('post');
     expect(result.body.paths['/campaigns']).toHaveProperty('get');
     expect(result.body.paths['/campaigns/{id}']).toHaveProperty('get');
+    expect(result.body.paths['/campaigns/{id}']).toHaveProperty('patch');
     expect(result.body.paths).not.toHaveProperty('/campaigns/{id}/publish');
     expect(result.body.components.schemas.CampaignResponse.properties.promotion.nullable).toBe(
       true,

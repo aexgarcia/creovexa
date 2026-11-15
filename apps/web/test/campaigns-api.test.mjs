@@ -15,7 +15,7 @@ registerHooks({
     );
   },
 });
-const { campaignInput } =
+const { campaignInput, campaignDraft } =
   await import('../src/features/campaigns/schemas/stored-campaign-input.ts');
 const { campaignApi } = await import('../src/features/campaigns/services/campaign-api.service.ts');
 const originalFetch = globalThis.fetch;
@@ -120,11 +120,15 @@ const product = { id: 'product-1', regularPrice: { amountMinor: 1000, currency: 
 const template = { id: 'template-1', currentRevision: { id: 'revision-3' } };
 const draft = {
   title: ' Oferta ',
+  objective: 'PROMOTION',
+  occasion: '',
   cta: ' Comprar ',
   instructions: '',
   promotionPrice: '',
   startsAt: '',
   endsAt: '',
+  conditions: '',
+  showDiscount: false,
 };
 
 test('creation pins the selected revision and omits an unused promotion', () => {
@@ -133,6 +137,8 @@ test('creation pins the selected revision and omits an unused promotion', () => 
     templateId: 'template-1',
     templateRevisionId: 'revision-3',
     title: 'Oferta',
+    objective: 'PROMOTION',
+    occasion: null,
     cta: 'Comprar',
     instructions: '',
   });
@@ -153,6 +159,8 @@ test('promotion preserves cents and converts explicit offsets to UTC', () => {
     currency: 'PEN',
     startsAt: '2026-10-01T14:00:00.000Z',
     endsAt: '2026-10-02T14:00:00.000Z',
+    conditions: null,
+    showDiscount: false,
   });
 });
 test('rejects invalid promotions and dates without a price', () => {
@@ -165,9 +173,72 @@ test('rejects invalid promotions and dates without a price', () => {
     { promotionPrice: '2', startsAt: 'bad' },
     { promotionPrice: '2', startsAt: '2026-10-02T09:00', endsAt: '2026-10-01T09:00' },
     { title: ' ' },
+    { conditions: 'Solo en tienda' },
+    { showDiscount: true },
+    { occasion: 'x'.repeat(61) },
+    { instructions: 'x'.repeat(501) },
   ]) {
     assert.throws(() => campaignInput({ ...draft, ...changes }, product, template));
   }
+});
+test('the brief keeps objective, occasion and promotion terms', () => {
+  const input = campaignInput(
+    {
+      ...draft,
+      objective: 'SEASONAL',
+      occasion: ' Navidad ',
+      promotionPrice: '8',
+      conditions: ' Hasta agotar stock ',
+      showDiscount: true,
+    },
+    product,
+    template,
+  );
+  assert.equal(input.objective, 'SEASONAL');
+  assert.equal(input.occasion, 'Navidad');
+  assert.deepEqual(input.promotion, {
+    amountMinor: 800,
+    currency: 'PEN',
+    conditions: 'Hasta agotar stock',
+    showDiscount: true,
+  });
+});
+test('editing a draft round-trips the saved campaign into the form', () => {
+  const saved = {
+    title: 'Oferta',
+    objective: 'EVENT',
+    occasion: null,
+    instructions: 'Fondo kraft',
+    cta: 'Comprar',
+    promotion: {
+      amountMinor: 850,
+      currency: 'PEN',
+      startsAt: null,
+      endsAt: '2026-10-02T14:00:00.000Z',
+      conditions: 'Solo en tienda',
+      showDiscount: true,
+    },
+  };
+  const form = campaignDraft(saved);
+  assert.equal(form.promotionPrice, '8.50');
+  assert.equal(form.occasion, '');
+  assert.equal(new Date(form.endsAt).toISOString(), '2026-10-02T14:00:00.000Z');
+  const input = campaignInput(form, product, template);
+  // Sin fecha de inicio, el campo no se envía.
+  assert.deepEqual(
+    input.promotion,
+    Object.fromEntries(Object.entries(saved.promotion).filter(([key]) => key !== 'startsAt')),
+  );
+});
+test('update sends the whole brief with the edited version', async () => {
+  const input = { ...campaignInput(draft, product, template), expectedVersion: 2 };
+  globalThis.fetch = async (url, options) => {
+    assert.ok(url.endsWith('/campaigns/campaign%2F1'));
+    assert.equal(options.method, 'PATCH');
+    assert.deepEqual(JSON.parse(options.body), input);
+    return Response.json({ data: { id: 'campaign/1', status: 'DRAFT', version: 3 } });
+  };
+  assert.equal((await campaignApi.update('campaign/1', input)).version, 3);
 });
 test('create sends the domain request once and unwraps persisted campaign', async () => {
   const input = campaignInput(draft, product, template);

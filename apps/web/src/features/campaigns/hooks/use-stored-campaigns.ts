@@ -1,6 +1,7 @@
 'use client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { campaignApi } from '../services/campaign-api.service';
+import type { UpdateStoredCampaignInput } from '../types/stored-campaign.types';
 export function useStoredCampaigns(page = 1) {
   return useQuery({
     queryKey: ['stored-campaigns', 'list', page],
@@ -22,6 +23,17 @@ export function useCreateStoredCampaign() {
     mutationFn: campaignApi.create,
     retry: false,
     onSuccess: async () => {
+      await client.invalidateQueries({ queryKey: ['stored-campaigns'] });
+    },
+  });
+}
+export function useUpdateStoredCampaign(id: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateStoredCampaignInput) => campaignApi.update(id, input),
+    retry: false,
+    onSuccess: async (campaign) => {
+      client.setQueryData(['stored-campaigns', id], campaign);
       await client.invalidateQueries({ queryKey: ['stored-campaigns'] });
     },
   });

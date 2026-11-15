@@ -13,6 +13,7 @@ import {
   CAMPAIGN,
   GENERATION,
   NEXT_GENERATION,
+  briefOf,
 } from '../../../../support/campaign-fakes.js';
 import { CampaignStatus } from '#app/modules/campaigns/domain/campaign-status';
 import {
@@ -223,9 +224,7 @@ describe('GenerateCampaignImage', () => {
       resources.product.imageAssetIds = images;
       const snapshot = GenerationSnapshot.capture(
         resources,
-        f.draft.instructions,
-        f.draft.cta,
-        f.promotion,
+        briefOf(f.draft.instructions, f.draft.cta, f.promotion),
       );
       f.campaigns.records.set(
         CAMPAIGN,
@@ -385,9 +384,7 @@ describe('GenerateCampaignImage', () => {
     resources.template.height = 1350;
     const snapshot = GenerationSnapshot.capture(
       resources,
-      f.draft.instructions,
-      f.draft.cta,
-      f.promotion,
+      briefOf(f.draft.instructions, f.draft.cta, f.promotion),
     );
     f.campaigns.records.set(
       CAMPAIGN,

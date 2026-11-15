@@ -18,12 +18,7 @@ export class RequestCampaignGeneration {
   async execute(input: CampaignSelection): Promise<CampaignResult> {
     const campaign = await loadCampaign(input, this.campaigns);
     const resources = await loadCampaignResources(campaign, this.lookups);
-    const snapshot = GenerationSnapshot.capture(
-      resources,
-      campaign.instructions,
-      campaign.cta,
-      campaign.promotion,
-    );
+    const snapshot = GenerationSnapshot.capture(resources, campaign.brief);
     const updated = campaign.requestGeneration(this.ids.next(), snapshot, this.clock.now());
     await this.campaigns.save(campaign.organizationId, updated, campaign.version);
     return campaignResult(updated);

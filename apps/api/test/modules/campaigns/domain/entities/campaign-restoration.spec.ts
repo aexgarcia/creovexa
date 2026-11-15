@@ -16,6 +16,7 @@ import {
   testId,
   NOW,
   CONTENT,
+  briefOf,
 } from '../../../../support/campaign-fakes.js';
 import {
   publicationCampaign,
@@ -100,9 +101,7 @@ describe('Campaign restoration', () => {
     resources.product.id = testId(999);
     const snapshot = GenerationSnapshot.capture(
       resources,
-      state.instructions,
-      state.cta,
-      state.promotion,
+      briefOf(state.instructions, state.cta, state.promotion),
     );
     for (const change of [
       { snapshot },

@@ -1,6 +1,7 @@
 import { entityId } from '#app/domain/entity-id';
 import { PublicationStatus } from '#app/domain/publication-status';
 import { Money } from '#app/domain/value-objects/money';
+import { CampaignObjective } from '../../../domain/campaign-objective.js';
 import { InvalidCampaignError } from '../../../domain/errors/campaign.errors.js';
 import { GenerationSnapshot } from '../../../domain/value-objects/generation-snapshot.js';
 import { Promotion } from '../../../domain/value-objects/promotion.js';
@@ -27,6 +28,22 @@ function array(value: unknown): unknown[] {
 function optionalString(value: unknown): string | null {
   return value === null ? null : string(value);
 }
+function optionalBoolean(value: unknown): boolean | null {
+  if (value !== null && typeof value !== 'boolean') throw new InvalidCampaignError('storedJson');
+  return value;
+}
+function optionalObject<T>(value: unknown, read: (data: Record<string, unknown>) => T): T | null {
+  return value === null ? null : read(object(value));
+}
+
+// Los snapshots y promociones guardados antes de un campo no lo tienen: se leen con su valor
+// vacío. Así se siguen leyendo sin reescribir filas inmutables.
+function legacy(data: Record<string, unknown>, key: string, empty: unknown): unknown {
+  return key in data ? data[key] : empty;
+}
+
+// La región que el sistema tenía fija antes de que fuera configurable.
+const LEGACY_REGION = { country: 'PE', locale: 'es-PE', timeZone: 'America/Lima', currency: 'PEN' };
 function date(value: unknown): Date | null {
   if (value === null) return null;
   const result = new Date(string(value));
@@ -38,10 +55,13 @@ function date(value: unknown): Date | null {
 export function readPromotion(value: unknown): Promotion | null {
   if (value === null) return null;
   const data = object(value);
+  const showDiscount = legacy(data, 'showDiscount', false);
+  if (typeof showDiscount !== 'boolean') throw new InvalidCampaignError('storedJson');
   return Promotion.restore(
     Money.fromMinorUnits(number(data.amountMinor), string(data.currency)),
     date(data.startsAt),
     date(data.endsAt),
+    { conditions: optionalString(legacy(data, 'conditions', null)), showDiscount },
   );
 }
 
@@ -51,6 +71,11 @@ export function readGenerationSnapshot(value: unknown): GenerationSnapshot {
   const product = object(data.product);
   const price = object(product.regularPrice);
   const template = object(data.template);
+  const region = object(legacy(organization, 'region', LEGACY_REGION));
+  const objective = Object.values(CampaignObjective).find(
+    (value) => value === legacy(data, 'objective', CampaignObjective.PROMOTION),
+  );
+  if (!objective) throw new InvalidCampaignError('storedJson');
   return GenerationSnapshot.capture(
     {
       organization: {
@@ -58,15 +83,51 @@ export function readGenerationSnapshot(value: unknown): GenerationSnapshot {
         name: string(organization.name),
         description: string(organization.description),
         brandTone: optionalString(organization.brandTone),
+        industry: optionalString(legacy(organization, 'industry', null)),
+        region: {
+          country: string(region.country),
+          locale: string(region.locale),
+          timeZone: string(region.timeZone),
+          currency: string(region.currency),
+        },
+        brandColors: optionalObject(legacy(organization, 'brandColors', null), (colors) => ({
+          primary: string(colors.primary),
+          secondary: string(colors.secondary),
+          accent: string(colors.accent),
+          lightBackground: string(colors.lightBackground),
+          darkBackground: string(colors.darkBackground),
+        })),
+        typography: optionalString(legacy(organization, 'typography', null)),
+        visualStyle: array(legacy(organization, 'visualStyle', [])).map(string),
+        contact: optionalObject(legacy(organization, 'contact', null), (contact) => ({
+          whatsapp: optionalString(contact.whatsapp),
+          website: optionalString(contact.website),
+          instagram: optionalString(contact.instagram),
+          address: optionalString(contact.address),
+        })),
+        defaultLegalText: optionalString(legacy(organization, 'defaultLegalText', null)),
+        forbiddenWords: array(legacy(organization, 'forbiddenWords', [])).map(string),
         logoAssetId: optionalString(organization.logoAssetId),
+        darkBackgroundLogoAssetId: optionalString(
+          legacy(organization, 'darkBackgroundLogoAssetId', null),
+        ),
+        iconAssetId: optionalString(legacy(organization, 'iconAssetId', null)),
+        logoIsDark: optionalBoolean(legacy(organization, 'logoIsDark', null)),
       },
       product: {
         id: string(product.id),
         organizationId: string(product.organizationId),
+        kind: optionalString(legacy(product, 'kind', null)),
         name: string(product.name),
+        shortName: optionalString(legacy(product, 'shortName', null)),
+        productBrand: optionalString(legacy(product, 'productBrand', null)),
         description: string(product.description),
+        keyAttributes: array(legacy(product, 'keyAttributes', [])).map(string),
+        unit: optionalString(legacy(product, 'unit', null)),
         regularPrice: { amountMinor: number(price.amountMinor), currency: string(price.currency) },
         imageAssetIds: array(product.imageAssetIds).map(string),
+        photoType: optionalString(legacy(product, 'photoType', null)),
+        hasTransparency: optionalBoolean(legacy(product, 'hasTransparency', null)),
       },
       template: {
         id: string(template.id),
@@ -75,11 +136,16 @@ export function readGenerationSnapshot(value: unknown): GenerationSnapshot {
         revisionNumber: number(template.revisionNumber),
         width: number(template.width),
         height: number(template.height),
+        design: legacy(template, 'design', null),
       },
     },
-    string(data.instructions),
-    string(data.cta),
-    readPromotion(data.promotion),
+    {
+      objective,
+      occasion: optionalString(legacy(data, 'occasion', null)),
+      instructions: string(data.instructions),
+      cta: string(data.cta),
+      promotion: readPromotion(data.promotion),
+    },
   );
 }
 

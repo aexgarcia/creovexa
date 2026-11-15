@@ -17,11 +17,24 @@ export const campaignStatusLabels: Record<StoredCampaignStatus, string> = {
   PARTIALLY_PUBLISHED: 'Publicada parcialmente',
   FAILED: 'Fallida',
 };
+// Para qué es la campaña: orienta el diseño del flyer.
+export type CampaignObjective = 'PROMOTION' | 'LAUNCH' | 'SEASONAL' | 'AWARENESS' | 'EVENT';
+export const campaignObjectiveLabels: Record<CampaignObjective, string> = {
+  PROMOTION: 'Promoción: destacar el precio',
+  LAUNCH: 'Lanzamiento: presentar algo nuevo',
+  SEASONAL: 'Temporada o fecha especial',
+  AWARENESS: 'Recordación de marca',
+  EVENT: 'Evento',
+};
 export interface CampaignPromotion {
   amountMinor: number;
   currency: 'PEN' | 'USD' | 'EUR';
   startsAt: string | null;
   endsAt: string | null;
+  // Se imprimen tal cual en el flyer.
+  conditions: string | null;
+  // El porcentaje lo calcula el sistema.
+  showDiscount: boolean;
 }
 export interface StoredCampaign {
   id: string;
@@ -31,6 +44,8 @@ export interface StoredCampaign {
   templateId: string;
   templateRevisionId: string;
   title: string;
+  objective: CampaignObjective;
+  occasion: string | null;
   instructions: string;
   cta: string;
   promotion: CampaignPromotion | null;
@@ -57,6 +72,8 @@ export interface CreateStoredCampaignInput {
   templateId: string;
   templateRevisionId: string;
   title: string;
+  objective: CampaignObjective;
+  occasion: string | null;
   instructions?: string;
   cta: string;
   promotion?: {
@@ -64,7 +81,13 @@ export interface CreateStoredCampaignInput {
     currency: CampaignPromotion['currency'];
     startsAt?: string;
     endsAt?: string;
+    conditions: string | null;
+    showDiscount: boolean;
   };
+}
+// Reemplaza el brief completo de un borrador; expectedVersion evita pisar otra edición.
+export interface UpdateStoredCampaignInput extends CreateStoredCampaignInput {
+  expectedVersion: number;
 }
 export interface StoredPublication {
   id: string;

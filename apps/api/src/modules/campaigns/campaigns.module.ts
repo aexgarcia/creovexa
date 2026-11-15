@@ -29,6 +29,7 @@ import { PrismaCampaignRepository } from './infrastructure/persistence/prisma/pr
 import { StoredCampaignAssets } from './infrastructure/stored-campaign-assets.js';
 import { PrismaCampaignWorkspace } from './infrastructure/persistence/prisma/prisma-campaign-workspace.js';
 import { CAMPAIGN_GENERATIONS } from './contract.js';
+import { UpdateCampaignDraft } from './application/use-cases/update-campaign-draft.js';
 import { CampaignsController } from './presentation/campaigns.controller.js';
 
 @Module({
@@ -72,6 +73,12 @@ import { CampaignsController } from './presentation/campaigns.controller.js';
         clock: Clock,
       ) => new UseCase(repo, lookups, ids, clock),
     })),
+    {
+      provide: UpdateCampaignDraft,
+      inject: [PrismaCampaignRepository, PrismaCampaignLookups, CLOCK],
+      useFactory: (repo: PrismaCampaignRepository, lookups: PrismaCampaignLookups, clock: Clock) =>
+        new UpdateCampaignDraft(repo, lookups, clock),
+    },
     {
       provide: RecordGeneratedCampaign,
       inject: [PrismaCampaignRepository, ID_GENERATOR, CLOCK],

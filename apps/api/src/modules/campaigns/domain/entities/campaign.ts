@@ -1,6 +1,11 @@
 import { entityId, type EntityId } from '#app/domain/entity-id';
 import { timestamp } from '#app/domain/timestamp';
 import {
+  CampaignObjective,
+  INSTRUCTIONS_MAX_LENGTH,
+  OCCASION_MAX_LENGTH,
+} from '../campaign-objective.js';
+import {
   CampaignStatus,
   CampaignFailureOrigin,
   GenerationFailureCode,
@@ -12,7 +17,7 @@ import {
   ContentRevisionMismatchError,
   ConflictingGenerationResultError,
 } from '../errors/campaign.errors.js';
-import { GenerationSnapshot } from '../value-objects/generation-snapshot.js';
+import { GenerationSnapshot, type CampaignBrief } from '../value-objects/generation-snapshot.js';
 import { Promotion } from '../value-objects/promotion.js';
 import {
   PublicationProgress,
@@ -26,6 +31,8 @@ export interface CampaignDetails {
   productId: string;
   templateId: string;
   templateRevisionId: string;
+  objective?: CampaignObjective;
+  occasion?: string | null;
   instructions?: string;
   cta: string;
   promotion?: Promotion | null;
@@ -45,6 +52,8 @@ export interface CampaignState {
   productId: EntityId;
   templateId: EntityId;
   templateRevisionId: EntityId;
+  objective: CampaignObjective;
+  occasion: string | null;
   instructions: string;
   cta: string;
   promotion: Promotion | null;
@@ -67,6 +76,41 @@ function text(value: string, field: string, required = true): string {
   return value.trim();
 }
 
+function limited(value: string, field: string, max: number): string {
+  if (value.length > max) throw new InvalidCampaignError(field);
+  return value;
+}
+
+// Los datos del brief, validados. Los usan la creación y la edición del borrador.
+function briefDetails(input: CampaignDetails, at: Date) {
+  const promotion = input.promotion ?? null;
+  if (promotion !== null && !(promotion instanceof Promotion))
+    throw new InvalidCampaignError('promotion');
+  promotion?.assertNotExpired(at);
+  const objective = input.objective ?? CampaignObjective.PROMOTION;
+  if (!Object.values(CampaignObjective).includes(objective))
+    throw new InvalidCampaignError('objective');
+  const occasion =
+    input.occasion == null
+      ? null
+      : limited(text(input.occasion, 'occasion', false), 'occasion', OCCASION_MAX_LENGTH) || null;
+  return {
+    title: text(input.title, 'title'),
+    productId: entityId(input.productId, 'productId'),
+    templateId: entityId(input.templateId, 'templateId'),
+    templateRevisionId: entityId(input.templateRevisionId, 'templateRevisionId'),
+    objective,
+    occasion,
+    instructions: limited(
+      text(input.instructions === undefined ? '' : input.instructions, 'instructions', false),
+      'instructions',
+      INSTRUCTIONS_MAX_LENGTH,
+    ),
+    cta: text(input.cta, 'cta'),
+    promotion,
+  };
+}
+
 export class Campaign {
   readonly #state: Readonly<CampaignState>;
   private constructor(state: CampaignState) {
@@ -75,24 +119,10 @@ export class Campaign {
 
   static create(id: string, input: CampaignDetails, at: Date): Campaign {
     const createdAt = timestamp(at);
-    const promotion = input.promotion ?? null;
-    if (promotion !== null && !(promotion instanceof Promotion))
-      throw new InvalidCampaignError('promotion');
-    promotion?.assertNotExpired(at);
     return new Campaign({
       id: entityId(id, 'campaignId'),
-      title: text(input.title, 'title'),
       organizationId: entityId(input.organizationId, 'organizationId'),
-      productId: entityId(input.productId, 'productId'),
-      templateId: entityId(input.templateId, 'templateId'),
-      templateRevisionId: entityId(input.templateRevisionId, 'templateRevisionId'),
-      instructions: text(
-        input.instructions === undefined ? '' : input.instructions,
-        'instructions',
-        false,
-      ),
-      cta: text(input.cta, 'cta'),
-      promotion,
+      ...briefDetails(input, at),
       status: CampaignStatus.DRAFT,
       generation: null,
       candidateContent: null,
@@ -116,10 +146,8 @@ export class Campaign {
     if (!Number.isSafeInteger(state.version) || state.version < 0)
       throw new InvalidCampaignError('version');
     const isDraft = state.status === CampaignStatus.DRAFT;
-    if (
-      isDraft !== (state.generation === null) ||
-      (isDraft ? state.version !== 0 || updatedAt !== state.createdAt : state.version < 1)
-    )
+    // Un borrador sube de versión con cada edición, así que no tiene por qué estar en la 0.
+    if (isDraft !== (state.generation === null) || (!isDraft && state.version < 1))
       throw new InvalidCampaignError('generation');
 
     let generation: GenerationOperation | null = null;
@@ -227,6 +255,12 @@ export class Campaign {
       version: state.version,
       updatedAt,
     });
+  }
+
+  /** Cambia el brief de un borrador. Los datos se validan igual que al crear la campaña. */
+  updateDraft(input: Omit<CampaignDetails, 'organizationId'>, at: Date): Campaign {
+    if (this.status !== CampaignStatus.DRAFT) throw new InvalidCampaignTransitionError();
+    return this.change(briefDetails({ ...input, organizationId: this.organizationId }, at), at);
   }
 
   requestGeneration(id: string, snapshot: GenerationSnapshot, at: Date): Campaign {
@@ -421,6 +455,8 @@ export class Campaign {
       data.product.id !== this.productId ||
       data.template.id !== this.templateId ||
       data.template.revisionId !== this.templateRevisionId ||
+      data.objective !== this.objective ||
+      data.occasion !== this.occasion ||
       data.cta !== this.cta ||
       data.instructions !== this.instructions ||
       JSON.stringify(data.promotion) !== JSON.stringify(this.promotion?.toSnapshot() ?? null)
@@ -457,6 +493,22 @@ export class Campaign {
   }
   get templateRevisionId(): EntityId {
     return this.#state.templateRevisionId;
+  }
+  get objective(): CampaignObjective {
+    return this.#state.objective;
+  }
+  get occasion(): string | null {
+    return this.#state.occasion;
+  }
+  /** Lo que la campaña aporta al snapshot de una generación. */
+  get brief(): CampaignBrief {
+    return {
+      objective: this.objective,
+      occasion: this.occasion,
+      instructions: this.instructions,
+      cta: this.cta,
+      promotion: this.promotion,
+    };
   }
   get instructions(): string {
     return this.#state.instructions;

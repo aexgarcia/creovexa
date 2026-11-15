@@ -28,6 +28,7 @@ import {
   LATER,
   EXPIRES,
   testId,
+  briefOf,
 } from '../../../../support/campaign-fakes.js';
 
 describe('Campaign', () => {
@@ -162,9 +163,7 @@ describe('Campaign', () => {
     const { draft, generating, promotion } = domainFixture();
     const different = GenerationSnapshot.capture(
       resourcesFixture(),
-      'Changed instructions',
-      draft.cta,
-      promotion,
+      briefOf('Changed instructions', draft.cta, promotion),
     );
     expect(() => draft.requestGeneration(GENERATION, different, new Date(NOW))).toThrow(
       InvalidCampaignError,

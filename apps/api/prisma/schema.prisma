@@ -136,6 +136,14 @@ enum CampaignStatus {
   FAILED
 }
 
+enum CampaignObjective {
+  PROMOTION
+  LAUNCH
+  SEASONAL
+  AWARENESS
+  EVENT
+}
+
 enum CampaignFailureOrigin {
   GENERATION
   PUBLICATION
@@ -153,6 +161,8 @@ model Campaign {
   productId                String                 @map("product_id") @db.Uuid
   templateId               String                 @map("template_id") @db.Uuid
   templateRevisionId       String                 @map("template_revision_id") @db.Uuid
+  objective                CampaignObjective      @default(PROMOTION)
+  occasion                 String?
   title                    String
   instructions             String
   cta                      String

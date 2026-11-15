@@ -77,6 +77,8 @@ describe('Flyer composition with real Chromium', () => {
           currency: Currency.PEN,
           startsAt: '2026-09-30T05:00:00.000Z',
           endsAt: '2026-10-02T04:59:00.000Z',
+          conditions: null,
+          showDiscount: false,
         },
       },
     };

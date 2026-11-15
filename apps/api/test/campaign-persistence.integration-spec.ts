@@ -34,6 +34,8 @@ import { RequestCampaignRegeneration } from '#app/modules/campaigns/application/
 import { RecordGeneratedCampaign } from '#app/modules/campaigns/application/use-cases/record-generated-campaign';
 import { RecordCampaignGenerationFailure } from '#app/modules/campaigns/application/use-cases/record-campaign-generation-failure';
 import { ApproveCampaign } from '#app/modules/campaigns/application/use-cases/approve-campaign';
+import { UpdateCampaignDraft } from '#app/modules/campaigns/application/use-cases/update-campaign-draft';
+import { CampaignObjective } from '#app/modules/campaigns/domain/campaign-objective';
 import { CAMPAIGN_FINAL_ASSETS } from '#app/modules/campaigns/application/ports/campaign-final-assets';
 import { finalAssetsFake } from './support/final-assets-fake.js';
 import { CampaignResourceNotFoundError } from '#app/modules/campaigns/application/errors/campaign-resource-not-found.error';
@@ -43,6 +45,7 @@ import { PrismaCampaignRepository } from '#app/modules/campaigns/infrastructure/
 import { PrismaCampaignLookups } from '#app/modules/campaigns/infrastructure/persistence/prisma/prisma-campaign-lookups';
 import {
   CampaignMapper,
+  snapshotJson,
   campaignRelations,
 } from '#app/modules/campaigns/infrastructure/persistence/prisma/campaign.mapper';
 import { campaignState } from './support/campaign-restoration.js';
@@ -164,9 +167,7 @@ describe('Campaign persistence (PostgreSQL)', () => {
   async function snapshot(campaign: Campaign) {
     return GenerationSnapshot.capture(
       await loadCampaignResources(campaign, lookups),
-      campaign.instructions,
-      campaign.cta,
-      campaign.promotion,
+      campaign.brief,
     );
   }
   function generated(campaign: Campaign, id = uuid()) {
@@ -197,6 +198,48 @@ describe('Campaign persistence (PostgreSQL)', () => {
     expect(loaded.createdAt).toEqual(NOW);
     expect(loaded.updatedAt).toEqual(LATER);
     expect(loaded.candidateContent!.createdAt).toEqual(NOW);
+  });
+
+  it('edits a draft in SQL and freezes the full brief in the next generation', async () => {
+    const context = await fixture();
+    clock.value = LATER;
+    const edited = await module.get(UpdateCampaignDraft).execute({
+      ...context.input,
+      ...context.selection,
+      expectedVersion: 0,
+      objective: CampaignObjective.LAUNCH,
+      occasion: 'Aniversario',
+      promotion: { ...context.input.promotion, conditions: 'Solo en tienda', showDiscount: true },
+    });
+    expect(edited).toMatchObject({ version: 1, objective: 'LAUNCH', occasion: 'Aniversario' });
+    const loaded = (await campaigns.findById(
+      context.selection.organizationId,
+      context.selection.campaignId,
+    ))!;
+    expect(campaignResult(loaded)).toEqual(edited);
+    // Otra edición sobre la versión ya superada no se guarda.
+    await expect(
+      campaigns.saveDraft(
+        loaded.organizationId,
+        context.draft.updateDraft({ ...context.input, promotion: null }, LATER),
+        0,
+      ),
+    ).rejects.toThrow(ConcurrentCampaignModificationError);
+
+    const generated = await module.get(RequestCampaignGeneration).execute(context.selection);
+    expect(generated.generation!.snapshot).toMatchObject({
+      objective: 'LAUNCH',
+      occasion: 'Aniversario',
+      organization: { region: { locale: 'es-PE' }, brandColors: null },
+      product: { kind: 'SERVICE', keyAttributes: [], photoType: null },
+      template: { design: { format: 'SQUARE' } },
+      promotion: { conditions: 'Solo en tienda', showDiscount: true },
+    });
+    const reloaded = (await campaigns.findById(
+      context.selection.organizationId,
+      context.selection.campaignId,
+    ))!;
+    expect(campaignResult(reloaded)).toEqual(generated);
   });
 
   it('keeps duplicate callbacks idempotent after loading persisted state', async () => {
@@ -424,12 +467,7 @@ describe('Campaign persistence (PostgreSQL)', () => {
     const { campaign } = await pending();
     const resources = await loadCampaignResources(campaign, lookups);
     resources.organization.name = 'Historia alterada';
-    const forgedSnapshot = GenerationSnapshot.capture(
-      resources,
-      campaign.instructions,
-      campaign.cta,
-      campaign.promotion,
-    );
+    const forgedSnapshot = GenerationSnapshot.capture(resources, campaign.brief);
     const content = GeneratedContent.create(
       { ...campaign.candidateContent! },
       forgedSnapshot,
@@ -514,7 +552,7 @@ describe('Campaign persistence (PostgreSQL)', () => {
         data: {
           ...CampaignMapper.generation(first.campaign, first.campaign.generation!),
           id: uuid(),
-          snapshot: first.campaign.generation!.snapshot.data,
+          snapshot: snapshotJson(first.campaign.generation!.snapshot),
         },
       }),
     ).rejects.toMatchObject({ code: 'P2002' });

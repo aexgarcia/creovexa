@@ -8,6 +8,8 @@ export function campaignState(campaign: Campaign): CampaignState {
     productId: campaign.productId,
     templateId: campaign.templateId,
     templateRevisionId: campaign.templateRevisionId,
+    objective: campaign.objective,
+    occasion: campaign.occasion,
     instructions: campaign.instructions,
     cta: campaign.cta,
     promotion: campaign.promotion,

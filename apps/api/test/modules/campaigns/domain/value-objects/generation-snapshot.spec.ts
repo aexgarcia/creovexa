@@ -8,6 +8,7 @@ import {
   domainFixture,
   OTHER_ORG,
   ASSET,
+  briefOf,
 } from '../../../../support/campaign-fakes.js';
 
 describe('GenerationSnapshot', () => {
@@ -16,9 +17,7 @@ describe('GenerationSnapshot', () => {
     const { promotion } = domainFixture();
     const snapshot = GenerationSnapshot.capture(
       resources,
-      ' Instrucciones ',
-      'Comprar ahora',
-      promotion,
+      briefOf(' Instrucciones ', 'Comprar ahora', promotion),
     );
     resources.organization.name = 'Otra empresa';
     resources.product.regularPrice.amountMinor = 1;
@@ -45,9 +44,9 @@ describe('GenerationSnapshot', () => {
     (resource) => {
       const resources = resourcesFixture();
       resources[resource].organizationId = OTHER_ORG;
-      expect(() => GenerationSnapshot.capture(resources, '', 'Comprar ahora', null)).toThrow(
-        InvalidCampaignError,
-      );
+      expect(() =>
+        GenerationSnapshot.capture(resources, briefOf('', 'Comprar ahora', null)),
+      ).toThrow(InvalidCampaignError);
     },
   );
 
@@ -55,23 +54,29 @@ describe('GenerationSnapshot', () => {
     const resources = resourcesFixture();
     const { promotion } = domainFixture();
     resources.product.regularPrice.amountMinor = 1000;
-    expect(() => GenerationSnapshot.capture(resources, '', 'Comprar ahora', promotion)).toThrow(
-      InvalidPromotionError,
-    );
+    expect(() =>
+      GenerationSnapshot.capture(resources, briefOf('', 'Comprar ahora', promotion)),
+    ).toThrow(InvalidPromotionError);
     resources.product.imageAssetIds = [ASSET, ASSET];
-    expect(() => GenerationSnapshot.capture(resources, '', 'Comprar ahora', null)).toThrow(
+    expect(() => GenerationSnapshot.capture(resources, briefOf('', 'Comprar ahora', null))).toThrow(
       InvalidCampaignError,
     );
   });
 
   it('compares actual captured values rather than object identities', () => {
-    const first = GenerationSnapshot.capture(resourcesFixture(), '', 'Comprar ahora', null);
-    const second = GenerationSnapshot.capture(resourcesFixture(), '', 'Comprar ahora', null);
+    const first = GenerationSnapshot.capture(
+      resourcesFixture(),
+      briefOf('', 'Comprar ahora', null),
+    );
+    const second = GenerationSnapshot.capture(
+      resourcesFixture(),
+      briefOf('', 'Comprar ahora', null),
+    );
     expect(first.equals(second)).toBe(true);
     const changed = resourcesFixture();
     changed.product.name = 'Producto actualizado';
-    expect(first.equals(GenerationSnapshot.capture(changed, '', 'Comprar ahora', null))).toBe(
-      false,
-    );
+    expect(
+      first.equals(GenerationSnapshot.capture(changed, briefOf('', 'Comprar ahora', null))),
+    ).toBe(false);
   });
 });

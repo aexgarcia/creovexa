@@ -1,6 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Currency } from '#app/domain/value-objects/money';
 import { PaginationResponse } from '#app/presentation/http/pagination.dto';
+import { CampaignObjective } from '../domain/campaign-objective.js';
 import { CampaignStatus } from '../domain/campaign-status.js';
 import type { CampaignResult } from '../application/campaign-result.js';
 
@@ -9,6 +10,8 @@ export class PromotionResponse {
   @ApiProperty({ enum: Currency, enumName: 'Currency' }) currency!: Currency;
   @ApiProperty({ type: String, format: 'date-time', nullable: true }) startsAt!: string | null;
   @ApiProperty({ type: String, format: 'date-time', nullable: true }) endsAt!: string | null;
+  @ApiProperty({ type: String, nullable: true }) conditions!: string | null;
+  @ApiProperty({ type: Boolean }) showDiscount!: boolean;
 }
 export class CandidateContentResponse {
   @ApiProperty({ type: String, format: 'uuid' }) id!: string;
@@ -32,6 +35,9 @@ export class CampaignResponse {
   @ApiProperty({ type: String, format: 'uuid' }) templateId!: string;
   @ApiProperty({ type: String, format: 'uuid' }) templateRevisionId!: string;
   @ApiProperty({ type: String }) title!: string;
+  @ApiProperty({ enum: CampaignObjective, enumName: 'CampaignObjective' })
+  objective!: CampaignObjective;
+  @ApiProperty({ type: String, nullable: true }) occasion!: string | null;
   @ApiProperty({ type: String }) instructions!: string;
   @ApiProperty({ type: String }) cta!: string;
   @ApiProperty({ type: PromotionResponse, nullable: true }) promotion!: PromotionResponse | null;
@@ -80,6 +86,8 @@ export function campaignResponse(result: CampaignResult): CampaignResponse {
     templateId: result.templateId,
     templateRevisionId: result.templateRevisionId,
     title: result.title,
+    objective: result.objective,
+    occasion: result.occasion,
     instructions: result.instructions,
     cta: result.cta,
     promotion: result.promotion ? { ...result.promotion } : null,

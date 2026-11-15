@@ -14,8 +14,11 @@ import {
 import { Promotion } from '#app/modules/campaigns/domain/value-objects/promotion';
 import {
   GenerationSnapshot,
+  type CampaignBrief,
   type GenerationResources,
 } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
+import { CampaignObjective } from '#app/modules/campaigns/domain/campaign-objective';
+import { DEFAULT_FLYER_DESIGN } from '#app/domain/value-objects/flyer-design';
 import type { CampaignLookups } from '#app/modules/campaigns/application/ports/campaign-lookups';
 import type { CampaignRepository } from '#app/modules/campaigns/domain/repositories/campaign.repository';
 import { ConcurrentCampaignModificationError } from '#app/modules/campaigns/domain/errors/campaign.errors';
@@ -24,6 +27,7 @@ import { RequestCampaignGeneration } from '#app/modules/campaigns/application/us
 import { RequestCampaignRegeneration } from '#app/modules/campaigns/application/use-cases/request-campaign-regeneration';
 import { RecordGeneratedCampaign } from '#app/modules/campaigns/application/use-cases/record-generated-campaign';
 import { ApproveCampaign } from '#app/modules/campaigns/application/use-cases/approve-campaign';
+import { UpdateCampaignDraft } from '#app/modules/campaigns/application/use-cases/update-campaign-draft';
 import { finalAssetsFake } from './final-assets-fake.js';
 import type { TransactionContext } from '#app/application/ports/transaction-context';
 import { PublishedCampaignGenerations } from '#app/modules/campaigns/application/published-campaign-generations';
@@ -55,15 +59,39 @@ export function resourcesFixture(): GenerationResources {
       name: 'Empresa',
       description: 'Descripción de empresa',
       brandTone: 'Cercano',
+      industry: 'Cafetería',
+      region: { country: 'PE', locale: 'es-PE', timeZone: 'America/Lima', currency: 'PEN' },
+      brandColors: {
+        primary: '#5B3A29',
+        secondary: '#C98B4E',
+        accent: '#E4572E',
+        lightBackground: '#F7F1E8',
+        darkBackground: '#1E120D',
+      },
+      typography: 'SERIF_ELEGANT',
+      visualStyle: ['artesanal'],
+      contact: { whatsapp: '+51 999 999 999', website: null, instagram: null, address: null },
+      defaultLegalText: 'Imágenes referenciales.',
+      forbiddenWords: ['gratis'],
       logoAssetId: null,
+      darkBackgroundLogoAssetId: null,
+      iconAssetId: null,
+      logoIsDark: null,
     },
     product: {
       id: PRODUCT,
       organizationId: ORG,
+      kind: 'PRODUCT',
       name: 'Producto',
+      shortName: 'Prod',
+      productBrand: null,
       description: 'Descripción',
+      keyAttributes: ['100 % arábica'],
+      unit: null,
       regularPrice: { amountMinor: 2000, currency: Currency.PEN },
       imageAssetIds: [ASSET],
+      photoType: 'STUDIO',
+      hasTransparency: false,
     },
     template: {
       id: TEMPLATE,
@@ -72,8 +100,18 @@ export function resourcesFixture(): GenerationResources {
       revisionNumber: 1,
       width: 1080,
       height: 1080,
+      design: DEFAULT_FLYER_DESIGN,
     },
   };
+}
+
+/** El brief de una campaña con el objetivo por defecto y sin ocasión. */
+export function briefOf(
+  instructions: string,
+  cta: string,
+  promotion: Promotion | null,
+): CampaignBrief {
+  return { objective: CampaignObjective.PROMOTION, occasion: null, instructions, cta, promotion };
 }
 
 export function createInput() {
@@ -110,9 +148,7 @@ export function domainFixture() {
   const draft = Campaign.create(CAMPAIGN, { ...input, promotion }, new Date(NOW));
   const snapshot = GenerationSnapshot.capture(
     resourcesFixture(),
-    draft.instructions,
-    draft.cta,
-    promotion,
+    briefOf(draft.instructions, draft.cta, promotion),
   );
   const generating = draft.requestGeneration(GENERATION, snapshot, new Date(NOW));
   const content = GeneratedContent.create(
@@ -207,6 +243,21 @@ export class CampaignRepositoryFake implements CampaignRepository {
     return Promise.resolve();
   }
 
+  saveDraft(organizationId: EntityId, campaign: Campaign, expectedVersion: number): Promise<void> {
+    const stored = this.records.get(campaign.id);
+    if (
+      !stored ||
+      stored.organizationId !== organizationId ||
+      stored.version !== expectedVersion ||
+      stored.status !== campaign.status
+    )
+      throw new ConcurrentCampaignModificationError();
+    if (campaign.version !== expectedVersion + 1) throw new TypeError('Invalid test version.');
+    this.records.set(campaign.id, campaign);
+    this.saveCount++;
+    return Promise.resolve();
+  }
+
   save(organizationId: EntityId, campaign: Campaign, expectedVersion: number): Promise<void> {
     const stored = this.records.get(campaign.id);
     if (
@@ -266,6 +317,7 @@ export function campaignUseCases() {
     record: new RecordGeneratedCampaign(repository, ids, clock),
     approve: new ApproveCampaign(repository, clock, finalAssetsFake),
     fail: new RecordCampaignGenerationFailure(repository, clock),
+    updateDraft: new UpdateCampaignDraft(repository, lookups, clock),
   };
 }
 

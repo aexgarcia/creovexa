@@ -2,6 +2,7 @@ import { apiRequest, apiUrl, type ApiPage } from '@/lib/api-client';
 import type {
   CreateStoredCampaignInput,
   StoredCampaign,
+  UpdateStoredCampaignInput,
   StoredPublication,
 } from '../types/stored-campaign.types';
 import type { GenerationJob } from '../types/generation-job';
@@ -42,6 +43,16 @@ export const campaignApi = {
       (
         await apiRequest<{ data: StoredCampaign }>('/campaigns', {
           method: 'POST',
+          body: JSON.stringify(input),
+        })
+      ).data,
+    );
+  },
+  async update(id: string, input: UpdateStoredCampaignInput): Promise<StoredCampaign> {
+    return resolveImages(
+      (
+        await apiRequest<{ data: StoredCampaign }>(`/campaigns/${encodeURIComponent(id)}`, {
+          method: 'PATCH',
           body: JSON.stringify(input),
         })
       ).data,

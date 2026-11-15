@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Megaphone,
   Package,
+  Pencil,
   Send,
   Sparkles,
 } from 'lucide-react';
@@ -130,6 +131,15 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
             <h1 className="break-words text-2xl font-semibold tracking-tight">{campaign.title}</h1>
           </div>
         </div>
+        {campaign.status === 'DRAFT' && (
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<Link href={`/campaigns/${campaign.id}/edit`} />}
+          >
+            <Pencil className="size-4" /> Editar
+          </Button>
+        )}
         {isApproved && (
           <span className="flex shrink-0 items-center gap-2 text-sm font-medium text-primary">
             <CheckCircle2 className="size-4" /> Contenido aprobado

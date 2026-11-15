@@ -7,4 +7,6 @@ export interface CampaignRepository {
   findById(organizationId: EntityId, campaignId: EntityId): Promise<Campaign | null>;
   add(organizationId: EntityId, campaign: Campaign): Promise<void>;
   save(organizationId: EntityId, campaign: Campaign, expectedVersion: number): Promise<void>;
+  // Guarda el brief editado de un borrador, si sigue en DRAFT y en la versión esperada.
+  saveDraft(organizationId: EntityId, campaign: Campaign, expectedVersion: number): Promise<void>;
 }

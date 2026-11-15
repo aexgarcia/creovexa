@@ -6,6 +6,7 @@ import {
   Inject,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Res,
@@ -34,9 +35,25 @@ import { CreateCampaign } from '../application/use-cases/create-campaign.js';
 import { GetCampaign } from '../application/use-cases/get-campaign.js';
 import { GetCampaignFinalAsset } from '../application/use-cases/get-campaign-final-asset.js';
 import { ListCampaigns } from '../application/use-cases/list-campaigns.js';
-import { CreateCampaignRequest, ApproveCampaignRequest } from './campaign.requests.js';
+import {
+  CreateCampaignRequest,
+  ApproveCampaignRequest,
+  UpdateCampaignRequest,
+  type PromotionRequest,
+} from './campaign.requests.js';
+import { UpdateCampaignDraft } from '../application/use-cases/update-campaign-draft.js';
 import { ApproveCampaign } from '../application/use-cases/approve-campaign.js';
 import { CampaignEnvelope, CampaignPageResponse, campaignResponse } from './campaign.responses.js';
+
+function promotionInput(promotion: PromotionRequest | undefined) {
+  return promotion
+    ? {
+        ...promotion,
+        startsAt: promotion.startsAt ? new Date(promotion.startsAt) : null,
+        endsAt: promotion.endsAt ? new Date(promotion.endsAt) : null,
+      }
+    : null;
+}
 
 @ApiTags('Campañas')
 @ApiErrors()
@@ -49,6 +66,7 @@ export class CampaignsController {
     @Inject(GetCampaign) private readonly getCampaign: GetCampaign,
     @Inject(ListCampaigns) private readonly listCampaigns: ListCampaigns,
     @Inject(GetCampaignFinalAsset) private readonly getFinalAsset: GetCampaignFinalAsset,
+    @Inject(UpdateCampaignDraft) private readonly updateDraft: UpdateCampaignDraft,
   ) {}
 
   @Post(':id/approve')
@@ -86,13 +104,32 @@ export class CampaignsController {
         await this.createCampaign.execute({
           ...body,
           organizationId,
-          promotion: body.promotion
-            ? {
-                ...body.promotion,
-                startsAt: body.promotion.startsAt ? new Date(body.promotion.startsAt) : null,
-                endsAt: body.promotion.endsAt ? new Date(body.promotion.endsAt) : null,
-              }
-            : null,
+          promotion: promotionInput(body.promotion),
+        }),
+      ),
+    };
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Editar una campaña en borrador',
+    description: 'Reemplaza el brief completo. expectedVersion evita pisar los cambios de otro.',
+  })
+  @ApiParam({ name: 'id', type: String, format: 'uuid' })
+  @ApiBody({ type: UpdateCampaignRequest })
+  @ApiOkResponse({ type: CampaignEnvelope })
+  async update(
+    @OrganizationId() organizationId: string,
+    @Param('id', new ParseUUIDPipe()) campaignId: string,
+    @Body(validateRequest(UpdateCampaignRequest)) body: UpdateCampaignRequest,
+  ): Promise<CampaignEnvelope> {
+    return {
+      data: campaignResponse(
+        await this.updateDraft.execute({
+          ...body,
+          organizationId,
+          campaignId,
+          promotion: promotionInput(body.promotion),
         }),
       ),
     };

@@ -43,12 +43,7 @@ export class PublishedCampaignGenerations implements CampaignGenerations {
     const campaigns = transaction ? this.workspace.repositoryIn(transaction) : this.campaigns;
     const campaign = await loadCampaign(reference, campaigns);
     const resources = await loadCampaignResources(campaign, this.lookups);
-    const snapshot = GenerationSnapshot.capture(
-      resources,
-      campaign.instructions,
-      campaign.cta,
-      campaign.promotion,
-    );
+    const snapshot = GenerationSnapshot.capture(resources, campaign.brief);
     const updated = campaign.requestGeneration(this.ids.next(), snapshot, this.clock.now());
     await campaigns.save(campaign.organizationId, updated, campaign.version);
     return generationView(updated);

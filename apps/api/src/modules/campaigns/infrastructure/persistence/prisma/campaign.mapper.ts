@@ -7,6 +7,7 @@ import type {
 } from '#app/infrastructure/persistence/prisma/generated/client';
 import { Campaign, type GenerationOperation } from '../../../domain/entities/campaign.js';
 import { GeneratedContent } from '../../../domain/entities/generated-content.js';
+import { CampaignObjective } from '../../../domain/campaign-objective.js';
 import {
   CampaignStatus,
   CampaignFailureOrigin,
@@ -24,6 +25,11 @@ export const campaignRelations = {
   candidateContent: true,
 } satisfies Prisma.CampaignInclude;
 export type CampaignRecord = Prisma.CampaignGetPayload<{ include: typeof campaignRelations }>;
+
+// El snapshot como JSON plano: sin readonly ni prototipos, tal como se guarda.
+export function snapshotJson(snapshot: GenerationOperation['snapshot']): Prisma.JsonObject {
+  return JSON.parse(JSON.stringify(snapshot.data)) as Prisma.JsonObject;
+}
 
 export class CampaignMapper {
   static toDomain(row: CampaignRecord): Campaign {
@@ -56,6 +62,8 @@ export class CampaignMapper {
       productId: entityId(row.productId),
       templateId: entityId(row.templateId),
       templateRevisionId: entityId(row.templateRevisionId),
+      objective: CampaignObjective[row.objective],
+      occasion: row.occasion,
       title: row.title,
       instructions: row.instructions,
       cta: row.cta,
@@ -102,6 +110,8 @@ export class CampaignMapper {
       productId: campaign.productId,
       templateId: campaign.templateId,
       templateRevisionId: campaign.templateRevisionId,
+      objective: campaign.objective,
+      occasion: campaign.occasion,
       title: campaign.title,
       instructions: campaign.instructions,
       cta: campaign.cta,
@@ -122,16 +132,12 @@ export class CampaignMapper {
   }
 
   static generation(campaign: Campaign, generation: GenerationOperation): CampaignGeneration {
-    const snapshot = generation.snapshot.data;
     return {
       id: generation.id,
       organizationId: campaign.organizationId,
       campaignId: campaign.id,
       number: BigInt(generation.number),
-      snapshot: {
-        ...snapshot,
-        product: { ...snapshot.product, imageAssetIds: [...snapshot.product.imageAssetIds] },
-      },
+      snapshot: snapshotJson(generation.snapshot),
       requestedAt: new Date(generation.requestedAt),
     };
   }

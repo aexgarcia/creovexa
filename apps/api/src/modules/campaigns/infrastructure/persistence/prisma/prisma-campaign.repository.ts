@@ -17,8 +17,8 @@ import {
   ConcurrentCampaignModificationError,
   InvalidCampaignError,
 } from '../../../domain/errors/campaign.errors.js';
-import { CampaignMapper, campaignRelations } from './campaign.mapper.js';
-import { readPromotion } from './campaign-json.mapper.js';
+import { CampaignMapper, campaignRelations, snapshotJson } from './campaign.mapper.js';
+import { readGenerationSnapshot, readPromotion } from './campaign-json.mapper.js';
 
 export class PrismaCampaignRepository implements CampaignRepository {
   constructor(private readonly database: PrismaSession) {}
@@ -71,6 +71,48 @@ export class PrismaCampaignRepository implements CampaignRepository {
     }
   }
 
+  async saveDraft(
+    organizationId: EntityId,
+    campaign: Campaign,
+    expectedVersion: number,
+  ): Promise<void> {
+    if (campaign.organizationId !== organizationId) throw new PersistenceScopeError();
+    if (
+      campaign.status !== CampaignStatus.DRAFT ||
+      !Number.isSafeInteger(expectedVersion) ||
+      campaign.version !== expectedVersion + 1
+    )
+      throw new InvalidCampaignError('version');
+    const data = CampaignMapper.toPersistence(campaign);
+    try {
+      const result = await this.database.campaign.updateMany({
+        where: {
+          organizationId,
+          id: campaign.id,
+          status: CampaignStatus.DRAFT,
+          version: BigInt(expectedVersion),
+          createdAt: campaign.createdAt,
+        },
+        data: {
+          title: data.title,
+          productId: data.productId,
+          templateId: data.templateId,
+          templateRevisionId: data.templateRevisionId,
+          objective: data.objective,
+          occasion: data.occasion,
+          instructions: data.instructions,
+          cta: data.cta,
+          promotion: data.promotion,
+          version: data.version,
+          updatedAt: data.updatedAt,
+        },
+      });
+      if (result.count !== 1) throw new ConcurrentCampaignModificationError();
+    } catch (error) {
+      translatePrismaError(error);
+    }
+  }
+
   async save(organizationId: EntityId, campaign: Campaign, expectedVersion: number): Promise<void> {
     if (campaign.organizationId !== organizationId) throw new PersistenceScopeError();
     if (
@@ -92,6 +134,8 @@ export class PrismaCampaignRepository implements CampaignRepository {
           'productId',
           'templateId',
           'templateRevisionId',
+          'objective',
+          'occasion',
           'instructions',
           'cta',
         ] as const) {
@@ -134,13 +178,21 @@ export class PrismaCampaignRepository implements CampaignRepository {
                 where: { id: previous.currentGenerationId },
               });
         if (generation.id === previous.currentGenerationId) {
-          if (!isDeepStrictEqual(storedGeneration, generationRow))
+          // El snapshot se compara ya leído: los guardados antes de que tuviera más datos se leen
+          // con valores vacíos y no coinciden byte a byte con su forma actual.
+          if (
+            !isDeepStrictEqual(
+              { ...storedGeneration, snapshot: null },
+              { ...generationRow, snapshot: null },
+            ) ||
+            !readGenerationSnapshot(storedGeneration!.snapshot).equals(generation.snapshot)
+          )
             throw new PersistenceConflictError();
         } else {
           if (BigInt(generation.number) !== (storedGeneration?.number ?? 0n) + 1n)
             throw new PersistenceConflictError();
           await tx.campaignGeneration.create({
-            data: { ...generationRow, snapshot: generation.snapshot.data },
+            data: { ...generationRow, snapshot: snapshotJson(generation.snapshot) },
           });
         }
         if (campaign.candidateContent) {

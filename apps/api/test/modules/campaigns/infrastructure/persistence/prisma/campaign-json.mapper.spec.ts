@@ -18,6 +18,39 @@ describe('Stored campaign JSON', () => {
     const reversed = Object.fromEntries(Object.entries(data).reverse());
     expect(readGenerationSnapshot(reversed).equals(snapshot)).toBe(true);
   });
+  it('reads snapshots stored before the brand kit, the art direction and the brief', () => {
+    const data = domainFixture().snapshot.data;
+    const legacy = {
+      organization: {
+        id: data.organization.id,
+        name: data.organization.name,
+        description: data.organization.description,
+        brandTone: data.organization.brandTone,
+        logoAssetId: null,
+      },
+      product: {
+        id: data.product.id,
+        organizationId: data.product.organizationId,
+        name: data.product.name,
+        description: data.product.description,
+        regularPrice: data.product.regularPrice,
+        imageAssetIds: [...data.product.imageAssetIds],
+      },
+      template: { ...data.template, design: undefined },
+      instructions: data.instructions,
+      cta: data.cta,
+      promotion: { amountMinor: 1500, currency: 'PEN', startsAt: null, endsAt: null },
+    };
+    const snapshot = readGenerationSnapshot(JSON.parse(JSON.stringify(legacy))).data;
+    expect(snapshot).toMatchObject({
+      objective: 'PROMOTION',
+      occasion: null,
+      organization: { region: { country: 'PE', currency: 'PEN' }, brandColors: null },
+      product: { kind: null, keyAttributes: [], photoType: null },
+      template: { design: null },
+      promotion: { conditions: null, showDiscount: false },
+    });
+  });
   it.each([null, [], {}, { organization: null }, 'snapshot', 4])(
     'rejects malformed snapshots: %j',
     (value) => {

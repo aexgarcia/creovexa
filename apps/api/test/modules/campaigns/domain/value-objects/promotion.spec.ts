@@ -17,6 +17,8 @@ describe('Promotion', () => {
       currency: Currency.PEN,
       startsAt: null,
       endsAt: null,
+      conditions: null,
+      showDiscount: false,
     });
     promotion.assertNotExpired(new Date('2030-01-01'));
   });
