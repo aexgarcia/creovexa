@@ -26,6 +26,8 @@ export interface Contact {
   instagram: string | null;
   address: string | null;
 }
+// Versión clara del logo, para fondos oscuros, o isotipo.
+export type LogoVariant = 'dark-background' | 'icon';
 export interface OrganizationSettings {
   id: string;
   name: string;
@@ -44,6 +46,10 @@ export interface OrganizationSettings {
   forbiddenWords: string[];
   logoAssetId: string | null;
   logoUrl?: string | null;
+  darkBackgroundLogoAssetId: string | null;
+  darkBackgroundLogoUrl?: string | null;
+  iconAssetId: string | null;
+  iconUrl?: string | null;
   logoTraits: { isDark: boolean; suggestedColors: BrandColors } | null;
   createdAt: string;
   updatedAt: string;
@@ -106,9 +112,35 @@ export const companySettingsService = {
       ).data,
     );
   },
+  async uploadLogoVariant(variant: LogoVariant, file: File): Promise<OrganizationSettings> {
+    const body = new FormData();
+    body.append('logo', file);
+    return resolveLogo(
+      (
+        await apiRequest<{ data: OrganizationSettings }>(
+          `/organization/logo/${variant}`,
+          { method: 'POST', body },
+          45000,
+        )
+      ).data,
+    );
+  },
+  async removeLogoVariant(variant: LogoVariant): Promise<OrganizationSettings> {
+    return resolveLogo(
+      (
+        await apiRequest<{ data: OrganizationSettings }>(`/organization/logo/${variant}`, {
+          method: 'DELETE',
+        })
+      ).data,
+    );
+  },
 };
+// La API devuelve rutas relativas; el navegador necesita la URL completa.
 function resolveLogo(settings: OrganizationSettings): OrganizationSettings {
-  return settings.logoUrl?.startsWith('/')
-    ? { ...settings, logoUrl: apiUrl(settings.logoUrl) }
-    : settings;
+  const resolved = { ...settings };
+  for (const key of ['logoUrl', 'darkBackgroundLogoUrl', 'iconUrl'] as const) {
+    const url = resolved[key];
+    if (url?.startsWith('/')) resolved[key] = apiUrl(url);
+  }
+  return resolved;
 }

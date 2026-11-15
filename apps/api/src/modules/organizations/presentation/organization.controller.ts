@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   Body,
+  Delete,
+  NotFoundException,
   Controller,
   Get,
   Inject,
@@ -21,6 +23,7 @@ import {
   ApiConsumes,
   ApiCreatedResponse,
   ApiOperation,
+  ApiParam,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
@@ -37,6 +40,17 @@ import { GetOrganization } from '../application/use-cases/get-organization.js';
 import { UpdateOrganizationProfile } from '../application/use-cases/update-organization-profile.js';
 import { UpdateOrganizationRequest } from './organization.requests.js';
 import { OrganizationEnvelope, organizationResponse } from './organization.responses.js';
+// Variantes del logo que se suben aparte del principal, por su nombre en la ruta.
+const VARIANTS = {
+  'dark-background': { variant: 'DARK_BACKGROUND', field: 'darkBackgroundLogoAssetId' },
+  icon: { variant: 'ICON', field: 'iconAssetId' },
+} as const;
+function variantOf(name: string) {
+  const found = VARIANTS[name as keyof typeof VARIANTS];
+  if (!found) throw new NotFoundException();
+  return found;
+}
+
 @ApiTags('Organización')
 @ApiErrors()
 @UseGuards(DevelopmentOrganizationGuard)
@@ -73,6 +87,55 @@ export class OrganizationController {
     return {
       data: organizationResponse(
         await this.saveLogo.execute({ organizationId, bytes: file.buffer }),
+      ),
+    };
+  }
+  @Post('logo/:variant')
+  @ApiOperation({
+    summary: 'Subir la versión clara del logo (dark-background) o el isotipo (icon)',
+  })
+  @ApiParam({ name: 'variant', enum: Object.keys(VARIANTS) })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['logo'],
+      properties: { logo: { type: 'string', format: 'binary' } },
+    },
+  })
+  @ApiCreatedResponse({ type: OrganizationEnvelope })
+  @UseInterceptors(
+    FileInterceptor('logo', {
+      limits: { fileSize: MAX_IMAGE_BYTES, files: 1, fields: 0, parts: 1 },
+    }),
+  )
+  async uploadLogoVariant(
+    @OrganizationId() organizationId: string,
+    @Param('variant') name: string,
+    @UploadedFile() file?: Express.Multer.File,
+  ): Promise<OrganizationEnvelope> {
+    const { variant } = variantOf(name);
+    if (!file) throw new BadRequestException();
+    return {
+      data: organizationResponse(
+        await this.saveLogo.execute({ organizationId, bytes: file.buffer, variant }),
+      ),
+    };
+  }
+  @Delete('logo/:variant')
+  @ApiOperation({
+    summary: 'Quitar la versión clara del logo o el isotipo; el archivo queda para el historial',
+  })
+  @ApiParam({ name: 'variant', enum: Object.keys(VARIANTS) })
+  @ApiOkResponse({ type: OrganizationEnvelope })
+  async removeLogoVariant(
+    @OrganizationId() organizationId: string,
+    @Param('variant') name: string,
+  ): Promise<OrganizationEnvelope> {
+    const { field } = variantOf(name);
+    return {
+      data: organizationResponse(
+        await this.updateOrganization.execute({ organizationId, [field]: null }),
       ),
     };
   }

@@ -4,7 +4,7 @@ import type { IdGenerator } from '#app/application/ports/id-generator';
 import type { OrganizationRepository } from '../../domain/repositories/organization.repository.js';
 import { OrganizationNotFoundError } from '../../domain/errors/organization.errors.js';
 import { OrganizationLogoError } from '../errors/organization-logo.error.js';
-import type { OrganizationLogos } from '../ports/organization-logos.js';
+import type { LogoVariant, OrganizationLogos } from '../ports/organization-logos.js';
 import { organizationResult } from '../organization-result.js';
 
 export class SaveOrganizationLogo {
@@ -14,7 +14,7 @@ export class SaveOrganizationLogo {
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
   ) {}
-  async execute(input: { organizationId: string; bytes: Uint8Array }) {
+  async execute(input: { organizationId: string; bytes: Uint8Array; variant?: LogoVariant }) {
     const organizationId = entityId(input.organizationId);
     const organization = await this.organizations.findById(organizationId);
     if (!organization || organization.id !== organizationId) throw new OrganizationNotFoundError();
@@ -25,6 +25,7 @@ export class SaveOrganizationLogo {
     await this.logos.save({
       organizationId,
       assetId: entityId(this.ids.next()),
+      variant: input.variant ?? 'MAIN',
       bytes: input.bytes,
       at,
       expectedUpdatedAt: organization.updatedAt,

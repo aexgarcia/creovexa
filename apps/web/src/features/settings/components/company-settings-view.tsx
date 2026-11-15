@@ -17,6 +17,7 @@ import type {
   Region,
 } from '../services/company-settings.service';
 import { BrandColorFields, RegionFields } from './brand-kit-fields';
+import { LogoVariantField } from './logo-variant-field';
 import { BrandVoiceFields, splitWords, type BrandVoiceDraft } from './brand-voice-fields';
 
 const EMPTY_CONTACT = { whatsapp: null, website: null, instagram: null, address: null };
@@ -247,6 +248,10 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
               {fileError}
             </p>
           )}
+        </div>
+        <div className="space-y-4 border-t pt-5">
+          <LogoVariantField variant="dark-background" settings={settings} />
+          <LogoVariantField variant="icon" settings={settings} />
         </div>
         <div className="border-t pt-5">
           <BrandColorFields

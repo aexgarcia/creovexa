@@ -32,6 +32,10 @@ export interface OrganizationProfile {
   // Palabras que el flyer nunca debe usar; se suman a las del sistema.
   forbiddenWords?: readonly string[];
   logoAssetId?: string | null;
+  // Versión clara del logo, para fondos oscuros.
+  darkBackgroundLogoAssetId?: string | null;
+  // Solo el símbolo, para espacios pequeños.
+  iconAssetId?: string | null;
 }
 
 export type OrganizationProfileChanges = Partial<OrganizationProfile>;
@@ -50,6 +54,8 @@ interface OrganizationState {
   defaultLegalText: string | null;
   forbiddenWords: readonly string[];
   logoAssetId: EntityId | null;
+  darkBackgroundLogoAssetId: EntityId | null;
+  iconAssetId: EntityId | null;
   logoTraits: LogoTraits | null;
   createdAt: number;
   updatedAt: number;
@@ -92,6 +98,11 @@ function profile(input: OrganizationProfile, base: Region = DEFAULT_REGION) {
     ),
     forbiddenWords: wordList(input.forbiddenWords, 'forbiddenWords', FORBIDDEN_WORD_LIMITS),
     logoAssetId: input.logoAssetId == null ? null : entityId(input.logoAssetId, 'logoAssetId'),
+    darkBackgroundLogoAssetId:
+      input.darkBackgroundLogoAssetId == null
+        ? null
+        : entityId(input.darkBackgroundLogoAssetId, 'darkBackgroundLogoAssetId'),
+    iconAssetId: input.iconAssetId == null ? null : entityId(input.iconAssetId, 'iconAssetId'),
   };
 }
 
@@ -141,6 +152,11 @@ export class Organization {
         defaultLegalText: keep(changes.defaultLegalText, this.defaultLegalText),
         forbiddenWords: keep(changes.forbiddenWords, this.forbiddenWords),
         logoAssetId: keep(changes.logoAssetId, this.logoAssetId),
+        darkBackgroundLogoAssetId: keep(
+          changes.darkBackgroundLogoAssetId,
+          this.darkBackgroundLogoAssetId,
+        ),
+        iconAssetId: keep(changes.iconAssetId, this.iconAssetId),
       },
       this.region,
     );
@@ -196,6 +212,12 @@ export class Organization {
   }
   get logoAssetId(): EntityId | null {
     return this.#state.logoAssetId;
+  }
+  get darkBackgroundLogoAssetId(): EntityId | null {
+    return this.#state.darkBackgroundLogoAssetId;
+  }
+  get iconAssetId(): EntityId | null {
+    return this.#state.iconAssetId;
   }
   get logoTraits(): LogoTraits | null {
     return this.#state.logoTraits;

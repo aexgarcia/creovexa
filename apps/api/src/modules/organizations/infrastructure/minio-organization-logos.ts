@@ -8,12 +8,19 @@ import {
 } from '#app/infrastructure/image-files';
 import type { ObjectStorage } from '#app/modules/assets/application/ports/object-storage';
 import type {
+  LogoVariant,
   OrganizationLogos,
   OrganizationLogoSelection,
   SavedOrganizationLogo,
 } from '../application/ports/organization-logos.js';
 import { OrganizationLogoError } from '../application/errors/organization-logo.error.js';
 import { analyzeLogo } from './logo-analysis.js';
+
+const VARIANT_COLUMN = {
+  MAIN: 'logoAssetId',
+  DARK_BACKGROUND: 'darkBackgroundLogoAssetId',
+  ICON: 'iconAssetId',
+} as const satisfies Record<LogoVariant, string>;
 
 export class MinioOrganizationLogos implements OrganizationLogos {
   constructor(
@@ -22,7 +29,12 @@ export class MinioOrganizationLogos implements OrganizationLogos {
   ) {}
 
   async save(
-    input: OrganizationLogoSelection & { bytes: Uint8Array; at: Date; expectedUpdatedAt: Date },
+    input: OrganizationLogoSelection & {
+      variant: LogoVariant;
+      bytes: Uint8Array;
+      at: Date;
+      expectedUpdatedAt: Date;
+    },
   ): Promise<void> {
     const bucket = this.storage.bucket;
     if (!bucket) throw new OrganizationLogoError('UNAVAILABLE');
@@ -43,7 +55,7 @@ export class MinioOrganizationLogos implements OrganizationLogos {
       await this.database.$transaction(async (tx) => {
         const changed = await tx.organization.updateMany({
           where: { id: input.organizationId, updatedAt: input.expectedUpdatedAt },
-          data: { logoAssetId: input.assetId, updatedAt: input.at },
+          data: { [VARIANT_COLUMN[input.variant]]: input.assetId, updatedAt: input.at },
         });
         if (changed.count !== 1) throw new OrganizationLogoError('CONFLICT');
         await tx.organizationLogoAsset.create({

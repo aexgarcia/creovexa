@@ -20,6 +20,8 @@ export interface CreateOrganizationInput {
   defaultLegalText?: string | null;
   forbiddenWords?: readonly string[];
   logoAssetId?: string | null;
+  darkBackgroundLogoAssetId?: string | null;
+  iconAssetId?: string | null;
 }
 
 export class CreateOrganization {

@@ -37,28 +37,30 @@ enum Currency {
 }
 
 model Organization {
-  id               String                  @id @db.Uuid
-  name             String
-  description      String
-  brandTone        String?                 @map("brand_tone")
-  industry         String?
-  country          String                  @default("PE")
-  locale           String                  @default("es-PE")
-  timeZone         String                  @default("America/Lima") @map("time_zone")
-  defaultCurrency  Currency                @default(PEN) @map("default_currency")
-  brandColors      Json?                   @map("brand_colors")
-  typography       Typography?
-  visualStyle      String[]                @default([]) @map("visual_style")
-  contact          Json?
-  defaultLegalText String?                 @map("default_legal_text")
-  forbiddenWords   String[]                @default([]) @map("forbidden_words")
-  logoAssetId      String?                 @map("logo_asset_id") @db.Uuid
-  createdAt        DateTime                @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime                @map("updated_at") @db.Timestamptz(3)
-  products         Product[]
-  templates        Template[]
-  campaigns        Campaign[]
-  logos            OrganizationLogoAsset[]
+  id                        String                  @id @db.Uuid
+  name                      String
+  description               String
+  brandTone                 String?                 @map("brand_tone")
+  industry                  String?
+  country                   String                  @default("PE")
+  locale                    String                  @default("es-PE")
+  timeZone                  String                  @default("America/Lima") @map("time_zone")
+  defaultCurrency           Currency                @default(PEN) @map("default_currency")
+  brandColors               Json?                   @map("brand_colors")
+  typography                Typography?
+  visualStyle               String[]                @default([]) @map("visual_style")
+  contact                   Json?
+  defaultLegalText          String?                 @map("default_legal_text")
+  forbiddenWords            String[]                @default([]) @map("forbidden_words")
+  logoAssetId               String?                 @map("logo_asset_id") @db.Uuid
+  darkBackgroundLogoAssetId String?                 @map("dark_background_logo_asset_id") @db.Uuid
+  iconAssetId               String?                 @map("icon_asset_id") @db.Uuid
+  createdAt                 DateTime                @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime                @map("updated_at") @db.Timestamptz(3)
+  products                  Product[]
+  templates                 Template[]
+  campaigns                 Campaign[]
+  logos                     OrganizationLogoAsset[]
 
   @@index([createdAt])
   @@map("organizations")

@@ -10,7 +10,7 @@ Identidad de la empresa y su kit de marca: nombre, descripción, tono, rubro, re
 
 | Tabla | Contenido |
 | --- | --- |
-| `organizations` | `name`, `description`, `brandTone` (opcional), `industry` (rubro, opcional), región (`country`, `locale`, `timeZone`, `defaultCurrency`; por defecto Perú), `brandColors` (opcional), voz de marca (`typography`, `visualStyle` hasta 5 palabras, `contact` con WhatsApp, web, Instagram y dirección, `defaultLegalText` hasta 200 caracteres, `forbiddenWords` hasta 20), `logoAssetId` (opcional) |
+| `organizations` | `name`, `description`, `brandTone` (opcional), `industry` (rubro, opcional), región (`country`, `locale`, `timeZone`, `defaultCurrency`; por defecto Perú), `brandColors` (opcional), voz de marca (`typography`, `visualStyle` hasta 5 palabras, `contact` con WhatsApp, web, Instagram y dirección, `defaultLegalText` hasta 200 caracteres, `forbiddenWords` hasta 20), `logoAssetId`, `darkBackgroundLogoAssetId` (versión clara del logo) e `iconAssetId` (isotipo), opcionales |
 | `organization_logo_assets` | Un registro por logo subido; inmutable. Incluye `isDark` y `suggestedColors`, derivados del logo al subirlo (nulos en logos anteriores al [ADR-0022](adr/0022-kit-de-marca.md)) |
 
 ## API HTTP
@@ -22,6 +22,8 @@ La organización activa se resuelve en el servidor; ningún endpoint recibe `org
 | `GET /organization` | Consultar la organización activa, con `logoTraits` del logo actual y `effectiveBrandColors` | `200` |
 | `PATCH /organization` | Editar el kit de marca. `region` cambia solo los campos enviados; `brandColors: null` vuelve a los colores del logo; `contact` se reemplaza completo | `200` |
 | `POST /organization/logo` | Subir o reemplazar el logo (multipart) | `201` |
+| `POST /organization/logo/:variant` | Subir la versión clara del logo (`dark-background`) o el isotipo (`icon`) (multipart) | `201` |
+| `DELETE /organization/logo/:variant` | Quitar esa variante; el archivo sigue legible para el historial | `200` |
 | `GET /organization/logos/:assetId` | Leer los bytes de un logo de la organización activa | `200` imagen |
 
 ### Códigos de error propios
@@ -68,4 +70,3 @@ Formato de respuestas y errores: [ADR-0004](../../adr/0004-contrato-http-y-error
 
 - No hay endpoint para crear organizaciones ni para listar las de un usuario; depende de [ADR-0012](../../adr/0012-autenticacion-antes-de-publicar.md).
 - La región, el rubro y los colores todavía no llegan al snapshot de la campaña ni a los prompts ([ADR-0009](../../adr/0009-estrategia-de-generacion-del-flyer.md)).
-- Resto del kit de marca de la fase 2 de [datos del flyer](../../arquitectura/datos-del-flyer.md): variante clara del logo e isotipo.

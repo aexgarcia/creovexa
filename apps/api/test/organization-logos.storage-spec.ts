@@ -136,6 +136,32 @@ describe('Organization logos (HTTP, PostgreSQL, MinIO and flyer)', () => {
     await request(app.getHttpServer()).get(saved.body.data.logoUrl).expect(404);
     await upload().expect(404);
   });
+  it('stores the light version and the icon apart from the main logo, and removes them', async () => {
+    await fixture();
+    const main = await upload().expect(201);
+    const variant = (name: string) =>
+      request(app.getHttpServer())
+        .post('/organization/logo/' + name)
+        .attach('logo', png, { filename: 'brand.png', contentType: 'image/png' });
+    const dark = await variant('dark-background').expect(201);
+    const icon = await variant('icon').expect(201);
+    expect(icon.body.data.logoAssetId).toBe(main.body.data.logoAssetId);
+    expect(icon.body.data.darkBackgroundLogoAssetId).toBe(dark.body.data.darkBackgroundLogoAssetId);
+    expect(icon.body.data.iconAssetId).not.toBe(main.body.data.logoAssetId);
+    await request(app.getHttpServer()).get(icon.body.data.iconUrl).expect(200);
+    await variant('banner').expect(404);
+    const removed = await request(app.getHttpServer())
+      .delete('/organization/logo/dark-background')
+      .expect(200);
+    expect(removed.body.data).toMatchObject({
+      darkBackgroundLogoAssetId: null,
+      darkBackgroundLogoUrl: null,
+      logoAssetId: main.body.data.logoAssetId,
+    });
+    // El archivo quitado sigue legible para los snapshots que lo usaron.
+    await request(app.getHttpServer()).get(dark.body.data.darkBackgroundLogoUrl).expect(200);
+  });
+
   it('rejects invalid, empty, oversized, extra and multiple files without losing the logo', async () => {
     await fixture();
     const saved = await upload().expect(201);
@@ -173,6 +199,7 @@ describe('Organization logos (HTTP, PostgreSQL, MinIO and flyer)', () => {
       context.module.get<OrganizationLogos>(ORGANIZATION_LOGOS).save({
         organizationId: f.selection.organizationId,
         assetId: uuid(),
+        variant: 'MAIN',
         bytes: png,
         expectedUpdatedAt: original.updatedAt,
         at: new Date(),

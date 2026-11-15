@@ -59,6 +59,8 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
         defaultLegalText: row.defaultLegalText,
         forbiddenWords: row.forbiddenWords,
         logoAssetId: row.logoAssetId,
+        darkBackgroundLogoAssetId: row.darkBackgroundLogoAssetId,
+        iconAssetId: row.iconAssetId,
         updatedAt: row.updatedAt,
       },
     });

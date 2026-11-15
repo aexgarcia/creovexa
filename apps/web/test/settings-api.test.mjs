@@ -108,3 +108,19 @@ test('sends the brand kit and null to go back to the logo colors', async () => {
   await companySettingsService.update({ industry: 'Cafetería', region, brandColors: null });
   assert.deepEqual(bodies[0], { industry: 'Cafetería', region, brandColors: null });
 });
+test('uploads and removes a logo variant and resolves its read URL', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, method: options.method });
+    return Response.json({
+      data: { id: 'organization-1', iconAssetId: 'icon-1', iconUrl: '/organization/logos/icon-1' },
+    });
+  };
+  const saved = await companySettingsService.uploadLogoVariant('icon', new File(['x'], 'i.png'));
+  assert.ok(saved.iconUrl.startsWith('http'));
+  await companySettingsService.removeLogoVariant('dark-background');
+  assert.ok(calls[0].url.endsWith('/organization/logo/icon'));
+  assert.equal(calls[0].method, 'POST');
+  assert.ok(calls[1].url.endsWith('/organization/logo/dark-background'));
+  assert.equal(calls[1].method, 'DELETE');
+});

@@ -44,6 +44,17 @@ export class OrganizationResponse {
   @ApiProperty({ type: String, format: 'uuid', nullable: true }) logoAssetId!: string | null;
   @ApiProperty({ type: String, nullable: true }) logoUrl!: string | null;
   @ApiProperty({
+    type: String,
+    format: 'uuid',
+    nullable: true,
+    description: 'Versión clara del logo.',
+  })
+  darkBackgroundLogoAssetId!: string | null;
+  @ApiProperty({ type: String, nullable: true }) darkBackgroundLogoUrl!: string | null;
+  @ApiProperty({ type: String, format: 'uuid', nullable: true, description: 'Isotipo.' })
+  iconAssetId!: string | null;
+  @ApiProperty({ type: String, nullable: true }) iconUrl!: string | null;
+  @ApiProperty({
     type: LogoTraitsResponse,
     nullable: true,
     description: 'null sin logo, o con un logo subido antes de que existiera el análisis.',
@@ -55,9 +66,13 @@ export class OrganizationResponse {
 export class OrganizationEnvelope {
   @ApiProperty({ type: OrganizationResponse }) data!: OrganizationResponse;
 }
+const logoUrl = (assetId: string | null) => (assetId ? `/organization/logos/${assetId}` : null);
+
 export function organizationResponse(result: OrganizationResult): OrganizationResponse {
   return {
     ...result,
-    logoUrl: result.logoAssetId ? `/organization/logos/${result.logoAssetId}` : null,
+    logoUrl: logoUrl(result.logoAssetId),
+    darkBackgroundLogoUrl: logoUrl(result.darkBackgroundLogoAssetId),
+    iconUrl: logoUrl(result.iconAssetId),
   };
 }

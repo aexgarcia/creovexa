@@ -32,6 +32,8 @@ export class OrganizationMapper {
         defaultLegalText: row.defaultLegalText,
         forbiddenWords: row.forbiddenWords,
         logoAssetId: row.logoAssetId,
+        darkBackgroundLogoAssetId: row.darkBackgroundLogoAssetId,
+        iconAssetId: row.iconAssetId,
       },
       row.createdAt,
       row.updatedAt,
@@ -59,6 +61,8 @@ export class OrganizationMapper {
       defaultLegalText: organization.defaultLegalText,
       forbiddenWords: [...organization.forbiddenWords],
       logoAssetId: organization.logoAssetId,
+      darkBackgroundLogoAssetId: organization.darkBackgroundLogoAssetId,
+      iconAssetId: organization.iconAssetId,
       createdAt: organization.createdAt,
       updatedAt: organization.updatedAt,
     };

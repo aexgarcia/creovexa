@@ -61,6 +61,8 @@ describe('Organization use cases', () => {
       defaultLegalText: null,
       forbiddenWords: [],
       logoAssetId: ASSET_ID,
+      darkBackgroundLogoAssetId: null,
+      iconAssetId: null,
       logoTraits: null,
       createdAt: CREATED_AT,
       updatedAt: CREATED_AT,

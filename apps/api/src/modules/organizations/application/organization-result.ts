@@ -18,6 +18,8 @@ export interface OrganizationResult {
   defaultLegalText: string | null;
   forbiddenWords: string[];
   logoAssetId: string | null;
+  darkBackgroundLogoAssetId: string | null;
+  iconAssetId: string | null;
   logoTraits: { isDark: boolean; suggestedColors: BrandColors } | null;
   createdAt: string;
   updatedAt: string;
@@ -42,6 +44,8 @@ export function organizationResult(organization: Organization): OrganizationResu
     defaultLegalText: organization.defaultLegalText,
     forbiddenWords: [...organization.forbiddenWords],
     logoAssetId: organization.logoAssetId,
+    darkBackgroundLogoAssetId: organization.darkBackgroundLogoAssetId,
+    iconAssetId: organization.iconAssetId,
     logoTraits: traits && { isDark: traits.isDark, suggestedColors: { ...traits.suggestedColors } },
     createdAt: organization.createdAt.toISOString(),
     updatedAt: organization.updatedAt.toISOString(),

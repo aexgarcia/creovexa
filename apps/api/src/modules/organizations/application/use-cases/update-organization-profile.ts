@@ -21,6 +21,8 @@ export interface UpdateOrganizationProfileInput {
   defaultLegalText?: string | null;
   forbiddenWords?: readonly string[];
   logoAssetId?: string | null;
+  darkBackgroundLogoAssetId?: string | null;
+  iconAssetId?: string | null;
 }
 
 export class UpdateOrganizationProfile {
@@ -48,6 +50,8 @@ export class UpdateOrganizationProfile {
         defaultLegalText: input.defaultLegalText,
         forbiddenWords: input.forbiddenWords,
         logoAssetId: input.logoAssetId,
+        darkBackgroundLogoAssetId: input.darkBackgroundLogoAssetId,
+        iconAssetId: input.iconAssetId,
       },
       new Date(Math.max(this.clock.now().getTime(), organization.updatedAt.getTime() + 1)),
     );
