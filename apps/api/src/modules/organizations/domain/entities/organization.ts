@@ -3,6 +3,17 @@ import { timestamp } from '#app/domain/timestamp';
 import { InvalidOrganizationProfileError } from '../errors/organization.errors.js';
 import { brandColors, type BrandColors, type LogoTraits } from '../value-objects/brand-colors.js';
 import { DEFAULT_REGION, region, type Region, type RegionInput } from '../value-objects/region.js';
+import {
+  FORBIDDEN_WORD_LIMITS,
+  LEGAL_TEXT_MAX_LENGTH,
+  VISUAL_STYLE_LIMITS,
+  contact,
+  typography,
+  wordList,
+  type Contact,
+  type ContactInput,
+  type Typography,
+} from '../value-objects/brand-voice.js';
 
 export interface OrganizationProfile {
   name: string;
@@ -12,6 +23,14 @@ export interface OrganizationProfile {
   region?: RegionInput;
   // null vuelve a los colores que propone el logo.
   brandColors?: BrandColors | null;
+  typography?: Typography | null;
+  // Hasta 5 palabras clave del estilo visual de la marca.
+  visualStyle?: readonly string[];
+  contact?: ContactInput | null;
+  // Se agrega al texto legal del flyer cuando la plantilla lo muestra.
+  defaultLegalText?: string | null;
+  // Palabras que el flyer nunca debe usar; se suman a las del sistema.
+  forbiddenWords?: readonly string[];
   logoAssetId?: string | null;
 }
 
@@ -25,6 +44,11 @@ interface OrganizationState {
   industry: string | null;
   region: Region;
   brandColors: BrandColors | null;
+  typography: Typography | null;
+  visualStyle: readonly string[];
+  contact: Contact | null;
+  defaultLegalText: string | null;
+  forbiddenWords: readonly string[];
   logoAssetId: EntityId | null;
   logoTraits: LogoTraits | null;
   createdAt: number;
@@ -58,6 +82,15 @@ function profile(input: OrganizationProfile, base: Region = DEFAULT_REGION) {
     industry: optionalText(input.industry, 'industry', INDUSTRY_MAX_LENGTH),
     region: region(input.region ?? {}, base),
     brandColors: input.brandColors == null ? null : brandColors(input.brandColors),
+    typography: typography(input.typography),
+    visualStyle: wordList(input.visualStyle, 'visualStyle', VISUAL_STYLE_LIMITS),
+    contact: contact(input.contact),
+    defaultLegalText: optionalText(
+      input.defaultLegalText,
+      'defaultLegalText',
+      LEGAL_TEXT_MAX_LENGTH,
+    ),
+    forbiddenWords: wordList(input.forbiddenWords, 'forbiddenWords', FORBIDDEN_WORD_LIMITS),
     logoAssetId: input.logoAssetId == null ? null : entityId(input.logoAssetId, 'logoAssetId'),
   };
 }
@@ -102,6 +135,11 @@ export class Organization {
         // Los campos de región que no llegan conservan su valor actual.
         region: changes.region ?? {},
         brandColors: keep(changes.brandColors, this.brandColors),
+        typography: keep(changes.typography, this.typography),
+        visualStyle: keep(changes.visualStyle, this.visualStyle),
+        contact: keep(changes.contact, this.contact),
+        defaultLegalText: keep(changes.defaultLegalText, this.defaultLegalText),
+        forbiddenWords: keep(changes.forbiddenWords, this.forbiddenWords),
         logoAssetId: keep(changes.logoAssetId, this.logoAssetId),
       },
       this.region,
@@ -140,6 +178,21 @@ export class Organization {
   /** Los colores que usa el flyer: los del usuario o, si no hay, los que propone el logo. */
   get effectiveBrandColors(): BrandColors | null {
     return this.#state.brandColors ?? this.#state.logoTraits?.suggestedColors ?? null;
+  }
+  get typography(): Typography | null {
+    return this.#state.typography;
+  }
+  get visualStyle(): readonly string[] {
+    return this.#state.visualStyle;
+  }
+  get contact(): Contact | null {
+    return this.#state.contact;
+  }
+  get defaultLegalText(): string | null {
+    return this.#state.defaultLegalText;
+  }
+  get forbiddenWords(): readonly string[] {
+    return this.#state.forbiddenWords;
   }
   get logoAssetId(): EntityId | null {
     return this.#state.logoAssetId;

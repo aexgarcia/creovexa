@@ -1,7 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Currency } from '#app/domain/value-objects/money';
 import type { OrganizationResult } from '../application/organization-result.js';
-import { BrandColorsRequest } from './organization.requests.js';
+import { BrandColorsRequest, ContactRequest } from './organization.requests.js';
+import { TYPOGRAPHIES, type Typography } from '../domain/value-objects/brand-voice.js';
 
 export class RegionResponse {
   @ApiProperty({ type: String, example: 'PE' }) country!: string;
@@ -35,6 +36,11 @@ export class OrganizationResponse {
     description: 'Los que usa el flyer: los del usuario o, si no hay, los del logo.',
   })
   effectiveBrandColors!: BrandColorsRequest | null;
+  @ApiProperty({ enum: TYPOGRAPHIES, nullable: true }) typography!: Typography | null;
+  @ApiProperty({ type: [String] }) visualStyle!: string[];
+  @ApiProperty({ type: ContactRequest, nullable: true }) contact!: ContactRequest | null;
+  @ApiProperty({ type: String, nullable: true }) defaultLegalText!: string | null;
+  @ApiProperty({ type: [String] }) forbiddenWords!: string[];
   @ApiProperty({ type: String, format: 'uuid', nullable: true }) logoAssetId!: string | null;
   @ApiProperty({ type: String, nullable: true }) logoUrl!: string | null;
   @ApiProperty({

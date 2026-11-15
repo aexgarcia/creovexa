@@ -1,6 +1,9 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  IsArray,
+  IsIn,
   IsEnum,
   IsObject,
   IsString,
@@ -10,6 +13,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Currency } from '#app/domain/value-objects/money';
+import { TYPOGRAPHIES, type Typography } from '../domain/value-objects/brand-voice.js';
 
 const HEX = /^#[0-9A-Fa-f]{6}$/;
 const present = (_o: unknown, value: unknown) => value !== undefined;
@@ -42,6 +46,31 @@ export class BrandColorsRequest {
   @ApiProperty({ type: String, example: '#E4572E' }) @Matches(HEX) accent!: string;
   @ApiProperty({ type: String, example: '#F7F1E8' }) @Matches(HEX) lightBackground!: string;
   @ApiProperty({ type: String, example: '#1E120D' }) @Matches(HEX) darkBackground!: string;
+}
+
+const nullable = (_o: unknown, value: unknown) => value !== undefined && value !== null;
+
+export class ContactRequest {
+  @ApiPropertyOptional({ type: String, maxLength: 100, nullable: true, example: '+51 999 999 999' })
+  @ValidateIf(nullable)
+  @IsString()
+  @MaxLength(100)
+  whatsapp?: string | null;
+  @ApiPropertyOptional({ type: String, maxLength: 100, nullable: true, example: 'cafeandino.pe' })
+  @ValidateIf(nullable)
+  @IsString()
+  @MaxLength(100)
+  website?: string | null;
+  @ApiPropertyOptional({ type: String, maxLength: 100, nullable: true, example: '@cafeandino' })
+  @ValidateIf(nullable)
+  @IsString()
+  @MaxLength(100)
+  instagram?: string | null;
+  @ApiPropertyOptional({ type: String, maxLength: 100, nullable: true })
+  @ValidateIf(nullable)
+  @IsString()
+  @MaxLength(100)
+  address?: string | null;
 }
 
 export class UpdateOrganizationRequest {
@@ -89,4 +118,45 @@ export class UpdateOrganizationRequest {
   @ValidateNested()
   @Type(() => BrandColorsRequest)
   brandColors?: BrandColorsRequest | null;
+  @ApiPropertyOptional({ enum: TYPOGRAPHIES, nullable: true })
+  @ValidateIf(nullable)
+  @IsIn(TYPOGRAPHIES)
+  typography?: Typography | null;
+  @ApiPropertyOptional({
+    type: [String],
+    maxItems: 5,
+    description: 'Palabras clave del estilo visual, de hasta 30 caracteres.',
+  })
+  @ValidateIf(present)
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsString({ each: true })
+  @MaxLength(30, { each: true })
+  visualStyle?: string[];
+  @ApiPropertyOptional({
+    type: ContactRequest,
+    nullable: true,
+    description: 'Se reemplaza completo; null lo borra.',
+  })
+  @ValidateIf(nullable)
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ContactRequest)
+  contact?: ContactRequest | null;
+  @ApiPropertyOptional({ type: String, maxLength: 200, nullable: true })
+  @ValidateIf(nullable)
+  @IsString()
+  @MaxLength(200)
+  defaultLegalText?: string | null;
+  @ApiPropertyOptional({
+    type: [String],
+    maxItems: 20,
+    description: 'Palabras que el flyer nunca debe usar, de hasta 40 caracteres.',
+  })
+  @ValidateIf(present)
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
+  forbiddenWords?: string[];
 }

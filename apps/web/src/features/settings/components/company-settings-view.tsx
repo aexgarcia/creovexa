@@ -17,6 +17,18 @@ import type {
   Region,
 } from '../services/company-settings.service';
 import { BrandColorFields, RegionFields } from './brand-kit-fields';
+import { BrandVoiceFields, splitWords, type BrandVoiceDraft } from './brand-voice-fields';
+
+const EMPTY_CONTACT = { whatsapp: null, website: null, instagram: null, address: null };
+function voiceDraft(settings: OrganizationSettings): BrandVoiceDraft {
+  return {
+    typography: settings.typography ?? '',
+    visualStyle: settings.visualStyle.join(', '),
+    contact: settings.contact ?? EMPTY_CONTACT,
+    defaultLegalText: settings.defaultLegalText ?? '',
+    forbiddenWords: settings.forbiddenWords.join(', '),
+  };
+}
 
 export function CompanySettingsView() {
   const query = useCompanySettings();
@@ -43,6 +55,7 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
   const [description, setDescription] = useState(settings.description);
   const [tone, setTone] = useState(settings.brandTone ?? '');
   const [industry, setIndustry] = useState(settings.industry ?? '');
+  const [voice, setVoice] = useState(() => voiceDraft(settings));
   const [region, setRegion] = useState<Region>(settings.region);
   const [colors, setColors] = useState<BrandColors | null>(settings.brandColors);
   const [message, setMessage] = useState('');
@@ -106,6 +119,11 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
         description: description.trim(),
         brandTone: tone.trim() || null,
         industry: industry.trim() || null,
+        typography: voice.typography || null,
+        visualStyle: splitWords(voice.visualStyle),
+        contact: voice.contact,
+        defaultLegalText: voice.defaultLegalText.trim() || null,
+        forbiddenWords: splitWords(voice.forbiddenWords),
         region,
         brandColors: colors,
       });
@@ -113,6 +131,7 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
       setDescription(saved.description);
       setTone(saved.brandTone ?? '');
       setIndustry(saved.industry ?? '');
+      setVoice(voiceDraft(saved));
       setRegion(saved.region);
       setColors(saved.brandColors);
       profileSaved = true;
@@ -187,6 +206,10 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
             value={tone}
             onChange={(e) => setTone(e.target.value)}
           />
+        </div>
+        <div className="space-y-4 border-t pt-5">
+          <h3 className="text-sm font-medium">Voz y estilo de la marca</h3>
+          <BrandVoiceFields draft={voice} onChange={setVoice} />
         </div>
         <div className="space-y-4 border-t pt-5">
           <h3 className="text-sm font-medium">Región</h3>

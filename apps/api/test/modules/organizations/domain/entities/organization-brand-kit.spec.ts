@@ -105,4 +105,48 @@ describe('Organization brand kit', () => {
       null,
     );
   });
+
+  it('keeps the brand voice: typography, visual style, contact, legal text and forbidden words', () => {
+    const organization = Organization.create(
+      id,
+      {
+        name: 'Empresa',
+        typography: 'SERIF_ELEGANT',
+        visualStyle: [' artesanal ', 'cálido'],
+        contact: { whatsapp: ' +51 999 999 999 ', website: '' },
+        defaultLegalText: ' Imágenes referenciales. ',
+        forbiddenWords: ['gratis'],
+      },
+      created,
+    );
+    expect(organization.typography).toBe('SERIF_ELEGANT');
+    expect(organization.visualStyle).toEqual(['artesanal', 'cálido']);
+    expect(organization.contact).toEqual({
+      whatsapp: '+51 999 999 999',
+      website: null,
+      instagram: null,
+      address: null,
+    });
+    expect(organization.defaultLegalText).toBe('Imágenes referenciales.');
+    const cleared = organization.updateProfile(
+      { contact: { whatsapp: ' ' }, visualStyle: [], typography: null },
+      updated,
+    );
+    expect([cleared.contact, cleared.visualStyle, cleared.typography]).toEqual([null, [], null]);
+    expect(cleared.forbiddenWords).toEqual(['gratis']);
+  });
+
+  it.each([
+    [{ typography: 'COMIC' }, 'typography'],
+    [{ visualStyle: ['a', 'b', 'c', 'd', 'e', 'f'] }, 'visualStyle'],
+    [{ visualStyle: ['Cálido', 'cálido'] }, 'visualStyle'],
+    [{ forbiddenWords: ['x'.repeat(41)] }, 'forbiddenWords'],
+    [{ defaultLegalText: 'x'.repeat(201) }, 'defaultLegalText'],
+    [{ contact: { phone: '1' } }, 'contact.phone'],
+    [{ contact: { website: 'x'.repeat(101) } }, 'contact.website'],
+  ])('rejects an invalid brand voice %j', (input, field) => {
+    expect(() =>
+      Organization.create(id, { name: 'Empresa', ...(input as object) }, created),
+    ).toThrow(expect.objectContaining({ field }) as Error);
+  });
 });

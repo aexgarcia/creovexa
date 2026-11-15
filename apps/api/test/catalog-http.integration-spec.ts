@@ -158,6 +158,34 @@ describe('Catalog HTTP with PostgreSQL', () => {
     expect(read.body.data.region.currency).toBe('USD');
   });
 
+  it('saves the brand voice and replaces the contact as a whole', async () => {
+    await request(app.getHttpServer())
+      .patch('/organization')
+      .send({
+        typography: 'ROUNDED',
+        visualStyle: ['cálido', 'artesanal'],
+        contact: { whatsapp: '+51 999 999 999', instagram: '@cafe' },
+        defaultLegalText: 'Imágenes referenciales.',
+        forbiddenWords: ['gratis'],
+      })
+      .expect(200);
+    const replaced = await request(app.getHttpServer())
+      .patch('/organization')
+      .send({ contact: { website: 'cafe.pe' } })
+      .expect(200);
+    expect(replaced.body.data).toMatchObject({
+      typography: 'ROUNDED',
+      visualStyle: ['cálido', 'artesanal'],
+      contact: { whatsapp: null, website: 'cafe.pe', instagram: null, address: null },
+      defaultLegalText: 'Imágenes referenciales.',
+      forbiddenWords: ['gratis'],
+    });
+    await request(app.getHttpServer())
+      .patch('/organization')
+      .send({ typography: 'COMIC' })
+      .expect(400);
+  });
+
   // La forma la rechaza la validación de la petición; lo que exige conocer las zonas horarias
   // o los locales, el dominio.
   it.each([

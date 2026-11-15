@@ -4,6 +4,7 @@ import { Organization } from '../../domain/entities/organization.js';
 import type { OrganizationRepository } from '../../domain/repositories/organization.repository.js';
 import type { BrandColors } from '../../domain/value-objects/brand-colors.js';
 import type { RegionInput } from '../../domain/value-objects/region.js';
+import type { ContactInput, Typography } from '../../domain/value-objects/brand-voice.js';
 import { organizationResult, type OrganizationResult } from '../organization-result.js';
 
 export interface CreateOrganizationInput {
@@ -13,6 +14,11 @@ export interface CreateOrganizationInput {
   industry?: string | null;
   region?: RegionInput;
   brandColors?: BrandColors | null;
+  typography?: Typography | null;
+  visualStyle?: readonly string[];
+  contact?: ContactInput | null;
+  defaultLegalText?: string | null;
+  forbiddenWords?: readonly string[];
   logoAssetId?: string | null;
 }
 

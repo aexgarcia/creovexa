@@ -5,6 +5,7 @@ import type {
 import type { Currency } from '#app/domain/value-objects/money';
 import { Organization } from '../../../domain/entities/organization.js';
 import { brandColors, logoTraits } from '../../../domain/value-objects/brand-colors.js';
+import type { Contact } from '../../../domain/value-objects/brand-voice.js';
 
 export type LogoTraitsRecord = Pick<OrganizationLogoAsset, 'isDark' | 'suggestedColors'>;
 
@@ -25,6 +26,11 @@ export class OrganizationMapper {
           currency: row.defaultCurrency as Currency,
         },
         brandColors: row.brandColors == null ? null : brandColors(row.brandColors),
+        typography: row.typography,
+        visualStyle: row.visualStyle,
+        contact: row.contact as Contact | null,
+        defaultLegalText: row.defaultLegalText,
+        forbiddenWords: row.forbiddenWords,
         logoAssetId: row.logoAssetId,
       },
       row.createdAt,
@@ -47,6 +53,11 @@ export class OrganizationMapper {
       timeZone: organization.region.timeZone,
       defaultCurrency: organization.region.currency,
       brandColors: organization.brandColors ? { ...organization.brandColors } : null,
+      typography: organization.typography,
+      visualStyle: [...organization.visualStyle],
+      contact: organization.contact ? { ...organization.contact } : null,
+      defaultLegalText: organization.defaultLegalText,
+      forbiddenWords: [...organization.forbiddenWords],
       logoAssetId: organization.logoAssetId,
       createdAt: organization.createdAt,
       updatedAt: organization.updatedAt,

@@ -28,7 +28,11 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
     try {
       const row = OrganizationMapper.toPersistence(organization);
       await this.client.organization.create({
-        data: { ...row, brandColors: row.brandColors ?? Prisma.DbNull },
+        data: {
+          ...row,
+          brandColors: row.brandColors ?? Prisma.DbNull,
+          contact: row.contact ?? Prisma.DbNull,
+        },
       });
     } catch (error) {
       translatePrismaError(error);
@@ -49,6 +53,11 @@ export class PrismaOrganizationRepository implements OrganizationRepository {
         timeZone: row.timeZone,
         defaultCurrency: row.defaultCurrency,
         brandColors: row.brandColors ?? Prisma.DbNull,
+        typography: row.typography,
+        visualStyle: row.visualStyle,
+        contact: row.contact ?? Prisma.DbNull,
+        defaultLegalText: row.defaultLegalText,
+        forbiddenWords: row.forbiddenWords,
         logoAssetId: row.logoAssetId,
         updatedAt: row.updatedAt,
       },

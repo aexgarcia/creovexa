@@ -14,6 +14,18 @@ export interface BrandColors {
   lightBackground: string;
   darkBackground: string;
 }
+export type Typography =
+  | 'SANS_MODERN'
+  | 'SERIF_ELEGANT'
+  | 'ROUNDED'
+  | 'CONDENSED_BOLD'
+  | 'HANDWRITTEN';
+export interface Contact {
+  whatsapp: string | null;
+  website: string | null;
+  instagram: string | null;
+  address: string | null;
+}
 export interface OrganizationSettings {
   id: string;
   name: string;
@@ -25,6 +37,11 @@ export interface OrganizationSettings {
   brandColors: BrandColors | null;
   // Los que usa el flyer.
   effectiveBrandColors: BrandColors | null;
+  typography: Typography | null;
+  visualStyle: string[];
+  contact: Contact | null;
+  defaultLegalText: string | null;
+  forbiddenWords: string[];
   logoAssetId: string | null;
   logoUrl?: string | null;
   logoTraits: { isDark: boolean; suggestedColors: BrandColors } | null;
@@ -39,6 +56,12 @@ export interface UpdateOrganizationSettings {
   region?: Partial<Region>;
   // null vuelve a los colores del logo.
   brandColors?: BrandColors | null;
+  typography?: Typography | null;
+  visualStyle?: string[];
+  // Se reemplaza completo; null lo borra.
+  contact?: Partial<Contact> | null;
+  defaultLegalText?: string | null;
+  forbiddenWords?: string[];
 }
 export const companySettingsService = {
   async get(signal?: AbortSignal): Promise<OrganizationSettings> {
@@ -55,6 +78,11 @@ export const companySettingsService = {
       industry: input.industry,
       region: input.region,
       brandColors: input.brandColors,
+      typography: input.typography,
+      visualStyle: input.visualStyle,
+      contact: input.contact,
+      defaultLegalText: input.defaultLegalText,
+      forbiddenWords: input.forbiddenWords,
     };
     return resolveLogo(
       (

@@ -1,6 +1,7 @@
 import type { Organization } from '../domain/entities/organization.js';
 import type { BrandColors } from '../domain/value-objects/brand-colors.js';
 import type { Region } from '../domain/value-objects/region.js';
+import type { Contact, Typography } from '../domain/value-objects/brand-voice.js';
 
 export interface OrganizationResult {
   id: string;
@@ -11,6 +12,11 @@ export interface OrganizationResult {
   region: Region;
   brandColors: BrandColors | null;
   effectiveBrandColors: BrandColors | null;
+  typography: Typography | null;
+  visualStyle: string[];
+  contact: Contact | null;
+  defaultLegalText: string | null;
+  forbiddenWords: string[];
   logoAssetId: string | null;
   logoTraits: { isDark: boolean; suggestedColors: BrandColors } | null;
   createdAt: string;
@@ -30,6 +36,11 @@ export function organizationResult(organization: Organization): OrganizationResu
     effectiveBrandColors: organization.effectiveBrandColors && {
       ...organization.effectiveBrandColors,
     },
+    typography: organization.typography,
+    visualStyle: [...organization.visualStyle],
+    contact: organization.contact && { ...organization.contact },
+    defaultLegalText: organization.defaultLegalText,
+    forbiddenWords: [...organization.forbiddenWords],
     logoAssetId: organization.logoAssetId,
     logoTraits: traits && { isDark: traits.isDark, suggestedColors: { ...traits.suggestedColors } },
     createdAt: organization.createdAt.toISOString(),
