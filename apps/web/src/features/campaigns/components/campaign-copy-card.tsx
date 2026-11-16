@@ -30,7 +30,7 @@ export function CampaignCopyCard({
   const job = query.data;
   const copy = job?.copy ?? null;
   return (
-    <Card>
+    <Card className="[--card-spacing:--spacing(5)] sm:[--card-spacing:--spacing(6)]">
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle className="flex items-center gap-2">
@@ -66,7 +66,7 @@ export function CampaignCopyCard({
             role="status"
             className="flex items-center justify-center gap-3 rounded-xl border border-dashed bg-muted/20 p-6 text-sm text-muted-foreground"
           >
-            <Loader2 className="size-5 animate-spin text-primary" />
+            <Loader2 className="size-5 animate-spin motion-reduce:animate-none text-primary" />
             {job?.status === 'RUNNING'
               ? 'Escribiendo el texto de tu campaña…'
               : 'Solicitud recibida. El texto empezará a prepararse en un momento…'}
@@ -78,7 +78,7 @@ export function CampaignCopyCard({
           </p>
         )}
         {copy && !query.error && (
-          <div className="space-y-4 rounded-xl bg-muted/20 p-5">
+          <div className="space-y-4 rounded-xl border bg-control p-4 sm:p-5">
             {editing && editable && job ? (
               <FlyerTextsForm
                 copy={copy}
@@ -98,7 +98,9 @@ export function CampaignCopyCard({
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 space-y-1">
                     <p className="text-xs text-muted-foreground">Textos del flyer</p>
-                    <h3 className="break-words text-lg font-semibold">{copy.headline}</h3>
+                    <h3 className="break-words text-xl font-semibold tracking-tight">
+                      {copy.headline}
+                    </h3>
                     {copy.subheadline && (
                       <p className="break-words text-sm text-muted-foreground">
                         {copy.subheadline}
@@ -185,7 +187,7 @@ function FlyerTextsForm({
       )}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={saving}>
-          {saving && <Loader2 className="size-4 animate-spin" />}
+          {saving && <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />}
           Guardar textos
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel} disabled={saving}>

@@ -1,27 +1,18 @@
 'use client';
-import { Fragment, useState } from 'react';
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableCell,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { PublicationPlatform } from './publication-platform';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
+import { ArrowUpRight, ChevronDown, History, Info, Send } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
+import { CollectionPagination } from '@/components/layout/collection-pagination';
 import { Button } from '@/components/ui/button';
-import { CampaignPagination } from '@/features/campaigns/components/campaign-pagination';
+import { Skeleton } from '@/components/ui/skeleton';
 import { publicationService } from '../services/publication.service';
-const labels: Record<string, string> = {
-  PENDING: 'Pendiente',
-  PUBLISHING: 'Publicando',
-  PUBLISHED: 'Publicada',
-  FAILED: 'Fallida',
-};
+import { PublicationPlatform } from './publication-platform';
+import { PublicationStatusBadge } from './publication-status-badge';
+import { PublicationAttemptHistory } from './publication-attempt-history';
+
 export function PublicationList() {
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string | null>(null);
@@ -34,155 +25,132 @@ export function PublicationList() {
     <div className="space-y-6">
       <PageHeader
         title="Publicaciones"
-        description="Estado por destino e historial de intentos de tu empresa."
+        description="El historial de tus campañas, destino por destino."
       />
-      {query.isLoading && <p role="status">Cargando publicaciones…</p>}
+      <div className="flex items-start gap-3 rounded-xl border border-brand-cyan/20 bg-brand-cyan/5 p-4 text-sm leading-relaxed text-muted-foreground">
+        <Info aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-brand-cyan" />
+        <p>
+          El envío a redes estará disponible próximamente. Aquí puedes consultar los registros y sus
+          intentos guardados.
+        </p>
+      </div>
+      {query.isLoading && (
+        <div role="status" className="space-y-3 rounded-2xl border bg-card p-5">
+          <span className="sr-only">Cargando publicaciones…</span>
+          {[1, 2, 3].map((value) => (
+            <Skeleton key={value} className="h-24 rounded-xl" />
+          ))}
+        </div>
+      )}
       {query.error && (
-        <div role="alert">
-          <p>{query.error.message}</p>
-          <Button onClick={() => void query.refetch()}>Reintentar</Button>
+        <div role="alert" className="space-y-4 rounded-2xl border bg-card p-6">
+          <p className="font-medium">No se pudo cargar el historial</p>
+          <p className="text-sm text-muted-foreground">{query.error.message}</p>
+          <Button variant="outline" onClick={() => void query.refetch()}>
+            Reintentar consulta
+          </Button>
         </div>
       )}
       {query.data && !query.error && (
-        <>
-          <div className="overflow-hidden rounded-xl border bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Campaña</TableHead>
-                  <TableHead>Plataforma</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Publicación</TableHead>
-                  <TableHead>
-                    <span className="sr-only">Historial</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {query.data.data.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="py-12 text-center text-muted-foreground">
-                      Todavía no hay publicaciones registradas.
-                    </TableCell>
-                  </TableRow>
-                )}
-                {query.data.data.map((row) => (
-                  <Fragment key={row.id}>
-                    <TableRow>
-                      <TableCell>
-                        <Link
-                          className="font-medium hover:underline"
-                          href={'/campaigns/' + row.campaignId}
-                        >
-                          {row.campaignTitle}
-                        </Link>
-                        {row.failureCode && (
-                          <p className="mt-1 text-xs text-destructive">Error: {row.failureCode}</p>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {row.platform === 'FACEBOOK' ||
-                        row.platform === 'INSTAGRAM' ||
-                        row.platform === 'TIKTOK' ? (
-                          <PublicationPlatform platform={row.platform} />
-                        ) : (
-                          row.platform
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={row.status === 'FAILED' ? 'destructive' : 'secondary'}>
-                          {labels[row.status] ?? row.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {row.publishedAt
-                          ? new Date(row.publishedAt).toLocaleString('es-PE')
-                          : 'Pendiente'}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          aria-expanded={selected === row.id}
-                          onClick={() => setSelected(selected === row.id ? null : row.id)}
-                        >
-                          Ver intentos
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                    {selected === row.id && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="bg-muted/20 p-5">
-                          <p className="mb-4 break-all text-xs text-muted-foreground">
-                            Cuenta: {row.socialAccountId}
-                          </p>
-                          <AttemptHistory key={row.id} id={row.id} />
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </Fragment>
-                ))}
-              </TableBody>
-            </Table>
+        <section
+          aria-label="Historial de publicaciones"
+          className="overflow-hidden rounded-2xl border bg-card"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b px-5 py-4">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <History aria-hidden="true" className="size-4 text-brand-cyan" /> Historial por
+              destino
+            </h2>
+            <span className="text-xs text-muted-foreground">{query.data.meta.total} registros</span>
           </div>
-        </>
-      )}
-      <CampaignPagination
-        page={page}
-        totalPages={query.data?.meta.totalPages}
-        pending={query.isLoading}
-        onChange={(next) => {
-          setPage(next);
-          setSelected(null);
-        }}
-      />
-    </div>
-  );
-}
-function AttemptHistory({ id }: { id: string }) {
-  const [page, setPage] = useState(1);
-  const query = useQuery({
-    queryKey: ['publication-attempts', id, page],
-    queryFn: ({ signal }) => publicationService.attempts(id, page, signal),
-    retry: false,
-  });
-  return (
-    <section className="space-y-3 border-t pt-3">
-      <h3 className="font-semibold">Historial de intentos</h3>
-      {query.isLoading && <p role="status">Cargando intentos…</p>}
-      {query.error && (
-        <div role="alert">
-          <p>{query.error.message}</p>
-          <Button onClick={() => void query.refetch()}>Reintentar</Button>
-        </div>
-      )}
-      {!query.error && query.data && (
-        <>
-          {!query.data.data.length && <p>Sin intentos.</p>}
-          {query.data.data.map((attempt) => (
-            <div key={attempt.id} className="rounded-lg bg-muted p-3">
-              <p>
-                Intento {attempt.number} · {new Date(attempt.startedAt).toLocaleString('es-PE')}
+          {!query.data.data.length && (
+            <div className="flex flex-col items-center px-5 py-14 text-center">
+              <div className="mb-4 rounded-2xl border bg-control p-4">
+                <Send aria-hidden="true" className="size-7 text-brand-cyan" />
+              </div>
+              <h3 className="font-semibold">Todavía no hay publicaciones registradas</h3>
+              <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+                Los resultados por plataforma y sus intentos aparecerán aquí cuando existan
+                registros.
               </p>
-              <p>
-                {attempt.result
-                  ? labels[attempt.result.status]
-                  : 'En curso, sin resultado registrado'}
-              </p>
-              {attempt.result?.failureCode && <p>Error: {attempt.result.failureCode}</p>}
-              {attempt.result?.externalPostId && (
-                <p className="break-all">ID externo: {attempt.result.externalPostId}</p>
-              )}
+              <Button
+                className="mt-5"
+                variant="outline"
+                nativeButton={false}
+                render={<Link href="/campaigns" />}
+              >
+                Ver campañas <ArrowUpRight aria-hidden="true" className="size-4" />
+              </Button>
             </div>
-          ))}
-        </>
+          )}
+          <ul className="divide-y">
+            {query.data.data.map((row) => (
+              <li key={row.id} className="min-w-0">
+                <div className="grid min-w-0 gap-4 p-5 lg:grid-cols-[minmax(0,1fr)_140px_120px_150px] lg:items-center lg:gap-5 lg:px-6">
+                  <div className="min-w-0 space-y-2">
+                    <Link
+                      className="inline-flex max-w-full items-start gap-2 rounded-sm text-sm font-semibold hover:text-brand-cyan focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+                      href={`/campaigns/${encodeURIComponent(row.campaignId)}`}
+                    >
+                      <span className="min-w-0 break-words">{row.campaignTitle}</span>
+                      <ArrowUpRight aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+                    </Link>
+                    <p className="break-all text-xs text-muted-foreground">
+                      Cuenta: {row.socialAccountId}
+                    </p>
+                    {row.failureCode && (
+                      <p className="break-all text-xs text-destructive">Error: {row.failureCode}</p>
+                    )}
+                  </div>
+                  <PublicationPlatform platform={row.platform} />
+                  <PublicationStatusBadge status={row.status} />
+                  <div className="flex flex-col items-start gap-3">
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {row.publishedAt ? (
+                        <>
+                          Publicada el
+                          <br />
+                          {new Date(row.publishedAt).toLocaleString('es-PE')}
+                        </>
+                      ) : (
+                        'Sin fecha de publicación'
+                      )}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      aria-expanded={selected === row.id}
+                      aria-controls={`attempts-${row.id}`}
+                      onClick={() => setSelected(selected === row.id ? null : row.id)}
+                    >
+                      {selected === row.id ? 'Ocultar intentos' : 'Ver intentos'}
+                      <ChevronDown
+                        aria-hidden="true"
+                        className={`size-3.5 ${selected === row.id ? 'rotate-180' : ''}`}
+                      />
+                    </Button>
+                  </div>
+                </div>
+                {selected === row.id && (
+                  <div id={`attempts-${row.id}`} className="border-t bg-control/60 p-5 sm:p-6">
+                    <PublicationAttemptHistory key={row.id} id={row.id} />
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+          <CollectionPagination
+            {...query.data.meta}
+            page={page}
+            busy={query.isFetching}
+            label="Páginas de publicaciones"
+            onPageChange={(next) => {
+              setPage(next);
+              setSelected(null);
+            }}
+          />
+        </section>
       )}
-      <CampaignPagination
-        page={page}
-        totalPages={query.data?.meta.totalPages}
-        pending={query.isLoading}
-        onChange={setPage}
-      />
-    </section>
+    </div>
   );
 }

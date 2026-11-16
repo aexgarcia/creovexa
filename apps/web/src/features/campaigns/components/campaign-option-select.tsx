@@ -27,7 +27,7 @@ export function CampaignOptionSelect<T extends { id: string; name: string }>({
       isItemEqualToValue={(item, selected) => item.id === selected.id}
       disabled={disabled}
     >
-      <Combobox.InputGroup className="flex h-11 items-center gap-2 rounded-lg border bg-background px-3 focus-within:ring-2 focus-within:ring-ring/50">
+      <Combobox.InputGroup className="flex h-11 items-center gap-2 rounded-[10px] border border-input bg-control px-3 focus-within:ring-2 focus-within:ring-ring/50">
         <Search aria-hidden className="size-4 shrink-0 text-muted-foreground" />
         <Combobox.Input
           id={id}

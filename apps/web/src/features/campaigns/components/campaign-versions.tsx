@@ -1,6 +1,5 @@
 'use client';
 import { History, Loader2, RotateCcw } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCampaignVersions, useRestoreCampaignVersion } from '../hooks/use-campaign-versions';
@@ -41,7 +40,7 @@ export function CampaignVersions({
   const list = versions.data ?? [];
   if (!versions.isLoading && !versions.error && list.length < 2) return null;
   return (
-    <Card>
+    <Card className="[--card-spacing:--spacing(5)] sm:[--card-spacing:--spacing(6)]">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <History className="size-5 text-primary" /> Versiones del flyer
@@ -67,7 +66,10 @@ export function CampaignVersions({
           {list.map((version) => (
             <li
               key={version.generationId}
-              className="flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center"
+              className={
+                'flex flex-col gap-4 rounded-xl border p-4 sm:flex-row sm:items-center ' +
+                (version.current ? 'border-brand-cyan/25 bg-brand-cyan/5' : 'bg-control/50')
+              }
             >
               <CampaignImage
                 variant="thumbnail"
@@ -78,7 +80,11 @@ export function CampaignVersions({
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-medium">Versión {version.number}</span>
-                  {version.current && <Badge variant="secondary">Vigente</Badge>}
+                  {version.current && (
+                    <span className="rounded-full border border-brand-cyan/25 bg-brand-cyan/10 px-2 py-0.5 text-[11px] font-medium text-brand-cyan">
+                      Vigente
+                    </span>
+                  )}
                   <span className="text-xs text-muted-foreground">
                     {dateTime(version.requestedAt)}
                   </span>
@@ -96,9 +102,7 @@ export function CampaignVersions({
                 ) : (
                   <p className="text-sm text-muted-foreground">Sin flyer todavía.</p>
                 )}
-                <p className="text-xs text-muted-foreground">
-                  Precio en esta versión: {prices(version)}
-                </p>
+                <p className="text-xs text-muted-foreground">Precio guardado: {prices(version)}</p>
               </div>
               {canRestore && !version.current && version.content && (
                 <Button
@@ -113,7 +117,7 @@ export function CampaignVersions({
                   }
                 >
                   {restore.isPending && restore.variables?.generationId === version.generationId ? (
-                    <Loader2 className="size-4 animate-spin" />
+                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
                   ) : (
                     <RotateCcw className="size-4" />
                   )}

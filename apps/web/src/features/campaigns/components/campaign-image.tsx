@@ -42,7 +42,7 @@ export function CampaignImage({
       className={
         thumbnail
           ? 'size-20 shrink-0 overflow-hidden rounded-lg border bg-muted/20 p-1 sm:size-24'
-          : 'overflow-hidden rounded-xl border bg-muted/20'
+          : 'flex min-h-48 items-center justify-center overflow-hidden rounded-xl border bg-control p-3 sm:p-5'
       }
     >
       <Image
@@ -52,7 +52,9 @@ export function CampaignImage({
         height={1080}
         unoptimized
         className={
-          thumbnail ? 'h-full w-full object-contain' : 'max-h-[640px] h-auto w-full object-contain'
+          thumbnail
+            ? 'h-full w-full object-contain'
+            : 'mx-auto max-h-[640px] h-auto w-auto max-w-full rounded-lg object-contain'
         }
         onLoad={onLoad}
         onError={() => {

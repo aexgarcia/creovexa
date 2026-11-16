@@ -22,7 +22,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useProduct } from '@/features/products/hooks/use-product';
 import { useTemplate } from '@/features/templates/hooks/use-template';
 import { useStoredCampaign, useApproveStoredCampaign } from '../hooks/use-stored-campaigns';
-import { campaignStatusLabels } from '../types/stored-campaign.types';
+import { CampaignStateBadge } from './campaign-state-badge';
+import { CampaignReviewSteps } from './campaign-review-steps';
+import { CampaignFinalCopy } from './campaign-final-copy';
 import { useCampaignCopy } from '../hooks/use-campaign-copy';
 import { CampaignCopyCard } from './campaign-copy-card';
 import { CampaignPublications } from './campaign-publications';
@@ -58,7 +60,10 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
     campaign && !campaign.candidateContent ? campaign.id : '',
     campaign?.version ?? 0,
   );
-  const [approvedMessage, setApprovedMessage] = useState('');
+  const [approvedMessage, setApprovedMessage] = useState<{
+    contentId: string;
+    message: string;
+  } | null>(null);
   const regenerate = useRegenerateStoredCampaign(campaignId);
   if (isLoading)
     return (
@@ -104,10 +109,13 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
   );
   async function handleApprove() {
     if (!content || !canReview || approve.isPending) return;
-    setApprovedMessage('');
+    setApprovedMessage(null);
     try {
       await approve.mutateAsync(content.id);
-      setApprovedMessage('Revisión aprobada correctamente.');
+      setApprovedMessage({
+        contentId: content.id,
+        message: 'Revisión aprobada correctamente.',
+      });
     } catch {
       // La mutación muestra un error seguro más abajo.
     }
@@ -118,7 +126,7 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
     try {
       await flyer.request.mutateAsync(copyReady.generationId);
     } catch {
-      /* Safe error displayed below. */
+      /* El error seguro se muestra debajo. */
     } finally {
       flyerRequesting.current = false;
     }
@@ -131,21 +139,21 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
       >
         <ArrowLeft className="size-4" /> Todas las campañas
       </Link>
-      <header className="flex flex-col gap-5 rounded-xl border bg-card p-6 xl:flex-row xl:items-center xl:justify-between">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-4">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-brand-cyan/20 bg-brand-cyan/10 text-brand-cyan">
             <Megaphone className="size-6" />
           </div>
           <div className="min-w-0 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={campaign.status === 'FAILED' ? 'destructive' : 'secondary'}>
-                {campaignStatusLabels[campaign.status]}
-              </Badge>
+              <CampaignStateBadge status={campaign.status} />
               <span className="text-xs text-muted-foreground">
                 Creada el {dateLabel(campaign.createdAt)}
               </span>
             </div>
-            <h1 className="break-words text-2xl font-semibold tracking-tight">{campaign.title}</h1>
+            <h1 className="break-words text-[28px] leading-tight font-semibold tracking-tight sm:text-[30px]">
+              {campaign.title}
+            </h1>
           </div>
         </div>
         {campaign.status === 'DRAFT' && (
@@ -162,163 +170,182 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
             <CheckCircle2 className="size-4" /> Contenido aprobado
           </span>
         )}
-        <div className="flex flex-col gap-2 xl:ml-auto xl:max-w-lg xl:items-end">
-          <div
-            role="group"
-            aria-label="Acciones de campaña"
-            className="flex flex-wrap items-center gap-2 xl:justify-end"
-          >
-            {!content && ['DRAFT', 'GENERATING'].includes(campaign.status) && !copyReady && (
-              <Button
-                disabled={copyBusy || copy.isPending || Boolean(copy.error) || isFetching}
-                onClick={() => generate.mutate()}
-              >
-                {copyBusy ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Sparkles className="size-4" />
-                )}
-                {copyBusy
-                  ? 'Preparando texto…'
-                  : copyJob?.status === 'FAILED'
-                    ? 'Reintentar texto'
-                    : 'Generar texto'}
-              </Button>
-            )}
-            {!content && copyReady && campaign.status === 'GENERATING' && (
-              <Button
-                disabled={flyerBusy || isFetching || Boolean(copy.error)}
-                onClick={() => void handleGenerateFlyer()}
-              >
-                {flyerBusy ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <ImageIcon className="size-4" />
-                )}
-                {flyerBusy
-                  ? 'Generando flyer…'
-                  : flyerJob?.status === 'FAILED'
-                    ? 'Reintentar flyer'
-                    : 'Generar flyer'}
-              </Button>
-            )}
-            {campaign.status === 'PENDING_APPROVAL' && (
-              <Button
-                disabled={!content || !canReview || approve.isPending || isFetching}
-                onClick={() => void handleApprove()}
-              >
-                <CheckCircle2 className="size-4" />
-                {approve.isPending ? 'Aprobando…' : 'Aprobar esta revisión'}
-              </Button>
-            )}
-            {canRegenerate && (
-              <Button
-                variant="outline"
-                disabled={regenerate.isPending || isFetching}
-                aria-describedby="campaign-regenerate-help"
-                onClick={() => regenerate.mutate()}
-              >
-                {regenerate.isPending ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <RotateCcw className="size-4" />
-                )}
-                {regenerate.isPending ? 'Preparando versión…' : 'Regenerar'}
-              </Button>
-            )}
-            <Button variant="outline" disabled aria-describedby="campaign-pending-actions">
-              <Send className="size-4" /> Publicar
-            </Button>
-          </div>
-          <p id="campaign-pending-actions" className="text-xs text-muted-foreground">
-            Publicar: próximamente.
-          </p>
-          {canRegenerate && (
-            <p id="campaign-regenerate-help" className="text-xs text-muted-foreground">
-              Regenerar crea otra versión con los datos actuales y conserva tus textos si siguen
-              siendo válidos. La actual queda en el historial.
-            </p>
-          )}
-          {regenerate.error && (
-            <p role="alert" className="text-sm text-destructive">
-              {regenerate.error.message}
-            </p>
-          )}
-          {campaign.status === 'PENDING_APPROVAL' && (
-            <p className="text-xs text-muted-foreground">
-              {finalAssetUrl
-                ? canReview
-                  ? 'Aprobar confirma el flyer mostrado; la publicación se realiza después.'
-                  : 'Carga la vista previa del flyer antes de aprobar esta revisión.'
-                : 'La aprobación estará disponible cuando puedas previsualizar el flyer final.'}
-            </p>
-          )}
-          {!content && flyerBusy && (
-            <p role="status" className="text-sm text-muted-foreground">
-              Creando la publicidad con la imagen y los datos de tu producto. Puede tardar unos
-              minutos; puedes salir de esta página y volver después.
-            </p>
-          )}
-          {!content && !flyerBusy && flyerJob?.status === 'FAILED' && (
-            <p role="alert" className="text-sm text-destructive">
-              {failureMessage(flyerJob)}
-            </p>
-          )}
-          {flyer.request.error && (
-            <div role="alert" className="space-y-2">
-              <p className="text-sm text-destructive">{flyer.request.error.message}</p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  flyer.request.reset();
-                  void refetch();
-                }}
-              >
-                Actualizar campaña
-              </Button>
-            </div>
-          )}
-          {generate.error && (
-            <div role="alert" className="space-y-2">
-              <p className="text-sm text-destructive">{generate.error.message}</p>
-              <Button variant="outline" onClick={() => void copy.refetch()}>
-                Actualizar consulta
-              </Button>
-            </div>
-          )}
-          {approve.error && (
-            <div role="alert" className="space-y-3">
-              <p className="text-sm text-destructive">{approve.error.message}</p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  approve.reset();
-                  void refetch();
-                }}
-              >
-                Actualizar campaña
-              </Button>
-            </div>
-          )}
-          {approvedMessage && (
-            <p role="status" className="text-sm text-primary">
-              {approvedMessage}
-            </p>
-          )}
-        </div>
       </header>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="min-w-0 space-y-6">
-          <Card className="overflow-hidden">
+      <CampaignReviewSteps
+        hasCopy={Boolean(content || copyReady)}
+        hasFlyer={Boolean(content)}
+        approved={isApproved}
+        failed={campaign.status === 'FAILED'}
+      />
+      <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:grid-rows-[auto_1fr]">
+        <section
+          className="order-1 min-w-0 space-y-4 rounded-2xl border bg-card p-5 xl:col-start-2 xl:row-start-1"
+          aria-label="Preparar y revisar contenido"
+        >
+          <div>
+            <h2 className="text-sm font-semibold">Acciones de campaña</h2>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+              Revisa cada paso antes de continuar con tu contenido.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <div
+              role="group"
+              aria-label="Acciones de campaña"
+              className="flex flex-wrap items-center gap-2 xl:grid"
+            >
+              {!content && ['DRAFT', 'GENERATING'].includes(campaign.status) && !copyReady && (
+                <Button
+                  disabled={copyBusy || copy.isPending || Boolean(copy.error) || isFetching}
+                  onClick={() => generate.mutate()}
+                >
+                  {copyBusy ? (
+                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+                  ) : (
+                    <Sparkles className="size-4" />
+                  )}
+                  {copyBusy
+                    ? 'Preparando texto…'
+                    : copyJob?.status === 'FAILED'
+                      ? 'Reintentar texto'
+                      : 'Generar texto'}
+                </Button>
+              )}
+              {!content && copyReady && campaign.status === 'GENERATING' && (
+                <Button
+                  disabled={flyerBusy || isFetching || Boolean(copy.error)}
+                  onClick={() => void handleGenerateFlyer()}
+                >
+                  {flyerBusy ? (
+                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+                  ) : (
+                    <ImageIcon className="size-4" />
+                  )}
+                  {flyerBusy
+                    ? 'Generando flyer…'
+                    : flyerJob?.status === 'FAILED'
+                      ? 'Reintentar flyer'
+                      : 'Generar flyer'}
+                </Button>
+              )}
+              {campaign.status === 'PENDING_APPROVAL' && (
+                <Button
+                  disabled={!content || !canReview || approve.isPending || isFetching}
+                  onClick={() => void handleApprove()}
+                >
+                  <CheckCircle2 className="size-4" />
+                  {approve.isPending ? 'Aprobando…' : 'Aprobar esta revisión'}
+                </Button>
+              )}
+              {canRegenerate && (
+                <Button
+                  variant="outline"
+                  disabled={regenerate.isPending || isFetching}
+                  aria-describedby="campaign-regenerate-help"
+                  onClick={() => regenerate.mutate()}
+                >
+                  {regenerate.isPending ? (
+                    <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+                  ) : (
+                    <RotateCcw className="size-4" />
+                  )}
+                  {regenerate.isPending ? 'Preparando versión…' : 'Regenerar'}
+                </Button>
+              )}
+              <Button variant="outline" disabled aria-describedby="campaign-pending-actions">
+                <Send className="size-4" /> Publicar
+              </Button>
+            </div>
+            <p id="campaign-pending-actions" className="text-xs text-muted-foreground">
+              Publicar: próximamente.
+            </p>
+            {canRegenerate && (
+              <p id="campaign-regenerate-help" className="text-xs text-muted-foreground">
+                Regenerar crea otra versión con los datos actuales y conserva tus textos si siguen
+                siendo válidos. La actual queda en el historial.
+              </p>
+            )}
+            {regenerate.error && (
+              <p role="alert" className="text-sm text-destructive">
+                {regenerate.error.message}
+              </p>
+            )}
+            {campaign.status === 'PENDING_APPROVAL' && (
+              <p className="text-xs text-muted-foreground">
+                {finalAssetUrl
+                  ? canReview
+                    ? 'Aprobar confirma el flyer mostrado; la publicación se realiza después.'
+                    : 'Carga la vista previa del flyer antes de aprobar esta revisión.'
+                  : 'La aprobación estará disponible cuando puedas previsualizar el flyer final.'}
+              </p>
+            )}
+            {!content && flyerBusy && (
+              <p role="status" className="text-sm text-muted-foreground">
+                Creando la publicidad con la imagen y los datos de tu producto. Puede tardar unos
+                minutos; puedes salir de esta página y volver después.
+              </p>
+            )}
+            {!content && !flyerBusy && flyerJob?.status === 'FAILED' && (
+              <p role="alert" className="text-sm text-destructive">
+                {failureMessage(flyerJob)}
+              </p>
+            )}
+            {flyer.request.error && (
+              <div role="alert" className="space-y-2">
+                <p className="text-sm text-destructive">{flyer.request.error.message}</p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    flyer.request.reset();
+                    void refetch();
+                  }}
+                >
+                  Actualizar campaña
+                </Button>
+              </div>
+            )}
+            {generate.error && (
+              <div role="alert" className="space-y-2">
+                <p className="text-sm text-destructive">{generate.error.message}</p>
+                <Button variant="outline" onClick={() => void copy.refetch()}>
+                  Actualizar consulta
+                </Button>
+              </div>
+            )}
+            {approve.error && (
+              <div role="alert" className="space-y-3">
+                <p className="text-sm text-destructive">{approve.error.message}</p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    approve.reset();
+                    void refetch();
+                  }}
+                >
+                  Actualizar campaña
+                </Button>
+              </div>
+            )}
+            {isApproved && approvedMessage && approvedMessage.contentId === content?.id && (
+              <p role="status" className="text-sm text-primary">
+                {approvedMessage.message}
+              </p>
+            )}
+          </div>
+        </section>
+        <div className="order-2 min-w-0 space-y-6 xl:col-start-1 xl:row-span-2 xl:row-start-1">
+          <Card className="overflow-hidden [--card-spacing:--spacing(5)] sm:[--card-spacing:--spacing(6)]">
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <CardTitle className="flex items-center gap-2">
-                  <ImageIcon className="size-5 text-primary" /> Vista previa
+                  <ImageIcon className="size-5 text-brand-cyan" /> Flyer de la campaña
                 </CardTitle>
                 {content && <Badge variant="outline">Revisión {content.revision}</Badge>}
               </div>
-              <CardDescription>La pieza y el mensaje que acompañarán tu campaña.</CardDescription>
+              <CardDescription>
+                Revisa los textos, precios y fechas de esta pieza antes de aprobarla.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">
               <CampaignImage
@@ -351,23 +378,9 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
                   Reintentar vista previa
                 </Button>
               )}
-              {content && (
-                <div className="space-y-4 rounded-xl border bg-background p-5">
-                  <h2 className="break-words text-xl font-semibold">{content.headline}</h2>
-                  {content.subheadline && (
-                    <p className="break-words text-sm font-medium">{content.subheadline}</p>
-                  )}
-                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">
-                    {content.caption}
-                  </p>
-                  <p className="break-words text-sm text-primary">{content.hashtags.join(' ')}</p>
-                  <div className="break-words rounded-lg bg-primary/10 px-4 py-3 text-center text-sm font-semibold text-primary">
-                    {content.cta}
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
+          {content && <CampaignFinalCopy content={content} />}
           {!content && (
             <CampaignCopyCard
               query={copy}
@@ -384,13 +397,13 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
             campaignVersion={campaign.version}
             canRestore={canChangeVersion}
           />
-          <div className="rounded-xl border bg-card p-6">
+          <div className="rounded-2xl border bg-card p-5 sm:p-6">
             <CampaignPublications key={campaign.id} campaignId={campaign.id} />
           </div>
         </div>
 
-        <aside className="min-w-0 space-y-6">
-          <Card>
+        <aside className="order-3 min-w-0 space-y-6 xl:col-start-2 xl:row-start-2">
+          <Card className="[--card-spacing:--spacing(5)]">
             <CardHeader>
               <CardTitle>Detalles de la campaña</CardTitle>
               <CardDescription>Los elementos de tu promoción.</CardDescription>
@@ -399,6 +412,7 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">Imagen del producto o servicio</p>
                 <CampaignImage
+                  variant="thumbnail"
                   url={
                     campaign.productImageUrl !== undefined
                       ? campaign.productImageUrl

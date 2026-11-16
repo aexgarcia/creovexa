@@ -1,48 +1,23 @@
-import type { IconType } from 'react-icons';
-
 import { FaFacebookF, FaInstagram, FaTiktok } from 'react-icons/fa6';
 
-import type { SocialPlatform } from '@/features/campaigns/types/campaign.types';
-
-interface PublicationPlatformProps {
-  platform: SocialPlatform;
-}
-
-const platformConfig: Record<
-  SocialPlatform,
-  {
-    label: string;
-    icon: IconType;
-  }
-> = {
-  FACEBOOK: {
-    label: 'Facebook',
-    icon: FaFacebookF,
-  },
-
-  INSTAGRAM: {
-    label: 'Instagram',
-    icon: FaInstagram,
-  },
-
-  TIKTOK: {
-    label: 'TikTok',
-    icon: FaTiktok,
-  },
+const platforms = {
+  FACEBOOK: { label: 'Facebook', icon: FaFacebookF, color: 'bg-[#1877f2]/15 text-[#1877f2]' },
+  INSTAGRAM: { label: 'Instagram', icon: FaInstagram, color: 'bg-[#e1306c]/15 text-[#e1306c]' },
+  TIKTOK: { label: 'TikTok', icon: FaTiktok, color: 'border bg-control text-foreground' },
 };
 
-export function PublicationPlatform({ platform }: PublicationPlatformProps) {
-  const config = platformConfig[platform];
-
+export function PublicationPlatform({ platform }: { platform: string }) {
+  const config = platforms[platform as keyof typeof platforms];
+  if (!config) return <span className="break-all text-sm">{platform}</span>;
   const Icon = config.icon;
-
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-        <Icon className="size-4" />
-      </div>
-
-      <span className="font-medium">{config.label}</span>
-    </div>
+    <span className="inline-flex min-w-0 items-center gap-2.5">
+      <span
+        className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${config.color}`}
+      >
+        <Icon aria-hidden="true" className="size-4" />
+      </span>
+      <span className="text-sm font-medium">{config.label}</span>
+    </span>
   );
 }
