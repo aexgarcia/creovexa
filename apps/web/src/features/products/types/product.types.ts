@@ -39,3 +39,12 @@ export interface CreateProductInput {
   idealFor: string | null;
 }
 export type UpdateProductInput = Omit<CreateProductInput, 'kind'>;
+// Sugerencia con IA de los datos de venta (ADR-0031): se revisa antes de guardarla.
+export type SalesSuggestionInput = Pick<
+  CreateProductInput,
+  'kind' | 'name' | 'description' | 'productBrand' | 'keyAttributes' | 'unit'
+>;
+export interface SalesSuggestion {
+  benefits: string[];
+  idealFor: string | null;
+}

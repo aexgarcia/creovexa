@@ -3,6 +3,8 @@ import type {
   CreateProductInput,
   PhotoType,
   Product,
+  SalesSuggestion,
+  SalesSuggestionInput,
   UpdateProductInput,
 } from '../types/product.types';
 import type { CatalogStatus } from '@/types/catalog-status';
@@ -53,6 +55,24 @@ class ProductService {
         })
       ).data,
     );
+  }
+  /** Si el despliegue permite pedir sugerencias con IA (ADR-0031). */
+  async salesSuggestionsAvailable(signal?: AbortSignal): Promise<boolean> {
+    return (
+      await apiRequest<{ data: { available: boolean } }>('/products/sales-suggestions/status', {
+        signal,
+      })
+    ).data.available;
+  }
+  /** Propone beneficios y «para quién es» sin guardar nada; cada llamada cuesta una consulta a la IA. */
+  async suggestSalesData(input: SalesSuggestionInput): Promise<SalesSuggestion> {
+    return (
+      await apiRequest<{ data: SalesSuggestion }>(
+        '/products/sales-suggestions',
+        { method: 'POST', body: JSON.stringify(input) },
+        45000,
+      )
+    ).data;
   }
   async uploadImage(id: string, file: File, photoType: PhotoType): Promise<Product> {
     const body = new FormData();

@@ -65,6 +65,8 @@ Por instrucción del usuario, la pantalla está adaptada visualmente pero usa ú
 - **Campañas:** listado y brief de creación/edición adaptados al nuevo diseño. El listado tiene miniatura del flyer, estados, búsqueda/filtro locales y paginación del servidor; la búsqueda/filtro globales requieren otro contrato. El brief conserva el guardado y las validaciones, con cuatro bloques y resumen lateral. Detalle, revisión e historial adaptados: flyer y textos separados, recorrido de preparación, acciones por estado y versiones con precios guardados. Se conserva el bloqueo de aprobación hasta cargar la imagen y la recuperación con control de versión.
 - **Publicaciones:** historial, panel de intentos y bloque por destino del detalle adaptados visualmente. Consultan los endpoints reales existentes y conservan paginación independiente, fechas, códigos de error y referencias externas. Los registros sin fecha se muestran como «Sin fecha de publicación». La publicación efectiva en Meta y TikTok sigue pendiente y está señalada en pantalla; no se deducen cuentas o enlaces externos desde los IDs.
 
+- **Acceso:** `/login` adaptado visualmente, con marca, correo y contraseña deshabilitados y aviso de disponibilidad futura. No recoge credenciales, crea sesiones ni registra usuarios. Conserva el enlace existente al catálogo, identificado como acceso al entorno de desarrollo; deberá retirarse al integrar autenticación real. Better Auth, activación, verificación de correo, recuperación, errores de autenticación y selección/ausencia de organizaciones siguen pendientes según ADR-0012.
+
 Los mocks usados exclusivamente en pruebas de navegador no forman parte del producto ni sustituyen los servicios en ejecución.
 
 ## Mantenimiento del CMS

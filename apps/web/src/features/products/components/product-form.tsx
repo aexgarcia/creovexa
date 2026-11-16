@@ -25,6 +25,7 @@ import { productSchema, type ProductFormValues } from '../schemas/product.schema
 import { amountMinor, decimalPrice } from '../schemas/product-price';
 import type { Product } from '../types/product.types';
 import { ProductImageField } from './product-image-field';
+import { SalesSuggestionPanel } from './sales-suggestion-panel';
 
 const selectClass =
   'h-11 w-full rounded-[10px] border border-input bg-control px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring';
@@ -328,6 +329,26 @@ export function ProductForm({
             description="Opcional. Con estos datos el texto de tus publicaciones vende mucho mejor."
             icon={Megaphone}
           >
+            <SalesSuggestionPanel
+              disabled={disabled}
+              input={
+                preview.name?.trim()
+                  ? {
+                      kind: preview.kind ?? 'PRODUCT',
+                      name: preview.name.trim(),
+                      description: preview.description?.trim() ?? '',
+                      productBrand: preview.productBrand?.trim() || null,
+                      keyAttributes: splitLines(preview.keyAttributes ?? ''),
+                      unit: preview.unit?.trim() || null,
+                    }
+                  : null
+              }
+              onApply={(suggestion) => {
+                const options = { shouldDirty: true, shouldValidate: true };
+                setValue('benefits', suggestion.benefits.join('\n'), options);
+                setValue('idealFor', suggestion.idealFor ?? '', options);
+              }}
+            />
             <Controller
               control={control}
               name="benefits"

@@ -187,3 +187,29 @@ test('distingue los errores de lectura del flyer de los errores de generación',
     );
   }
 });
+test('pide sugerencias de datos de venta sin guardar y consulta si están disponibles', async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url: String(url), method: options.method ?? 'GET', body: options.body });
+    return String(url).endsWith('/status')
+      ? Response.json({ data: { available: true } })
+      : Response.json({ data: { benefits: ['Despiertas sin acidez'], idealFor: null } });
+  };
+  assert.equal(await productService.salesSuggestionsAvailable(), true);
+  const input = {
+    kind: 'PRODUCT',
+    name: 'Café de altura',
+    description: '',
+    productBrand: null,
+    keyAttributes: ['100 % arábica'],
+    unit: null,
+  };
+  assert.deepEqual(await productService.suggestSalesData(input), {
+    benefits: ['Despiertas sin acidez'],
+    idealFor: null,
+  });
+  assert.ok(calls[0].url.endsWith('/products/sales-suggestions/status'));
+  assert.equal(calls[1].method, 'POST');
+  assert.ok(calls[1].url.endsWith('/products/sales-suggestions'));
+  assert.deepEqual(JSON.parse(calls[1].body), input);
+});
