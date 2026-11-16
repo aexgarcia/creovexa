@@ -74,3 +74,7 @@ Los mocks usados exclusivamente en pruebas de navegador no forman parte del prod
 - Retirados 28 archivos sin uso desde las rutas activas: componentes y hooks del servicio mock de campañas (incluido `use-regenerate-campaign.ts`), formularios antiguos de empresa y plantillas, previews antiguas y los tipos/mocks de `MarketingTemplate`, con sus esquemas exclusivos. Se conservan los flujos reales de campañas, regeneración e historial de versiones.
 - La ficha de producto explica que guardar características no obliga a mostrarlas. El editor de plantillas avisa expresamente cuando la cantidad es cero. Al preparar una campaña se muestra la cantidad permitida por la plantilla y la disponible en el producto, con un enlace al editor en otra pestaña.
 - Archivado y restauración de productos y plantillas implementados en API y CMS, con filtros Activos/Archivados/Todos y conservación del historial. No se permite eliminación física.
+
+## Revisión visual transversal
+
+Comprobadas las 15 rutas actuales de dashboard, catálogos, formularios de creación/edición, configuración, campañas, publicaciones, cuentas sociales y acceso a 320, 390 y 1440 px sin desbordamiento horizontal. Corregido el destino de foco de «Ir al contenido» y traducidos a «Cerrar» los cierres predeterminados de paneles y diálogos. Menú móvil, devolución de foco, anclas de configuración y reducción de movimiento comprobados. Las variantes de acceso real y de conexión social siguen pendientes de sus integraciones. Capturas y fixtures de revisión permanecen en `.local`, fuera del producto.

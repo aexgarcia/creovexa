@@ -16,7 +16,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           <AdminHeader />
 
-          <main id="main-content" className="flex-1 px-4 pt-6 pb-16 md:px-6 lg:px-10 lg:pt-8">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="flex-1 scroll-mt-20 px-4 pt-6 pb-16 md:px-6 lg:px-10 lg:pt-8"
+          >
             <div className="mx-auto w-full max-w-[1200px]">{children}</div>
           </main>
         </div>
