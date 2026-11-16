@@ -4,7 +4,7 @@ import type { StoredTemplate } from '@/features/templates/types/stored-template.
 import { FORMAT_LABELS, STYLE_LABELS } from '@/features/templates/types/template-design-options';
 import { amountMinor } from '@/features/products/schemas/product-price';
 import type { CampaignDraft } from '../schemas/stored-campaign-input';
-import { campaignObjectiveLabels } from '../types/stored-campaign.types';
+import { campaignObjectiveLabels, copyChannelNames } from '../types/stored-campaign.types';
 
 export function CampaignBriefSummary({
   draft,
@@ -39,7 +39,7 @@ export function CampaignBriefSummary({
               {draft.title.trim() || 'Tu próxima campaña'}
             </h3>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              {campaignObjectiveLabels[draft.objective]}
+              {campaignObjectiveLabels[draft.objective]} · {copyChannelNames[draft.channel]}
             </p>
             {draft.occasion.trim() && (
               <p className="mt-2 break-words text-xs text-brand-cyan">{draft.occasion.trim()}</p>

@@ -26,6 +26,18 @@ export const campaignObjectiveLabels: Record<CampaignObjective, string> = {
   AWARENESS: 'Recordación de marca',
   EVENT: 'Evento',
 };
+// Canal principal del copy (ADR-0032): cambia la longitud del texto y los hashtags.
+export type CopyChannel = 'INSTAGRAM' | 'FACEBOOK' | 'WHATSAPP';
+export const copyChannelLabels: Record<CopyChannel, string> = {
+  INSTAGRAM: 'Instagram: 300 a 600 caracteres y 3 a 5 hashtags',
+  FACEBOOK: 'Facebook: hasta 700 caracteres y pocos hashtags',
+  WHATSAPP: 'WhatsApp: texto corto, sin hashtags',
+};
+export const copyChannelNames: Record<CopyChannel, string> = {
+  INSTAGRAM: 'Instagram',
+  FACEBOOK: 'Facebook',
+  WHATSAPP: 'WhatsApp',
+};
 export interface CampaignPromotion {
   amountMinor: number;
   currency: 'PEN' | 'USD' | 'EUR';
@@ -46,6 +58,7 @@ export interface StoredCampaign {
   title: string;
   objective: CampaignObjective;
   occasion: string | null;
+  channel: CopyChannel;
   instructions: string;
   cta: string;
   promotion: CampaignPromotion | null;
@@ -76,6 +89,7 @@ export interface CreateStoredCampaignInput {
   title: string;
   objective: CampaignObjective;
   occasion: string | null;
+  channel: CopyChannel;
   instructions?: string;
   cta: string;
   promotion?: {

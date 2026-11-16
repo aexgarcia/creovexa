@@ -1,6 +1,7 @@
 import { amountMinor } from '@/features/products/schemas/product-price';
 import type {
   CampaignObjective,
+  CopyChannel,
   CreateStoredCampaignInput,
   StoredCampaign,
 } from '../types/stored-campaign.types';
@@ -13,6 +14,7 @@ export interface CampaignDraft {
   title: string;
   objective: CampaignObjective;
   occasion: string;
+  channel: CopyChannel;
   instructions: string;
   cta: string;
   promotionPrice: string;
@@ -27,6 +29,7 @@ export function emptyCampaignDraft(): CampaignDraft {
     title: '',
     objective: 'PROMOTION',
     occasion: '',
+    channel: 'INSTAGRAM',
     instructions: '',
     cta: '',
     promotionPrice: '',
@@ -52,6 +55,7 @@ export function campaignDraft(campaign: StoredCampaign): CampaignDraft {
     title: campaign.title,
     objective: campaign.objective,
     occasion: campaign.occasion ?? '',
+    channel: campaign.channel ?? 'INSTAGRAM',
     instructions: campaign.instructions,
     cta: campaign.cta,
     promotionPrice: promotion ? (promotion.amountMinor / 100).toFixed(2) : '',
@@ -85,6 +89,7 @@ export function campaignInput(
     title,
     objective: draft.objective,
     occasion: occasion || null,
+    channel: draft.channel,
     cta,
     instructions,
   };

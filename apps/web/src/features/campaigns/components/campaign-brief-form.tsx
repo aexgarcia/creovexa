@@ -20,6 +20,8 @@ import {
 } from '../schemas/stored-campaign-input';
 import {
   campaignObjectiveLabels,
+  copyChannelLabels,
+  type CopyChannel,
   type CampaignObjective,
   type CreateStoredCampaignInput,
 } from '../types/stored-campaign.types';
@@ -124,6 +126,25 @@ export function CampaignBriefForm({
                   onChange={(e) => change('occasion', e.target.value)}
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="campaign-channel">Dónde lo vas a publicar</Label>
+              <select
+                id="campaign-channel"
+                className={selectClass}
+                value={draft.channel}
+                aria-describedby="campaign-channel-help"
+                onChange={(e) => change('channel', e.target.value as CopyChannel)}
+              >
+                {Object.entries(copyChannelLabels).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <p id="campaign-channel-help" className="text-xs text-muted-foreground">
+                La IA adapta el largo del texto y los hashtags a este canal.
+              </p>
             </div>
           </FormSection>
           <FormSection

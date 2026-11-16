@@ -122,6 +122,7 @@ const draft = {
   title: ' Oferta ',
   objective: 'PROMOTION',
   occasion: '',
+  channel: 'WHATSAPP',
   cta: ' Comprar ',
   instructions: '',
   promotionPrice: '',
@@ -139,6 +140,7 @@ test('creation pins the selected revision and omits an unused promotion', () => 
     title: 'Oferta',
     objective: 'PROMOTION',
     occasion: null,
+    channel: 'WHATSAPP',
     cta: 'Comprar',
     instructions: '',
   });
@@ -222,6 +224,9 @@ test('editing a draft round-trips the saved campaign into the form', () => {
   const form = campaignDraft(saved);
   assert.equal(form.promotionPrice, '8.50');
   assert.equal(form.occasion, '');
+  // Una campaña guardada antes del canal se edita como Instagram (ADR-0032).
+  assert.equal(form.channel, 'INSTAGRAM');
+  assert.equal(campaignDraft({ ...saved, channel: 'FACEBOOK' }).channel, 'FACEBOOK');
   assert.equal(new Date(form.endsAt).toISOString(), '2026-10-02T14:00:00.000Z');
   const input = campaignInput(form, product, template);
   // Sin fecha de inicio, el campo no se envía.
