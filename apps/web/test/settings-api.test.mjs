@@ -124,3 +124,20 @@ test('uploads and removes a logo variant and resolves its read URL', async () =>
   assert.ok(calls[1].url.endsWith('/organization/logo/dark-background'));
   assert.equal(calls[1].method, 'DELETE');
 });
+test('sends the copy voice of the brand (ADR-0029)', async () => {
+  const voice = {
+    audience: 'Oficinistas de Lima',
+    valueProps: ['Delivery en Lima'],
+    emojiStyle: 'EXPRESSIVE',
+    addressForm: 'USTED',
+    copyExamples: ['Su café de cada mañana.\nListo en minutos.'],
+  };
+  const bodies = [];
+  globalThis.fetch = async (_url, options) => {
+    bodies.push(JSON.parse(options.body));
+    return Response.json({ data: { id: 'organization-1', ...voice } });
+  };
+  const saved = await companySettingsService.update(voice);
+  assert.deepEqual(bodies[0], voice);
+  assert.equal(saved.emojiStyle, 'EXPRESSIVE');
+});

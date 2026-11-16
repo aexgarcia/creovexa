@@ -14,6 +14,9 @@ export interface Product {
   productBrand: string | null;
   keyAttributes: string[];
   unit: string | null;
+  // Lo que gana el cliente y quién lo compra; el copy los usa como hechos (ADR-0029).
+  benefits: string[];
+  idealFor: string | null;
   imageAssetIds: string[];
   // null sin imagen; photoType es null en imágenes subidas antes de que se pidiera.
   image: { photoType: PhotoType | null; hasTransparency: boolean | null } | null;
@@ -32,5 +35,7 @@ export interface CreateProductInput {
   productBrand: string | null;
   keyAttributes: string[];
   unit: string | null;
+  benefits: string[];
+  idealFor: string | null;
 }
 export type UpdateProductInput = Omit<CreateProductInput, 'kind'>;

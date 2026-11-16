@@ -11,18 +11,19 @@ import {
   Check,
   Sparkles,
   ArrowLeft,
+  Megaphone,
 } from 'lucide-react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { TextListField } from '@/components/ui/text-list-field';
 import { FormSection } from '@/components/layout/form-section';
 import { PageHeader } from '@/components/layout/page-header';
 import { productSchema, type ProductFormValues } from '../schemas/product.schema';
 import { amountMinor, decimalPrice } from '../schemas/product-price';
 import type { Product } from '../types/product.types';
-import { ProductAttributesField } from './product-attributes-field';
 import { ProductImageField } from './product-image-field';
 
 const selectClass =
@@ -35,6 +36,11 @@ interface ProductFormProps {
   isSubmitting?: boolean;
   onSubmit: (values: ProductFormValues, image: File | null) => Promise<void>;
 }
+const splitLines = (value: string) =>
+  value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
 function FieldError({ id, message }: { id: string; message?: string }) {
   return message ? (
     <p id={id} role="alert" className="text-xs text-destructive">
@@ -70,6 +76,8 @@ export function ProductForm({
       productBrand: product?.productBrand ?? '',
       keyAttributes: product?.keyAttributes.join('\n') ?? '',
       unit: product?.unit ?? '',
+      benefits: product?.benefits.join('\n') ?? '',
+      idealFor: product?.idealFor ?? '',
       photoType: product?.image?.photoType ?? '',
     },
   });
@@ -300,13 +308,61 @@ export function ProductForm({
               control={control}
               name="keyAttributes"
               render={({ field }) => (
-                <ProductAttributesField
-                  value={field.value}
-                  onChange={field.onChange}
+                <TextListField
+                  id="attributes"
+                  label="Características clave"
+                  items={splitLines(field.value)}
+                  onChange={(items) => field.onChange(items.join('\n'))}
+                  max={5}
+                  maxLength={60}
+                  placeholder="Ej. 100 % arábica"
+                  duplicateMessage="Esta característica ya está en la lista."
+                  help="Pulsa Añadir para incluir cada una y ordénalas por importancia. Guardarlas aquí no hace que aparezcan todas: la plantilla elegida en la campaña decide cuántas mostrar, incluso ninguna."
                   error={errors.keyAttributes?.message}
                 />
               )}
             />
+          </FormSection>
+          <FormSection
+            title="Para vender"
+            description="Opcional. Con estos datos el texto de tus publicaciones vende mucho mejor."
+            icon={Megaphone}
+          >
+            <Controller
+              control={control}
+              name="benefits"
+              render={({ field }) => (
+                <TextListField
+                  id="benefits"
+                  label="Beneficios para el cliente"
+                  items={splitLines(field.value)}
+                  onChange={(items) => field.onChange(items.join('\n'))}
+                  max={5}
+                  maxLength={120}
+                  placeholder="Ej. Despiertas sin acidez gracias al tostado medio"
+                  duplicateMessage="Este beneficio ya está en la lista."
+                  help="Lo que gana quien lo compra, no la especificación. La IA los usa tal cual, así que escribe solo lo que es cierto."
+                  error={errors.benefits?.message}
+                />
+              )}
+            />
+            <div className="space-y-2">
+              <Label htmlFor="idealFor">
+                Para quién es{' '}
+                <span className="ml-auto text-xs font-normal text-muted-foreground">Opcional</span>
+              </Label>
+              <Textarea
+                id="idealFor"
+                rows={2}
+                maxLength={200}
+                placeholder="Ej. Quien prepara café en casa cada mañana y quiere uno de especialidad."
+                {...register('idealFor')}
+                aria-invalid={Boolean(errors.idealFor)}
+                aria-describedby="idealFor-error"
+                className="rounded-[10px] border-input bg-control px-3.5 py-3 text-sm md:text-sm dark:bg-control"
+              />
+              <FieldError id="idealFor-error" message={errors.idealFor?.message} />
+            </div>
           </FormSection>
           <FormSection
             title="Precio"

@@ -2,7 +2,13 @@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ChoiceGroup } from '@/components/ui/choice-group';
-import type { Contact, Typography } from '../services/company-settings.service';
+import { TextListField } from '@/components/ui/text-list-field';
+import type {
+  AddressForm,
+  Contact,
+  EmojiStyle,
+  Typography,
+} from '../services/company-settings.service';
 
 export interface BrandVoiceDraft {
   typography: Typography | '';
@@ -10,6 +16,11 @@ export interface BrandVoiceDraft {
   contact: Contact;
   defaultLegalText: string;
   forbiddenWords: string;
+  audience: string;
+  valueProps: string[];
+  emojiStyle: EmojiStyle;
+  addressForm: AddressForm;
+  copyExamples: string[];
 }
 export const splitWords = (value: string) =>
   value
@@ -182,6 +193,71 @@ export function BrandTextRulesFields({ draft, onChange }: Props) {
       <div className="rounded-xl border border-dashed p-3 text-xs text-muted-foreground">
         CTA predeterminado · Próximamente
       </div>
+    </div>
+  );
+}
+
+// Cómo escribe la IA tus publicaciones (ADR-0029).
+export function BrandCopyFields({ draft, onChange }: Props) {
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <Label htmlFor="organization-audience">
+          Tu cliente típico{' '}
+          <span className="ml-auto text-xs font-normal text-muted-foreground">Opcional</span>
+        </Label>
+        <Input
+          id="organization-audience"
+          maxLength={200}
+          placeholder="Ej. oficinistas de Lima que toman café cada mañana"
+          value={draft.audience}
+          onChange={(event) => onChange({ ...draft, audience: event.target.value })}
+        />
+      </div>
+      <TextListField
+        id="organization-value-props"
+        label="Lo que te diferencia"
+        items={draft.valueProps}
+        onChange={(valueProps) => onChange({ ...draft, valueProps })}
+        max={3}
+        maxLength={80}
+        placeholder="Ej. Delivery en Lima Metropolitana"
+        duplicateMessage="Ya está en la lista."
+        help="La IA usa como máximo uno por publicación y tal cual lo escribes: anota solo lo que siempre es cierto."
+      />
+      <ChoiceGroup<EmojiStyle>
+        label="Emojis"
+        value={draft.emojiStyle}
+        onValueChange={(emojiStyle) => onChange({ ...draft, emojiStyle })}
+        className="grid grid-cols-1 sm:grid-cols-3"
+        options={[
+          { value: 'NONE', label: 'Ninguno', description: 'Texto sobrio' },
+          { value: 'FEW', label: 'Pocos', description: 'De uno a tres' },
+          { value: 'EXPRESSIVE', label: 'Expresivo', description: 'De tres a seis' },
+        ]}
+      />
+      <ChoiceGroup<AddressForm>
+        label="Cómo le hablas al cliente"
+        value={draft.addressForm}
+        onValueChange={(addressForm) => onChange({ ...draft, addressForm })}
+        className="grid grid-cols-2"
+        options={[
+          { value: 'TU', label: 'De tú', description: '«Pídelo ya»' },
+          { value: 'USTED', label: 'De usted', description: '«Pídalo ya»' },
+        ]}
+      />
+      <TextListField
+        id="organization-copy-examples"
+        label="Publicaciones de ejemplo"
+        items={draft.copyExamples}
+        onChange={(copyExamples) => onChange({ ...draft, copyExamples })}
+        max={3}
+        maxLength={600}
+        multiline
+        placeholder="Pega una publicación tuya que te guste cómo quedó."
+        duplicateMessage="Esta publicación ya está en la lista."
+        help="Hasta 3. La IA imita su voz y su ritmo, nunca copia sus frases."
+      />
     </div>
   );
 }

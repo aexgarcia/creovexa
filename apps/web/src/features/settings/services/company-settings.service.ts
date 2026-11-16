@@ -26,6 +26,9 @@ export interface Contact {
   instagram: string | null;
   address: string | null;
 }
+// Cómo escribe la marca en el copy (ADR-0029).
+export type EmojiStyle = 'NONE' | 'FEW' | 'EXPRESSIVE';
+export type AddressForm = 'TU' | 'USTED';
 // Versión clara del logo, para fondos oscuros, o isotipo.
 export type LogoVariant = 'dark-background' | 'icon';
 export interface OrganizationSettings {
@@ -44,6 +47,11 @@ export interface OrganizationSettings {
   contact: Contact | null;
   defaultLegalText: string | null;
   forbiddenWords: string[];
+  audience: string | null;
+  valueProps: string[];
+  emojiStyle: EmojiStyle;
+  addressForm: AddressForm;
+  copyExamples: string[];
   logoAssetId: string | null;
   logoUrl?: string | null;
   darkBackgroundLogoAssetId: string | null;
@@ -68,6 +76,11 @@ export interface UpdateOrganizationSettings {
   contact?: Partial<Contact> | null;
   defaultLegalText?: string | null;
   forbiddenWords?: string[];
+  audience?: string | null;
+  valueProps?: string[];
+  emojiStyle?: EmojiStyle;
+  addressForm?: AddressForm;
+  copyExamples?: string[];
 }
 export const companySettingsService = {
   async get(signal?: AbortSignal): Promise<OrganizationSettings> {
@@ -89,6 +102,11 @@ export const companySettingsService = {
       contact: input.contact,
       defaultLegalText: input.defaultLegalText,
       forbiddenWords: input.forbiddenWords,
+      audience: input.audience,
+      valueProps: input.valueProps,
+      emojiStyle: input.emojiStyle,
+      addressForm: input.addressForm,
+      copyExamples: input.copyExamples,
     };
     return resolveLogo(
       (

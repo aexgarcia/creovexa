@@ -8,6 +8,7 @@ import {
   MessageCircle,
   ShieldCheck,
   Globe,
+  Megaphone,
 } from 'lucide-react';
 import {
   useEffect,
@@ -39,6 +40,7 @@ import {
   BrandTypographyFields,
   BrandContactFields,
   BrandTextRulesFields,
+  BrandCopyFields,
   splitWords,
   type BrandVoiceDraft,
 } from './brand-voice-fields';
@@ -53,6 +55,11 @@ function voiceDraft(settings: OrganizationSettings): BrandVoiceDraft {
     contact: settings.contact ?? EMPTY_CONTACT,
     defaultLegalText: settings.defaultLegalText ?? '',
     forbiddenWords: settings.forbiddenWords.join(', '),
+    audience: settings.audience ?? '',
+    valueProps: settings.valueProps,
+    emojiStyle: settings.emojiStyle,
+    addressForm: settings.addressForm,
+    copyExamples: settings.copyExamples,
   };
 }
 
@@ -150,6 +157,11 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
         contact: voice.contact,
         defaultLegalText: voice.defaultLegalText.trim() || null,
         forbiddenWords: splitWords(voice.forbiddenWords),
+        audience: voice.audience.trim() || null,
+        valueProps: voice.valueProps,
+        emojiStyle: voice.emojiStyle,
+        addressForm: voice.addressForm,
+        copyExamples: voice.copyExamples,
         region,
         brandColors: colors,
       });
@@ -214,6 +226,7 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
   const sections = [
     { id: 'company', label: 'Empresa', icon: Building2 },
     { id: 'voice', label: 'Voz y estilo', icon: AlignLeft },
+    { id: 'copy', label: 'Cómo vendes', icon: Megaphone },
     { id: 'logos', label: 'Logos', icon: ImageIcon },
     { id: 'colors', label: 'Colores', icon: Palette },
     { id: 'contact', label: 'Contacto', icon: MessageCircle },
@@ -337,6 +350,15 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
               icon={AlignLeft}
             >
               <BrandTypographyFields draft={voice} onChange={setVoice} />
+            </FormSection>
+          </div>
+          <div id="settings-copy" className="scroll-mt-[var(--settings-sticky-offset)]">
+            <FormSection
+              title="Cómo vendes"
+              description="Orienta el texto que la IA escribe para tus publicaciones."
+              icon={Megaphone}
+            >
+              <BrandCopyFields draft={voice} onChange={setVoice} />
             </FormSection>
           </div>
           <div id="settings-logos" className="scroll-mt-[var(--settings-sticky-offset)]">
