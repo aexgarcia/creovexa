@@ -9,6 +9,7 @@ import { Campaign, type GenerationOperation } from '../../../domain/entities/cam
 import type { CampaignVersion } from '../../../domain/repositories/campaign.repository.js';
 import { GeneratedContent } from '../../../domain/entities/generated-content.js';
 import { CampaignObjective } from '../../../domain/campaign-objective.js';
+import { CopyChannel } from '../../../domain/copy-channel.js';
 import {
   CampaignStatus,
   CampaignFailureOrigin,
@@ -67,6 +68,7 @@ export class CampaignMapper {
       templateRevisionId: entityId(row.templateRevisionId),
       objective: CampaignObjective[row.objective],
       occasion: row.occasion,
+      channel: CopyChannel[row.channel],
       title: row.title,
       instructions: row.instructions,
       cta: row.cta,
@@ -116,6 +118,7 @@ export class CampaignMapper {
       templateRevisionId: campaign.templateRevisionId,
       objective: campaign.objective,
       occasion: campaign.occasion,
+      channel: campaign.channel,
       title: campaign.title,
       instructions: campaign.instructions,
       cta: campaign.cta,

@@ -36,6 +36,7 @@ import { RecordCampaignGenerationFailure } from '#app/modules/campaigns/applicat
 import { ApproveCampaign } from '#app/modules/campaigns/application/use-cases/approve-campaign';
 import { UpdateCampaignDraft } from '#app/modules/campaigns/application/use-cases/update-campaign-draft';
 import { CampaignObjective } from '#app/modules/campaigns/domain/campaign-objective';
+import { CopyChannel } from '#app/modules/campaigns/domain/copy-channel';
 import { CAMPAIGN_FINAL_ASSETS } from '#app/modules/campaigns/application/ports/campaign-final-assets';
 import { finalAssetsFake } from './support/final-assets-fake.js';
 import { CampaignResourceNotFoundError } from '#app/modules/campaigns/application/errors/campaign-resource-not-found.error';
@@ -209,9 +210,15 @@ describe('Campaign persistence (PostgreSQL)', () => {
       expectedVersion: 0,
       objective: CampaignObjective.LAUNCH,
       occasion: 'Aniversario',
+      channel: CopyChannel.WHATSAPP,
       promotion: { ...context.input.promotion, conditions: 'Solo en tienda', showDiscount: true },
     });
-    expect(edited).toMatchObject({ version: 1, objective: 'LAUNCH', occasion: 'Aniversario' });
+    expect(edited).toMatchObject({
+      version: 1,
+      objective: 'LAUNCH',
+      occasion: 'Aniversario',
+      channel: 'WHATSAPP',
+    });
     const loaded = (await campaigns.findById(
       context.selection.organizationId,
       context.selection.campaignId,
@@ -230,6 +237,7 @@ describe('Campaign persistence (PostgreSQL)', () => {
     expect(generated.generation!.snapshot).toMatchObject({
       objective: 'LAUNCH',
       occasion: 'Aniversario',
+      channel: 'WHATSAPP',
       organization: { region: { locale: 'es-PE' }, brandColors: null },
       product: { kind: 'SERVICE', keyAttributes: [], photoType: null },
       template: { design: { format: 'SQUARE' } },

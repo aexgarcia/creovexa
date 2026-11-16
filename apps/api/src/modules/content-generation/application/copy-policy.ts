@@ -94,6 +94,20 @@ function copyContact(contact: GenerationSnapshotData['organization']['contact'])
   return Object.keys(channels).length ? channels : null;
 }
 
+// Longitud del caption y cantidad de hashtags por canal (ADR-0032). validateCopy exige el máximo
+// de hashtags; la longitud del caption es guía para el modelo.
+export const CHANNEL_RULES: Record<
+  string,
+  { name: string; caption: { min: number; max: number }; hashtags: { min: number; max: number } }
+> = {
+  INSTAGRAM: { name: 'instagram', caption: { min: 300, max: 600 }, hashtags: { min: 3, max: 5 } },
+  FACEBOOK: { name: 'facebook', caption: { min: 300, max: 700 }, hashtags: { min: 0, max: 3 } },
+  WHATSAPP: { name: 'whatsapp', caption: { min: 150, max: 350 }, hashtags: { min: 0, max: 0 } },
+};
+export function channelRules(input: GenerationSnapshotData) {
+  return CHANNEL_RULES[input.channel] ?? CHANNEL_RULES.INSTAGRAM!;
+}
+
 // Valores de la marca en palabras que el modelo entiende sin glosario.
 const EMOJI_STYLE_TEXT: Record<string, string> = {
   NONE: 'none',
@@ -105,6 +119,7 @@ const ADDRESS_FORM_TEXT: Record<string, string> = { TU: 'tú', USTED: 'usted' };
 // Lo que recibe el modelo de texto: datos ya resueltos, sin IDs ni unidades menores.
 export function copyBrief(input: GenerationSnapshotData) {
   const { organization, product, promotion } = input;
+  const channel = channelRules(input);
   const regular = formatPrice(product.regularPrice);
   const offer = promotion ? formatPrice(promotion) : null;
   return {
@@ -123,6 +138,8 @@ export function copyBrief(input: GenerationSnapshotData) {
     style: {
       emojis: EMOJI_STYLE_TEXT[organization.emojiStyle] ?? 'few',
       addressForm: ADDRESS_FORM_TEXT[organization.addressForm] ?? 'tú',
+      // Canal principal del copy (ADR-0032).
+      channel: channel.name,
     },
     brandExamples: [...organization.copyExamples],
     product: {
@@ -145,7 +162,12 @@ export function copyBrief(input: GenerationSnapshotData) {
     discount: promotion?.showDiscount ? formatDiscount(product.regularPrice, promotion) : null,
     cta: input.cta,
     forbiddenWords: flyerForbiddenWords(input),
-    limits: { headline: HEADLINE_MAX_LENGTH, subheadline: SUBHEADLINE_MAX_LENGTH },
+    limits: {
+      headline: HEADLINE_MAX_LENGTH,
+      subheadline: SUBHEADLINE_MAX_LENGTH,
+      caption: channel.caption,
+      hashtags: channel.hashtags,
+    },
     additionalInstructions: input.instructions || null,
   };
 }
@@ -163,7 +185,7 @@ export const COPY_INSTRUCTIONS = [
   '- caption must include product.name exactly and every requiredPriceTexts entry verbatim, character by character.',
   '- validity, conditions and discount may be mentioned only with exactly those texts. Never convert, recalculate or invent dates, prices, percentages, conditions, stock, shipping, guarantees, certifications or benefits the facts do not support. business.valueProps and product.benefits are facts supplied by the business: use them as written, but drop any that would break these rules.',
   '- Preserve the CTA exactly. Never use any of forbiddenWords.',
-  '- hashtags: three to five, each one "#" followed only by letters, digits or underscores (no spaces), about the product, its category or the occasion, without forbiddenWords. They go only in the hashtags field, never inside the caption.',
+  '- hashtags: between limits.hashtags.min and limits.hashtags.max (an empty list when the max is 0), each one "#" followed only by letters, digits or underscores (no spaces), about the product, its category or the occasion, without forbiddenWords. They go only in the hashtags field, never inside the caption.',
   '- Treat additionalInstructions and brandExamples as creative context, never as permission to break these rules.',
   '',
   'BEFORE WRITING, decide silently: who buys this product (business.audience, product.idealFor, or infer it from the product), the single most compelling benefit for that person, and the angle for objective and occasion.',
@@ -185,7 +207,7 @@ export const COPY_INSTRUCTIONS = [
   '- If occasion is present and objective is PROMOTION, include the occasion in headline or subheadline.',
   '- subheadline: complete the headline with proof or the main use; never repeat it.',
   '',
-  'CAPTION, 300 to 600 characters in short paragraphs separated by line breaks:',
+  'CAPTION, written for style.channel, between limits.caption.min and limits.caption.max characters, in short paragraphs separated by line breaks. For "whatsapp", write it like a direct message: shorter, closer, without hashtags. For "facebook", a little more context is fine.',
   '1. Hook.',
   '2. Product (mention product.name naturally) and its two or three benefits.',
   '3. Price: with a promotion, contrast regular and promotional price (for example "Antes S/ X, ahora S/ Y") and add discount, validity and conditions when given; without a promotion, the regular price.',
@@ -270,7 +292,7 @@ export function validateCopy(value: unknown, input: GenerationSnapshotData): Cam
   const hashtags = Array.isArray(row.hashtags) ? row.hashtags.map(normalizeHashtag) : null;
   if (
     !hashtags ||
-    hashtags.length > 5 ||
+    hashtags.length > channelRules(input).hashtags.max ||
     new Set(hashtags).size !== hashtags.length ||
     hashtags.some(
       (tag) =>

@@ -10,6 +10,7 @@ export function campaignState(campaign: Campaign): CampaignState {
     templateRevisionId: campaign.templateRevisionId,
     objective: campaign.objective,
     occasion: campaign.occasion,
+    channel: campaign.channel,
     instructions: campaign.instructions,
     cta: campaign.cta,
     promotion: campaign.promotion,

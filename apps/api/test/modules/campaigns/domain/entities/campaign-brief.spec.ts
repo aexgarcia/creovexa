@@ -1,5 +1,6 @@
 import { Money, Currency } from '#app/domain/value-objects/money';
 import { CampaignObjective } from '#app/modules/campaigns/domain/campaign-objective';
+import { CopyChannel } from '#app/modules/campaigns/domain/copy-channel';
 import { Campaign } from '#app/modules/campaigns/domain/entities/campaign';
 import {
   InvalidCampaignError,
@@ -37,7 +38,17 @@ describe('Campaign brief', () => {
     expect(draft({ occasion: '   ' }).occasion).toBeNull();
   });
 
+  it('writes for Instagram by default and freezes the channel in the snapshot (ADR-0032)', () => {
+    expect(draft().channel).toBe(CopyChannel.INSTAGRAM);
+    const whatsapp = draft({ channel: CopyChannel.WHATSAPP });
+    expect(whatsapp.brief.channel).toBe('WHATSAPP');
+    expect(GenerationSnapshot.capture(resourcesFixture(), whatsapp.brief).data.channel).toBe(
+      'WHATSAPP',
+    );
+  });
+
   it.each([
+    [{ channel: 'TIKTOK' as CopyChannel }, 'channel'],
     [{ objective: 'SALE' as CampaignObjective }, 'objective'],
     [{ occasion: 'x'.repeat(61) }, 'occasion'],
     [{ instructions: 'x'.repeat(501) }, 'instructions'],

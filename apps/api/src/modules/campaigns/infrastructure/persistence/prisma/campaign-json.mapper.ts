@@ -2,6 +2,7 @@ import { entityId } from '#app/domain/entity-id';
 import { PublicationStatus } from '#app/domain/publication-status';
 import { Money } from '#app/domain/value-objects/money';
 import { CampaignObjective } from '../../../domain/campaign-objective.js';
+import { CopyChannel } from '../../../domain/copy-channel.js';
 import { InvalidCampaignError } from '../../../domain/errors/campaign.errors.js';
 import { GenerationSnapshot } from '../../../domain/value-objects/generation-snapshot.js';
 import { Promotion } from '../../../domain/value-objects/promotion.js';
@@ -76,6 +77,10 @@ export function readGenerationSnapshot(value: unknown): GenerationSnapshot {
     (value) => value === legacy(data, 'objective', CampaignObjective.PROMOTION),
   );
   if (!objective) throw new InvalidCampaignError('storedJson');
+  const channel = Object.values(CopyChannel).find(
+    (value) => value === legacy(data, 'channel', CopyChannel.INSTAGRAM),
+  );
+  if (!channel) throw new InvalidCampaignError('storedJson');
   return GenerationSnapshot.capture(
     {
       organization: {
@@ -149,6 +154,7 @@ export function readGenerationSnapshot(value: unknown): GenerationSnapshot {
     {
       objective,
       occasion: optionalString(legacy(data, 'occasion', null)),
+      channel,
       instructions: string(data.instructions),
       cta: string(data.cta),
       promotion: readPromotion(data.promotion),

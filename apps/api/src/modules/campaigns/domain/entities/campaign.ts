@@ -5,6 +5,7 @@ import {
   INSTRUCTIONS_MAX_LENGTH,
   OCCASION_MAX_LENGTH,
 } from '../campaign-objective.js';
+import { CopyChannel } from '../copy-channel.js';
 import {
   CampaignStatus,
   CampaignFailureOrigin,
@@ -33,6 +34,8 @@ export interface CampaignDetails {
   templateRevisionId: string;
   objective?: CampaignObjective;
   occasion?: string | null;
+  // Por defecto INSTAGRAM.
+  channel?: CopyChannel;
   instructions?: string;
   cta: string;
   promotion?: Promotion | null;
@@ -54,6 +57,7 @@ export interface CampaignState {
   templateRevisionId: EntityId;
   objective: CampaignObjective;
   occasion: string | null;
+  channel: CopyChannel;
   instructions: string;
   cta: string;
   promotion: Promotion | null;
@@ -93,6 +97,8 @@ function briefDetails(input: CampaignDetails, at: Date) {
   const objective = input.objective ?? CampaignObjective.PROMOTION;
   if (!Object.values(CampaignObjective).includes(objective))
     throw new InvalidCampaignError('objective');
+  const channel = input.channel ?? CopyChannel.INSTAGRAM;
+  if (!Object.values(CopyChannel).includes(channel)) throw new InvalidCampaignError('channel');
   const occasion =
     input.occasion == null
       ? null
@@ -104,6 +110,7 @@ function briefDetails(input: CampaignDetails, at: Date) {
     templateRevisionId: entityId(input.templateRevisionId, 'templateRevisionId'),
     objective,
     occasion,
+    channel,
     instructions: limited(
       text(input.instructions === undefined ? '' : input.instructions, 'instructions', false),
       'instructions',
@@ -518,6 +525,7 @@ export class Campaign {
       data.template.revisionId !== this.templateRevisionId ||
       data.objective !== this.objective ||
       data.occasion !== this.occasion ||
+      data.channel !== this.channel ||
       data.cta !== this.cta ||
       data.instructions !== this.instructions ||
       JSON.stringify(data.promotion) !== JSON.stringify(this.promotion?.toSnapshot() ?? null)
@@ -561,11 +569,15 @@ export class Campaign {
   get occasion(): string | null {
     return this.#state.occasion;
   }
+  get channel(): CopyChannel {
+    return this.#state.channel;
+  }
   /** Lo que la campaña aporta al snapshot de una generación. */
   get brief(): CampaignBrief {
     return {
       objective: this.objective,
       occasion: this.occasion,
+      channel: this.channel,
       instructions: this.instructions,
       cta: this.cta,
       promotion: this.promotion,

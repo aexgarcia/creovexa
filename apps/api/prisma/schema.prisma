@@ -156,6 +156,12 @@ enum CampaignStatus {
   FAILED
 }
 
+enum CopyChannel {
+  INSTAGRAM
+  FACEBOOK
+  WHATSAPP
+}
+
 enum CampaignObjective {
   PROMOTION
   LAUNCH
@@ -183,6 +189,7 @@ model Campaign {
   templateRevisionId       String                 @map("template_revision_id") @db.Uuid
   objective                CampaignObjective      @default(PROMOTION)
   occasion                 String?
+  channel                  CopyChannel            @default(INSTAGRAM)
   title                    String
   instructions             String
   cta                      String

@@ -3,6 +3,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Currency } from '#app/domain/value-objects/money';
 import { PaginationResponse } from '#app/presentation/http/pagination.dto';
 import { CampaignObjective } from '../domain/campaign-objective.js';
+import { CopyChannel } from '../domain/copy-channel.js';
 import { CampaignStatus } from '../domain/campaign-status.js';
 import type { CampaignResult } from '../application/campaign-result.js';
 
@@ -40,6 +41,7 @@ export class CampaignResponse {
   @ApiProperty({ enum: CampaignObjective, enumName: 'CampaignObjective' })
   objective!: CampaignObjective;
   @ApiProperty({ type: String, nullable: true }) occasion!: string | null;
+  @ApiProperty({ enum: CopyChannel, enumName: 'CopyChannel' }) channel!: CopyChannel;
   @ApiProperty({ type: String }) instructions!: string;
   @ApiProperty({ type: String }) cta!: string;
   @ApiProperty({ type: PromotionResponse, nullable: true }) promotion!: PromotionResponse | null;
@@ -91,6 +93,7 @@ export function campaignResponse(result: CampaignResult): CampaignResponse {
     title: result.title,
     objective: result.objective,
     occasion: result.occasion,
+    channel: result.channel,
     instructions: result.instructions,
     cta: result.cta,
     promotion: result.promotion ? { ...result.promotion } : null,

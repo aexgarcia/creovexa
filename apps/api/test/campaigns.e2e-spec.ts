@@ -123,12 +123,17 @@ describe('Campaign HTTP with real use cases', () => {
   it('edits a draft with its objective, occasion and promotion terms', async () => {
     const server = app.getHttpServer();
     const created = await request(server).post('/campaigns').send(body).expect(201);
-    expect(created.body.data).toMatchObject({ objective: 'PROMOTION', occasion: null });
+    expect(created.body.data).toMatchObject({
+      objective: 'PROMOTION',
+      occasion: null,
+      channel: 'INSTAGRAM',
+    });
     const id = created.body.data.id as string;
     const edit = {
       ...body,
       objective: 'LAUNCH',
       occasion: 'Navidad',
+      channel: 'FACEBOOK',
       promotion: { ...body.promotion, conditions: 'Solo en tienda', showDiscount: true },
       expectedVersion: 0,
     };
@@ -139,6 +144,7 @@ describe('Campaign HTTP with real use cases', () => {
     expect(edited.body.data).toMatchObject({
       objective: 'LAUNCH',
       occasion: 'Navidad',
+      channel: 'FACEBOOK',
       version: 1,
       promotion: { conditions: 'Solo en tienda', showDiscount: true },
     });

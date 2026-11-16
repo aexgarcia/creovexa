@@ -21,6 +21,7 @@ import {
   INSTRUCTIONS_MAX_LENGTH,
   OCCASION_MAX_LENGTH,
 } from '../domain/campaign-objective.js';
+import { CopyChannel } from '../domain/copy-channel.js';
 import { CONDITIONS_MAX_LENGTH } from '../domain/value-objects/promotion.js';
 
 export class ApproveCampaignRequest {
@@ -111,6 +112,15 @@ export class CreateCampaignRequest {
   @IsString()
   @MaxLength(OCCASION_MAX_LENGTH)
   occasion?: string | null;
+  @ApiPropertyOptional({
+    enum: CopyChannel,
+    enumName: 'CopyChannel',
+    description:
+      'Canal principal del copy: cambia la longitud del caption y los hashtags. Por defecto INSTAGRAM.',
+  })
+  @ValidateIf((_object, value: unknown) => value !== undefined)
+  @IsEnum(CopyChannel)
+  channel?: CopyChannel;
   @ApiPropertyOptional({
     type: String,
     maxLength: INSTRUCTIONS_MAX_LENGTH,

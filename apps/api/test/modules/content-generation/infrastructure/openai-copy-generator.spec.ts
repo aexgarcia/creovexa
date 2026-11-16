@@ -1,6 +1,7 @@
 import { OpenAICopyGenerator } from '#app/modules/content-generation/infrastructure/openai-copy-generator';
 import { domainFixture } from '../../../support/campaign-fakes.js';
 import { validCopy } from '../../../support/generation-fakes.js';
+import { CopyChannel } from '#app/modules/campaigns/domain/copy-channel';
 const input = domainFixture().snapshot.data;
 const copy = validCopy(input);
 const config = {
@@ -152,6 +153,26 @@ describe('OpenAICopyGenerator', () => {
       code: 'TIMEOUT',
     });
     expect(http).toHaveBeenCalledTimes(2);
+  });
+  it('limits the hashtags in the schema to the channel of the campaign', async () => {
+    const http = vi.fn<typeof fetch>().mockResolvedValue(
+      Response.json({
+        status: 'completed',
+        output: [
+          {
+            type: 'message',
+            content: [{ type: 'output_text', text: JSON.stringify({ ...copy, hashtags: [] }) }],
+          },
+        ],
+      }),
+    );
+    await new OpenAICopyGenerator(config, http).generate({
+      ...input,
+      channel: CopyChannel.WHATSAPP,
+    });
+    const sent = JSON.parse(http.mock.calls[0]![1]!.body as string);
+    expect(sent.text.format.schema.properties.hashtags.maxItems).toBe(0);
+    expect(JSON.parse(sent.input).style.channel).toBe('whatsapp');
   });
   it('does not call OpenAI when disabled', async () => {
     const http = vi.fn<typeof fetch>();

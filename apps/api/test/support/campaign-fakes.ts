@@ -18,6 +18,7 @@ import {
   type GenerationResources,
 } from '#app/modules/campaigns/domain/value-objects/generation-snapshot';
 import { CampaignObjective } from '#app/modules/campaigns/domain/campaign-objective';
+import { CopyChannel } from '#app/modules/campaigns/domain/copy-channel';
 import { DEFAULT_FLYER_DESIGN } from '#app/domain/value-objects/flyer-design';
 import type { CampaignLookups } from '#app/modules/campaigns/application/ports/campaign-lookups';
 import type {
@@ -121,7 +122,14 @@ export function briefOf(
   cta: string,
   promotion: Promotion | null,
 ): CampaignBrief {
-  return { objective: CampaignObjective.PROMOTION, occasion: null, instructions, cta, promotion };
+  return {
+    objective: CampaignObjective.PROMOTION,
+    occasion: null,
+    channel: CopyChannel.INSTAGRAM,
+    instructions,
+    cta,
+    promotion,
+  };
 }
 
 export function createInput() {

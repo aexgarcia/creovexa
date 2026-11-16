@@ -9,6 +9,7 @@ import {
 } from '#app/modules/content-generation/application/copy-policy';
 import { CopyGenerationError } from '#app/modules/content-generation/application/ports/copy-generator';
 import type { GenerationSnapshotData } from '#app/modules/campaigns/contract';
+import { CopyChannel } from '#app/modules/campaigns/domain/copy-channel';
 
 const snapshot = () => domainFixture().snapshot.data;
 // El mismo snapshot sin promoción: "oferta" y "descuento" dejan de ser verdad.
@@ -73,14 +74,27 @@ describe('copyBrief', () => {
       benefits: ['Despierta sin acidez'],
       idealFor: 'Quien madruga',
     });
-    expect(brief.style).toEqual({ emojis: 'expressive', addressForm: 'usted' });
+    expect(brief.style).toEqual({
+      emojis: 'expressive',
+      addressForm: 'usted',
+      channel: 'instagram',
+    });
     expect(brief.brandExamples).toEqual(['Su café de cada mañana ☕']);
   });
   it('defaults to few emojis and "tú" without brand voice', () => {
     const brief = copyBrief(snapshot());
-    expect(brief.style).toEqual({ emojis: 'few', addressForm: 'tú' });
+    expect(brief.style).toEqual({ emojis: 'few', addressForm: 'tú', channel: 'instagram' });
     expect(brief.brandExamples).toEqual([]);
     expect(brief.product.benefits).toEqual([]);
+  });
+  it.each([
+    ['INSTAGRAM', 'instagram', { min: 300, max: 600 }, { min: 3, max: 5 }],
+    ['FACEBOOK', 'facebook', { min: 300, max: 700 }, { min: 0, max: 3 }],
+    ['WHATSAPP', 'whatsapp', { min: 150, max: 350 }, { min: 0, max: 0 }],
+  ] as const)('writes for the %s channel (ADR-0032)', (channel, name, caption, hashtags) => {
+    const brief = copyBrief({ ...snapshot(), channel: CopyChannel[channel] });
+    expect(brief.style.channel).toBe(name);
+    expect(brief.limits).toMatchObject({ caption, hashtags });
   });
   it('adds the discount only when the campaign asks for it', () => {
     expect(copyBrief(snapshot()).discount).toBeNull();
@@ -159,6 +173,19 @@ describe('validateCopy', () => {
       );
     },
   );
+  it('applies the hashtag limit of the channel', () => {
+    const tags = ['#Cafe', '#Altura', '#Lima', '#Tueste'];
+    expect(validateCopy({ ...validCopy(), hashtags: tags }, snapshot()).hashtags).toEqual(tags);
+    const facebook = { ...snapshot(), channel: CopyChannel.FACEBOOK };
+    expect(() => validateCopy({ ...validCopy(), hashtags: tags }, facebook)).toThrow(
+      CopyGenerationError,
+    );
+    const whatsapp = { ...snapshot(), channel: CopyChannel.WHATSAPP };
+    expect(() => validateCopy({ ...validCopy(), hashtags: ['#Cafe'] }, whatsapp)).toThrow(
+      CopyGenerationError,
+    );
+    expect(validateCopy({ ...validCopy(), hashtags: [] }, whatsapp).hashtags).toEqual([]);
+  });
   it('rejects a missing subheadline field', () => {
     const rest: Partial<ReturnType<typeof validCopy>> = validCopy();
     delete rest.subheadline;

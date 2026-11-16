@@ -103,6 +103,7 @@ export class PrismaCampaignRepository implements CampaignRepository {
           templateRevisionId: data.templateRevisionId,
           objective: data.objective,
           occasion: data.occasion,
+          channel: data.channel,
           instructions: data.instructions,
           cta: data.cta,
           promotion: data.promotion,
@@ -139,6 +140,7 @@ export class PrismaCampaignRepository implements CampaignRepository {
           'templateRevisionId',
           'objective',
           'occasion',
+          'channel',
           'instructions',
           'cta',
         ] as const) {

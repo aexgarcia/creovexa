@@ -6,6 +6,7 @@ import {
   COPY_INSTRUCTIONS,
   HEADLINE_MAX_LENGTH,
   SUBHEADLINE_MAX_LENGTH,
+  channelRules,
   copyBrief,
   validateCopy,
 } from '../application/copy-policy.js';
@@ -80,7 +81,11 @@ export class GeminiCopyGenerator implements CopyGenerator {
           'Post caption. Include product.name exactly and every requiredPriceTexts entry verbatim.',
       },
       cta: { type: 'string', enum: [input.cta] },
-      hashtags: { type: 'array', items: { type: 'string' }, maxItems: 5 },
+      hashtags: {
+        type: 'array',
+        items: { type: 'string' },
+        maxItems: channelRules(input).hashtags.max,
+      },
     };
     const body = JSON.stringify({
       systemInstruction: {

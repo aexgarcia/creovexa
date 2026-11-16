@@ -25,6 +25,7 @@ export function campaignResult(campaign: Campaign) {
     title: campaign.title,
     objective: campaign.objective,
     occasion: campaign.occasion,
+    channel: campaign.channel,
     productId: campaign.productId as string,
     templateId: campaign.templateId as string,
     templateRevisionId: campaign.templateRevisionId as string,

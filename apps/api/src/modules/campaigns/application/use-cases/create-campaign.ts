@@ -2,6 +2,7 @@ import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
 import { Money } from '#app/domain/value-objects/money';
 import type { CampaignObjective } from '../../domain/campaign-objective.js';
+import type { CopyChannel } from '../../domain/copy-channel.js';
 import { Campaign } from '../../domain/entities/campaign.js';
 import type { CampaignRepository } from '../../domain/repositories/campaign.repository.js';
 import { Promotion } from '../../domain/value-objects/promotion.js';
@@ -26,6 +27,7 @@ export interface CampaignBriefInput extends CampaignReferences {
   title: string;
   objective?: CampaignObjective;
   occasion?: string | null;
+  channel?: CopyChannel;
   instructions?: string;
   cta: string;
   promotion?: PromotionInput | null;

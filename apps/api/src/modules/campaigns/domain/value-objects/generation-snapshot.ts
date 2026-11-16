@@ -2,6 +2,7 @@ import { entityId } from '#app/domain/entity-id';
 import { FlyerDesign } from '#app/domain/value-objects/flyer-design';
 import { Money } from '#app/domain/value-objects/money';
 import { CampaignObjective } from '../campaign-objective.js';
+import { CopyChannel } from '../copy-channel.js';
 import { InvalidCampaignError } from '../errors/campaign.errors.js';
 import { Promotion } from './promotion.js';
 
@@ -81,6 +82,8 @@ export interface GenerationResources {
 export interface CampaignBrief {
   objective: CampaignObjective;
   occasion: string | null;
+  // INSTAGRAM en snapshots anteriores (ADR-0032).
+  channel: CopyChannel;
   instructions: string;
   cta: string;
   promotion: Promotion | null;
@@ -165,6 +168,8 @@ function snapshotData(resources: GenerationResources, brief: CampaignBrief) {
   promotion?.assertCompatibleWith(price);
   if (!Object.values(CampaignObjective).includes(brief.objective))
     throw new InvalidCampaignError('objective');
+  if (!Object.values(CopyChannel).includes(brief.channel))
+    throw new InvalidCampaignError('channel');
   const template = resources.template;
   if (
     ![template.width, template.height, template.revisionNumber].every(
@@ -249,6 +254,7 @@ function snapshotData(resources: GenerationResources, brief: CampaignBrief) {
     }),
     objective: brief.objective,
     occasion: optionalText(brief.occasion, 'occasion'),
+    channel: brief.channel,
     instructions: text(brief.instructions, 'instructions', false),
     cta: text(brief.cta, 'cta'),
     promotion: promotion?.toSnapshot() ?? null,

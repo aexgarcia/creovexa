@@ -45,6 +45,7 @@ describe('Stored campaign JSON', () => {
     expect(snapshot).toMatchObject({
       objective: 'PROMOTION',
       occasion: null,
+      channel: 'INSTAGRAM',
       organization: {
         region: { country: 'PE', currency: 'PEN' },
         brandColors: null,
