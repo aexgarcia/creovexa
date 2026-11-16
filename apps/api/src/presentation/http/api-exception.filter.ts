@@ -7,6 +7,7 @@ import { CampaignAssetError } from '#app/modules/campaigns/application/errors/ca
 import { PublicationCampaignNotFoundError } from '#app/modules/publications/application/errors/publication-campaign-not-found.error';
 import { InvalidFlyerDesignError } from '#app/domain/value-objects/flyer-design';
 import { ProductImageError } from '#app/modules/products/application/errors/product-image.error';
+import { ProductSuggestionError } from '#app/modules/products/application/errors/product-suggestion.error';
 import { TemplateStyleReferenceError } from '#app/modules/templates/application/errors/template-style-reference.error';
 import { OrganizationLogoError } from '#app/modules/organizations/application/errors/organization-logo.error';
 import { StaleGenerationResultError } from '#app/modules/campaigns/domain/errors/campaign.errors';
@@ -101,6 +102,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
                 : 503;
       code =
         (error instanceof ProductImageError ? 'PRODUCT_IMAGE_' : 'ORGANIZATION_LOGO_') + error.code;
+      message = error.message;
+    } else if (error instanceof ProductSuggestionError) {
+      status = { UNAVAILABLE: 503, TIMEOUT: 504, INVALID_OUTPUT: 502, REFUSED: 502 }[error.code];
+      code = 'PRODUCT_SUGGESTION_' + error.code;
       message = error.message;
     } else if (error instanceof CampaignAssetError) {
       status = {

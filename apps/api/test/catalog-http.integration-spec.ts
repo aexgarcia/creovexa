@@ -954,6 +954,20 @@ describe('Catalog HTTP with PostgreSQL', () => {
       .expect(400);
   });
 
+  // Sin llamadas a la IA: el entorno puede tener una clave real (ADR-0031).
+  it('reports whether sales suggestions are available and validates before calling the AI', async () => {
+    const status = await request(app.getHttpServer())
+      .get('/products/sales-suggestions/status')
+      .expect(200);
+    expect(typeof status.body.data.available).toBe('boolean');
+    for (const body of [
+      { kind: 'PRODUCT' },
+      { kind: 'GIFT', name: 'Café' },
+      { kind: 'PRODUCT', name: 'Café', keyAttributes: ['1', '2', '3', '4', '5', '6'] },
+    ])
+      await request(app.getHttpServer()).post('/products/sales-suggestions').send(body).expect(400);
+  });
+
   it('persists the sales data of a product and the copy voice of the brand (ADR-0029)', async () => {
     const created = await request(app.getHttpServer())
       .post('/products')

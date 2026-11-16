@@ -1,4 +1,4 @@
-import { ApiProperty, ApiPropertyOptional, OmitType, PartialType } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, OmitType, PartialType, PickType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -142,3 +142,12 @@ export class UpdateProductRequest extends PartialType(
   OmitType(CreateProductRequest, ['kind'] as const),
   { skipNullProperties: false },
 ) {}
+// Datos del formulario para sugerir beneficios y «para quién es» (ADR-0031).
+export class SuggestSalesDataRequest extends PickType(CreateProductRequest, [
+  'kind',
+  'name',
+  'description',
+  'productBrand',
+  'keyAttributes',
+  'unit',
+] as const) {}

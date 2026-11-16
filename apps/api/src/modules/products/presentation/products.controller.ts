@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Inject,
   Param,
   ParseUUIDPipe,
@@ -40,11 +41,19 @@ import { GetProduct } from '../application/use-cases/get-product.js';
 import { ListProducts } from '../application/use-cases/list-products.js';
 import {
   CreateProductRequest,
+  SuggestSalesDataRequest,
   UpdateProductRequest,
   UploadProductImageRequest,
 } from './product.requests.js';
+import { SuggestProductSalesData } from '../application/use-cases/suggest-product-sales-data.js';
 import { PhotoType } from '../domain/photo-type.js';
-import { ProductEnvelope, ProductPageResponse, productResponse } from './product.responses.js';
+import {
+  ProductEnvelope,
+  ProductPageResponse,
+  SalesSuggestionEnvelope,
+  SalesSuggestionStatusEnvelope,
+  productResponse,
+} from './product.responses.js';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import type { Options } from 'multer';
@@ -68,7 +77,28 @@ export class ProductsController {
     @Inject(ListProducts) private readonly listProducts: ListProducts,
     @Inject(SaveProductImage) private readonly saveImage: SaveProductImage,
     @Inject(GetProductImage) private readonly getImage: GetProductImage,
+    @Inject(SuggestProductSalesData) private readonly suggestSalesData: SuggestProductSalesData,
   ) {}
+  // Antes de las rutas con :id, para que «sales-suggestions» no se lea como un ID.
+  @Get('sales-suggestions/status')
+  @ApiOperation({ summary: 'Saber si se pueden pedir sugerencias de datos de venta con IA' })
+  @ApiOkResponse({ type: SalesSuggestionStatusEnvelope })
+  suggestionStatus(): SalesSuggestionStatusEnvelope {
+    return { data: { available: this.suggestSalesData.available() } };
+  }
+  @Post('sales-suggestions')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Sugerir con IA beneficios y para quién es el producto, sin guardar nada (ADR-0031)',
+  })
+  @ApiBody({ type: SuggestSalesDataRequest })
+  @ApiOkResponse({ type: SalesSuggestionEnvelope })
+  async suggest(
+    @OrganizationId() organizationId: string,
+    @Body(validateRequest(SuggestSalesDataRequest)) body: SuggestSalesDataRequest,
+  ): Promise<SalesSuggestionEnvelope> {
+    return { data: await this.suggestSalesData.execute({ ...body, organizationId }) };
+  }
   @Post(':id/image')
   @ApiOperation({ summary: 'Subir o reemplazar la única imagen del producto/servicio' })
   @ApiConsumes('multipart/form-data')

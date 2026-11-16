@@ -45,6 +45,21 @@ export class OrganizationLookupFake implements OrganizationLookup {
   exists(id: EntityId): Promise<boolean> {
     return Promise.resolve(this.ids.includes(id));
   }
+
+  salesContext(id: EntityId) {
+    return Promise.resolve(
+      this.ids.includes(id)
+        ? {
+            name: 'Café Andino',
+            description: 'Cafetería de especialidad',
+            industry: 'Cafetería',
+            brandTone: 'Cercano',
+            audience: 'Oficinistas de Lima',
+            region: { country: 'PE', locale: 'es-PE' },
+          }
+        : null,
+    );
+  }
 }
 
 export class ProductRepositoryFake implements ProductRepository {

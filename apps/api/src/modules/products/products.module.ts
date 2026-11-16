@@ -1,4 +1,16 @@
-import { Module } from '@nestjs/common';
+import { ConsoleLogger, Module } from '@nestjs/common';
+import {
+  PRODUCT_SUGGESTIONS_CONFIG,
+  productSuggestionsConfigProvider,
+  type ProductSuggestionsConfig,
+} from '#app/config/product-suggestions.config';
+import {
+  PRODUCT_SALES_ADVISOR,
+  type ProductSalesAdvisor,
+} from './application/ports/product-sales-advisor.js';
+import { SuggestProductSalesData } from './application/use-cases/suggest-product-sales-data.js';
+import { GeminiSalesAdvisor } from './infrastructure/gemini-sales-advisor.js';
+import { OpenAISalesAdvisor } from './infrastructure/openai-sales-advisor.js';
 import { UpdateProductArchive } from './application/use-cases/update-product-archive.js';
 import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
@@ -28,6 +40,24 @@ import { ProductsController } from './presentation/products.controller.js';
   imports: [DatabaseModule, RuntimeModule, AssetsModule, HttpCommonModule, OrganizationsModule],
   controllers: [ProductsController],
   providers: [
+    productSuggestionsConfigProvider,
+    {
+      // Mismo proveedor que el copy (COPY_PROVIDER); sin respaldo automático entre proveedores.
+      provide: PRODUCT_SALES_ADVISOR,
+      inject: [PRODUCT_SUGGESTIONS_CONFIG],
+      useFactory: ({ enabled, provider }: ProductSuggestionsConfig): ProductSalesAdvisor => {
+        const logger = new ConsoleLogger('ProductSuggestions', { json: true });
+        return provider.provider === 'gemini'
+          ? new GeminiSalesAdvisor(enabled, provider.settings, fetch, logger)
+          : new OpenAISalesAdvisor(enabled, provider.settings, fetch, logger);
+      },
+    },
+    {
+      provide: SuggestProductSalesData,
+      inject: [PrismaOrganizationLookup, PRODUCT_SALES_ADVISOR],
+      useFactory: (organizations: PrismaOrganizationLookup, advisor: ProductSalesAdvisor) =>
+        new SuggestProductSalesData(organizations, advisor),
+    },
     {
       provide: UpdateProductArchive,
       inject: [PrismaProductRepository, CLOCK],

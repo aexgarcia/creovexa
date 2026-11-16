@@ -1,5 +1,8 @@
 import type { EntityId } from '#app/domain/entity-id';
-import type { OrganizationLookup as ProductOrganizationLookup } from '#app/modules/products/application/ports/organization-lookup';
+import type {
+  OrganizationLookup as ProductOrganizationLookup,
+  OrganizationSalesContext,
+} from '#app/modules/products/application/ports/organization-lookup';
 import type { OrganizationLookup as TemplateOrganizationLookup } from '#app/modules/templates/application/ports/organization-lookup';
 import type { PrismaClient } from './generated/client.js';
 
@@ -15,5 +18,23 @@ export class PrismaOrganizationLookup
         select: { id: true },
       })) !== null
     );
+  }
+
+  async salesContext(organizationId: EntityId): Promise<OrganizationSalesContext | null> {
+    const row = await this.client.organization.findUnique({
+      where: { id: organizationId },
+      select: {
+        name: true,
+        description: true,
+        industry: true,
+        brandTone: true,
+        audience: true,
+        country: true,
+        locale: true,
+      },
+    });
+    if (!row) return null;
+    const { country, locale, ...business } = row;
+    return { ...business, region: { country, locale } };
   }
 }

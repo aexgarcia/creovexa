@@ -74,3 +74,17 @@ export function productResponse(result: ProductResult): ProductResponse {
     archivedAt: result.archivedAt,
   };
 }
+export class SalesSuggestionResponse {
+  @ApiProperty({ type: [String], maxItems: 5 }) benefits!: string[];
+  @ApiProperty({ type: String, nullable: true, maxLength: 200 }) idealFor!: string | null;
+}
+export class SalesSuggestionEnvelope {
+  @ApiProperty({ type: SalesSuggestionResponse }) data!: SalesSuggestionResponse;
+}
+export class SalesSuggestionStatusResponse {
+  @ApiProperty({ type: Boolean, description: 'Si el despliegue permite pedir sugerencias.' })
+  available!: boolean;
+}
+export class SalesSuggestionStatusEnvelope {
+  @ApiProperty({ type: SalesSuggestionStatusResponse }) data!: SalesSuggestionStatusResponse;
+}
