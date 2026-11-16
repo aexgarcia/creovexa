@@ -18,7 +18,7 @@ describe('Stored campaign JSON', () => {
     const reversed = Object.fromEntries(Object.entries(data).reverse());
     expect(readGenerationSnapshot(reversed).equals(snapshot)).toBe(true);
   });
-  it('reads snapshots stored before the brand kit, the art direction and the brief', () => {
+  it('reads snapshots stored before the brand kit, the art direction, the brief and the sales data', () => {
     const data = domainFixture().snapshot.data;
     const legacy = {
       organization: {
@@ -45,8 +45,16 @@ describe('Stored campaign JSON', () => {
     expect(snapshot).toMatchObject({
       objective: 'PROMOTION',
       occasion: null,
-      organization: { region: { country: 'PE', currency: 'PEN' }, brandColors: null },
-      product: { kind: null, keyAttributes: [], photoType: null },
+      organization: {
+        region: { country: 'PE', currency: 'PEN' },
+        brandColors: null,
+        audience: null,
+        valueProps: [],
+        emojiStyle: 'FEW',
+        addressForm: 'TU',
+        copyExamples: [],
+      },
+      product: { kind: null, keyAttributes: [], photoType: null, benefits: [], idealFor: null },
       template: { design: null },
       promotion: { conditions: null, showDiscount: false },
     });

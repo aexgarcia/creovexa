@@ -15,6 +15,8 @@ export interface UpdateProductInput {
   productBrand?: string | null;
   keyAttributes?: readonly string[];
   unit?: string | null;
+  benefits?: readonly string[];
+  idealFor?: string | null;
   imageAssetIds?: readonly string[];
 }
 
@@ -44,6 +46,8 @@ export class UpdateProduct {
         productBrand: input.productBrand,
         keyAttributes: input.keyAttributes,
         unit: input.unit,
+        benefits: input.benefits,
+        idealFor: input.idealFor,
         imageAssetIds: input.imageAssetIds,
       },
       new Date(Math.max(this.clock.now().getTime(), product.updatedAt.getTime() + 1)),

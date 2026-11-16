@@ -66,6 +66,8 @@ describe('Product use cases', () => {
       productBrand: null,
       keyAttributes: [],
       unit: null,
+      benefits: [],
+      idealFor: null,
       imageAssetIds: [ASSET_ID],
       image: null,
       createdAt: CREATED_AT,

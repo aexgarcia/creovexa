@@ -2,7 +2,14 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Currency } from '#app/domain/value-objects/money';
 import type { OrganizationResult } from '../application/organization-result.js';
 import { BrandColorsRequest, ContactRequest } from './organization.requests.js';
-import { TYPOGRAPHIES, type Typography } from '../domain/value-objects/brand-voice.js';
+import {
+  ADDRESS_FORMS,
+  EMOJI_STYLES,
+  TYPOGRAPHIES,
+  type AddressForm,
+  type EmojiStyle,
+  type Typography,
+} from '../domain/value-objects/brand-voice.js';
 
 export class RegionResponse {
   @ApiProperty({ type: String, example: 'PE' }) country!: string;
@@ -41,6 +48,11 @@ export class OrganizationResponse {
   @ApiProperty({ type: ContactRequest, nullable: true }) contact!: ContactRequest | null;
   @ApiProperty({ type: String, nullable: true }) defaultLegalText!: string | null;
   @ApiProperty({ type: [String] }) forbiddenWords!: string[];
+  @ApiProperty({ type: String, nullable: true }) audience!: string | null;
+  @ApiProperty({ type: [String] }) valueProps!: string[];
+  @ApiProperty({ enum: EMOJI_STYLES }) emojiStyle!: EmojiStyle;
+  @ApiProperty({ enum: ADDRESS_FORMS }) addressForm!: AddressForm;
+  @ApiProperty({ type: [String] }) copyExamples!: string[];
   @ApiProperty({ type: String, format: 'uuid', nullable: true }) logoAssetId!: string | null;
   @ApiProperty({ type: String, nullable: true }) logoUrl!: string | null;
   @ApiProperty({

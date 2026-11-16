@@ -74,3 +74,25 @@ export function wordList(
 export const VISUAL_STYLE_LIMITS = { items: 5, length: 30 };
 export const FORBIDDEN_WORD_LIMITS = { items: 20, length: 40 };
 export const LEGAL_TEXT_MAX_LENGTH = 200;
+
+// Cómo escribe la marca en el copy (ADR-0029).
+export const EMOJI_STYLES = ['NONE', 'FEW', 'EXPRESSIVE'] as const;
+export type EmojiStyle = (typeof EMOJI_STYLES)[number];
+export const ADDRESS_FORMS = ['TU', 'USTED'] as const;
+export type AddressForm = (typeof ADDRESS_FORMS)[number];
+
+/** Valor de una lista cerrada; sin valor, el predeterminado. */
+export function choice<T extends string>(
+  value: unknown,
+  options: readonly T[],
+  fallback: T,
+  field: string,
+): T {
+  if (value == null) return fallback;
+  if (!options.includes(value as T)) throw new InvalidOrganizationProfileError(field);
+  return value as T;
+}
+
+export const AUDIENCE_MAX_LENGTH = 200;
+export const VALUE_PROP_LIMITS = { items: 3, length: 80 };
+export const COPY_EXAMPLE_LIMITS = { items: 3, length: 600 };

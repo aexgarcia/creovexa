@@ -19,6 +19,8 @@ export interface CreateProductInput {
   productBrand?: string | null;
   keyAttributes?: readonly string[];
   unit?: string | null;
+  benefits?: readonly string[];
+  idealFor?: string | null;
   imageAssetIds?: readonly string[];
 }
 
@@ -51,6 +53,8 @@ export class CreateProduct {
         productBrand: input.productBrand,
         keyAttributes: input.keyAttributes,
         unit: input.unit,
+        benefits: input.benefits,
+        idealFor: input.idealFor,
         imageAssetIds: input.imageAssetIds,
       },
       this.clock.now(),

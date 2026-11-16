@@ -33,6 +33,12 @@ export interface GenerationResources {
     } | null;
     defaultLegalText: string | null;
     forbiddenWords: readonly string[];
+    // Voz del copy (ADR-0029). En snapshots anteriores: null, [], FEW y TU.
+    audience: string | null;
+    valueProps: readonly string[];
+    emojiStyle: string;
+    addressForm: string;
+    copyExamples: readonly string[];
     logoAssetId: string | null;
     darkBackgroundLogoAssetId: string | null;
     iconAssetId: string | null;
@@ -50,6 +56,9 @@ export interface GenerationResources {
     description: string;
     keyAttributes: readonly string[];
     unit: string | null;
+    // Datos de venta (ADR-0029); [] y null en snapshots anteriores.
+    benefits: readonly string[];
+    idealFor: string | null;
     regularPrice: { amountMinor: number; currency: string };
     imageAssetIds: readonly string[];
     // De la foto actual; null si no hay foto o se subió antes de existir estos datos.
@@ -194,6 +203,11 @@ function snapshotData(resources: GenerationResources, brief: CampaignBrief) {
       contact: contact(organization.contact),
       defaultLegalText: optionalText(organization.defaultLegalText, 'defaultLegalText'),
       forbiddenWords: texts(organization.forbiddenWords, 'forbiddenWords'),
+      audience: optionalText(organization.audience, 'audience'),
+      valueProps: texts(organization.valueProps, 'valueProps'),
+      emojiStyle: text(organization.emojiStyle, 'emojiStyle'),
+      addressForm: text(organization.addressForm, 'addressForm'),
+      copyExamples: texts(organization.copyExamples, 'copyExamples'),
       logoAssetId: optionalId(organization.logoAssetId, 'logoAssetId'),
       darkBackgroundLogoAssetId: optionalId(
         organization.darkBackgroundLogoAssetId,
@@ -215,6 +229,8 @@ function snapshotData(resources: GenerationResources, brief: CampaignBrief) {
       description: text(product.description, 'product.description', false),
       keyAttributes: texts(product.keyAttributes, 'product.keyAttributes'),
       unit: optionalText(product.unit, 'product.unit'),
+      benefits: texts(product.benefits, 'product.benefits'),
+      idealFor: optionalText(product.idealFor, 'product.idealFor'),
       regularPrice: Object.freeze({ amountMinor: price.amountMinor, currency: price.currency }),
       imageAssetIds: Object.freeze(imageAssetIds),
       photoType: imageAssetIds.length ? optionalText(product.photoType, 'product.photoType') : null,

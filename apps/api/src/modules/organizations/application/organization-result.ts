@@ -1,7 +1,12 @@
 import type { Organization } from '../domain/entities/organization.js';
 import type { BrandColors } from '../domain/value-objects/brand-colors.js';
 import type { Region } from '../domain/value-objects/region.js';
-import type { Contact, Typography } from '../domain/value-objects/brand-voice.js';
+import type {
+  AddressForm,
+  Contact,
+  EmojiStyle,
+  Typography,
+} from '../domain/value-objects/brand-voice.js';
 
 export interface OrganizationResult {
   id: string;
@@ -17,6 +22,11 @@ export interface OrganizationResult {
   contact: Contact | null;
   defaultLegalText: string | null;
   forbiddenWords: string[];
+  audience: string | null;
+  valueProps: string[];
+  emojiStyle: EmojiStyle;
+  addressForm: AddressForm;
+  copyExamples: string[];
   logoAssetId: string | null;
   darkBackgroundLogoAssetId: string | null;
   iconAssetId: string | null;
@@ -43,6 +53,11 @@ export function organizationResult(organization: Organization): OrganizationResu
     contact: organization.contact && { ...organization.contact },
     defaultLegalText: organization.defaultLegalText,
     forbiddenWords: [...organization.forbiddenWords],
+    audience: organization.audience,
+    valueProps: [...organization.valueProps],
+    emojiStyle: organization.emojiStyle,
+    addressForm: organization.addressForm,
+    copyExamples: [...organization.copyExamples],
     logoAssetId: organization.logoAssetId,
     darkBackgroundLogoAssetId: organization.darkBackgroundLogoAssetId,
     iconAssetId: organization.iconAssetId,

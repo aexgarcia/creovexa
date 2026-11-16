@@ -954,6 +954,60 @@ describe('Catalog HTTP with PostgreSQL', () => {
       .expect(400);
   });
 
+  it('persists the sales data of a product and the copy voice of the brand (ADR-0029)', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/products')
+      .send({
+        ...productBody,
+        benefits: ['Despierta sin acidez', 'Rinde 60 tazas'],
+        idealFor: 'Quien toma café cada mañana',
+      })
+      .expect(201);
+    expect(created.body.data).toMatchObject({
+      benefits: ['Despierta sin acidez', 'Rinde 60 tazas'],
+      idealFor: 'Quien toma café cada mañana',
+    });
+    clock.value = LATER;
+    await request(app.getHttpServer())
+      .patch(`/products/${created.body.data.id}`)
+      .send({ idealFor: null })
+      .expect(200);
+    const product = await request(app.getHttpServer())
+      .get(`/products/${created.body.data.id}`)
+      .expect(200);
+    expect(product.body.data).toMatchObject({
+      benefits: ['Despierta sin acidez', 'Rinde 60 tazas'],
+      idealFor: null,
+    });
+    await request(app.getHttpServer())
+      .post('/products')
+      .send({ ...productBody, benefits: ['x'.repeat(121)] })
+      .expect(400);
+
+    await request(app.getHttpServer())
+      .patch('/organization')
+      .send({
+        audience: 'Oficinistas de Lima',
+        valueProps: ['Delivery en Lima'],
+        emojiStyle: 'NONE',
+        addressForm: 'USTED',
+        copyExamples: ['Su café de cada mañana, listo en minutos.'],
+      })
+      .expect(200);
+    const brand = await request(app.getHttpServer()).get('/organization').expect(200);
+    expect(brand.body.data).toMatchObject({
+      audience: 'Oficinistas de Lima',
+      valueProps: ['Delivery en Lima'],
+      emojiStyle: 'NONE',
+      addressForm: 'USTED',
+      copyExamples: ['Su café de cada mañana, listo en minutos.'],
+    });
+    await request(app.getHttpServer())
+      .patch('/organization')
+      .send({ emojiStyle: 'MANY' })
+      .expect(400);
+  });
+
   it('persists HTTP product creation, retrieval and partial editing', async () => {
     const created = await request(app.getHttpServer())
       .post('/products')

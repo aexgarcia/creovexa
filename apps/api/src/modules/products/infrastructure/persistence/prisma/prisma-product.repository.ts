@@ -111,6 +111,8 @@ export class PrismaProductRepository implements ProductRepository {
         productBrand: row.productBrand,
         keyAttributes: row.keyAttributes,
         unit: row.unit,
+        benefits: row.benefits,
+        idealFor: row.idealFor,
         imageAssetIds: row.imageAssetIds,
         updatedAt: row.updatedAt,
       },

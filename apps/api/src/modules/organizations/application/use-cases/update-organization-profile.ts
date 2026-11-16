@@ -4,7 +4,12 @@ import { OrganizationNotFoundError } from '../../domain/errors/organization.erro
 import type { OrganizationRepository } from '../../domain/repositories/organization.repository.js';
 import type { BrandColors } from '../../domain/value-objects/brand-colors.js';
 import type { RegionInput } from '../../domain/value-objects/region.js';
-import type { ContactInput, Typography } from '../../domain/value-objects/brand-voice.js';
+import type {
+  AddressForm,
+  ContactInput,
+  EmojiStyle,
+  Typography,
+} from '../../domain/value-objects/brand-voice.js';
 import { organizationResult, type OrganizationResult } from '../organization-result.js';
 
 export interface UpdateOrganizationProfileInput {
@@ -20,6 +25,11 @@ export interface UpdateOrganizationProfileInput {
   contact?: ContactInput | null;
   defaultLegalText?: string | null;
   forbiddenWords?: readonly string[];
+  audience?: string | null;
+  valueProps?: readonly string[];
+  emojiStyle?: EmojiStyle | null;
+  addressForm?: AddressForm | null;
+  copyExamples?: readonly string[];
   logoAssetId?: string | null;
   darkBackgroundLogoAssetId?: string | null;
   iconAssetId?: string | null;
@@ -49,6 +59,11 @@ export class UpdateOrganizationProfile {
         contact: input.contact,
         defaultLegalText: input.defaultLegalText,
         forbiddenWords: input.forbiddenWords,
+        audience: input.audience,
+        valueProps: input.valueProps,
+        emojiStyle: input.emojiStyle,
+        addressForm: input.addressForm,
+        copyExamples: input.copyExamples,
         logoAssetId: input.logoAssetId,
         darkBackgroundLogoAssetId: input.darkBackgroundLogoAssetId,
         iconAssetId: input.iconAssetId,

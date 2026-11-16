@@ -13,7 +13,14 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Currency } from '#app/domain/value-objects/money';
-import { TYPOGRAPHIES, type Typography } from '../domain/value-objects/brand-voice.js';
+import {
+  ADDRESS_FORMS,
+  EMOJI_STYLES,
+  TYPOGRAPHIES,
+  type AddressForm,
+  type EmojiStyle,
+  type Typography,
+} from '../domain/value-objects/brand-voice.js';
 
 const HEX = /^#[0-9A-Fa-f]{6}$/;
 const present = (_o: unknown, value: unknown) => value !== undefined;
@@ -159,4 +166,53 @@ export class UpdateOrganizationRequest {
   @IsString({ each: true })
   @MaxLength(40, { each: true })
   forbiddenWords?: string[];
+  @ApiPropertyOptional({
+    type: String,
+    maxLength: 200,
+    nullable: true,
+    description: 'El cliente típico de la marca. Orienta el copy.',
+  })
+  @ValidateIf(nullable)
+  @IsString()
+  @MaxLength(200)
+  audience?: string | null;
+  @ApiPropertyOptional({
+    type: [String],
+    maxItems: 3,
+    description:
+      'Lo que diferencia a la marca, de hasta 80 caracteres. El copy los usa como hechos.',
+  })
+  @ValidateIf(present)
+  @IsArray()
+  @ArrayMaxSize(3)
+  @IsString({ each: true })
+  @MaxLength(80, { each: true })
+  valueProps?: string[];
+  @ApiPropertyOptional({
+    enum: EMOJI_STYLES,
+    nullable: true,
+    description: 'Emojis en el copy. null vuelve al predeterminado, FEW.',
+  })
+  @ValidateIf(nullable)
+  @IsIn(EMOJI_STYLES)
+  emojiStyle?: EmojiStyle | null;
+  @ApiPropertyOptional({
+    enum: ADDRESS_FORMS,
+    nullable: true,
+    description: 'Tratamiento al lector. null vuelve al predeterminado, TU.',
+  })
+  @ValidateIf(nullable)
+  @IsIn(ADDRESS_FORMS)
+  addressForm?: AddressForm | null;
+  @ApiPropertyOptional({
+    type: [String],
+    maxItems: 3,
+    description: 'Hasta 3 publicaciones propias, de hasta 600 caracteres, para imitar la voz.',
+  })
+  @ValidateIf(present)
+  @IsArray()
+  @ArrayMaxSize(3)
+  @IsString({ each: true })
+  @MaxLength(600, { each: true })
+  copyExamples?: string[];
 }

@@ -22,6 +22,17 @@ enum Typography {
   HANDWRITTEN
 }
 
+enum EmojiStyle {
+  NONE
+  FEW
+  EXPRESSIVE
+}
+
+enum AddressForm {
+  TU
+  USTED
+}
+
 enum PhotoType {
   CUTOUT
   STUDIO
@@ -52,6 +63,11 @@ model Organization {
   contact                   Json?
   defaultLegalText          String?                 @map("default_legal_text")
   forbiddenWords            String[]                @default([]) @map("forbidden_words")
+  audience                  String?
+  valueProps                String[]                @default([]) @map("value_props")
+  emojiStyle                EmojiStyle              @default(FEW) @map("emoji_style")
+  addressForm               AddressForm             @default(TU) @map("address_form")
+  copyExamples              String[]                @default([]) @map("copy_examples")
   logoAssetId               String?                 @map("logo_asset_id") @db.Uuid
   darkBackgroundLogoAssetId String?                 @map("dark_background_logo_asset_id") @db.Uuid
   iconAssetId               String?                 @map("icon_asset_id") @db.Uuid
@@ -79,6 +95,8 @@ model Product {
   productBrand   String?             @map("product_brand")
   keyAttributes  String[]            @default([]) @map("key_attributes")
   unit           String?
+  benefits       String[]            @default([])
+  idealFor       String?             @map("ideal_for")
   imageAssetIds  String[]            @default([]) @map("image_asset_ids") @db.Uuid
   createdAt      DateTime            @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime            @map("updated_at") @db.Timestamptz(3)

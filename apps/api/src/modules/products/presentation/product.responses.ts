@@ -30,6 +30,8 @@ export class ProductResponse {
   @ApiProperty({ type: String, nullable: true }) productBrand!: string | null;
   @ApiProperty({ type: [String], maxItems: 5 }) keyAttributes!: string[];
   @ApiProperty({ type: String, nullable: true }) unit!: string | null;
+  @ApiProperty({ type: [String], maxItems: 5 }) benefits!: string[];
+  @ApiProperty({ type: String, nullable: true, maxLength: 200 }) idealFor!: string | null;
   @ApiProperty({ type: [String] }) imageAssetIds!: string[];
   @ApiProperty({ type: ProductImageResponse, nullable: true }) image!: ProductImageResponse | null;
   @ApiProperty({ type: String, nullable: true }) imageUrl!: string | null;
@@ -59,6 +61,8 @@ export function productResponse(result: ProductResult): ProductResponse {
     productBrand: result.productBrand,
     keyAttributes: [...result.keyAttributes],
     unit: result.unit,
+    benefits: [...result.benefits],
+    idealFor: result.idealFor,
     imageAssetIds: [...result.imageAssetIds],
     image: result.image && { ...result.image },
     imageUrl:

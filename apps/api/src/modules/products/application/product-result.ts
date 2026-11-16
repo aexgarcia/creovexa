@@ -14,6 +14,8 @@ export interface ProductResult {
   productBrand: string | null;
   keyAttributes: string[];
   unit: string | null;
+  benefits: string[];
+  idealFor: string | null;
   imageAssetIds: string[];
   image: { photoType: PhotoType | null; hasTransparency: boolean | null } | null;
   createdAt: string;
@@ -36,6 +38,8 @@ export function productResult(product: Product): ProductResult {
     productBrand: product.productBrand,
     keyAttributes: [...product.keyAttributes],
     unit: product.unit,
+    benefits: [...product.benefits],
+    idealFor: product.idealFor,
     imageAssetIds: [...product.imageAssetIds],
     image: product.imageTraits && { ...product.imageTraits },
     createdAt: product.createdAt.toISOString(),

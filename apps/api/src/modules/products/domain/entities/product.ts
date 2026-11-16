@@ -17,6 +17,10 @@ export interface ProductDetails {
   keyAttributes?: readonly string[];
   // Cómo se vende: "por kg", "por sesión", "c/u".
   unit?: string | null;
+  // Lo que gana el cliente, escrito por el negocio; el copy los usa como hechos (ADR-0029).
+  benefits?: readonly string[];
+  // Quién lo compra y para qué.
+  idealFor?: string | null;
   imageAssetIds?: readonly string[];
 }
 
@@ -33,6 +37,8 @@ interface ProductState {
   productBrand: string | null;
   keyAttributes: readonly string[];
   unit: string | null;
+  benefits: readonly string[];
+  idealFor: string | null;
   imageAssetIds: readonly EntityId[];
   imageTraits: ProductImageTraits | null;
   createdAt: number;
@@ -43,6 +49,9 @@ interface ProductState {
 export const SHORT_NAME_MAX_LENGTH = 40;
 export const KEY_ATTRIBUTES_MAX = 5;
 const KEY_ATTRIBUTE_MAX_LENGTH = 60;
+export const BENEFITS_MAX = 5;
+const BENEFIT_MAX_LENGTH = 120;
+const IDEAL_FOR_MAX_LENGTH = 200;
 const PRODUCT_BRAND_MAX_LENGTH = 80;
 const UNIT_MAX_LENGTH = 30;
 
@@ -52,17 +61,17 @@ function optionalText(value: unknown, field: string, max: number): string | null
   return value.trim() || null;
 }
 
-function keyAttributes(value: unknown): readonly string[] {
+// Lista de textos sin vacíos ni repetidos (sin distinguir mayúsculas).
+function textList(value: unknown, field: string, items: number, length: number): readonly string[] {
   if (value === undefined) return Object.freeze([]);
-  if (!Array.isArray(value) || value.length > KEY_ATTRIBUTES_MAX)
-    throw new InvalidProductError('keyAttributes');
+  if (!Array.isArray(value) || value.length > items) throw new InvalidProductError(field);
   const list = value.map((item) => {
-    if (typeof item !== 'string' || !item.trim() || item.trim().length > KEY_ATTRIBUTE_MAX_LENGTH)
-      throw new InvalidProductError('keyAttributes');
+    if (typeof item !== 'string' || !item.trim() || item.trim().length > length)
+      throw new InvalidProductError(field);
     return item.trim();
   });
   if (new Set(list.map((item) => item.toLocaleLowerCase('es'))).size !== list.length)
-    throw new InvalidProductError('keyAttributes');
+    throw new InvalidProductError(field);
   return Object.freeze(list);
 }
 
@@ -87,8 +96,15 @@ function details(input: ProductDetails) {
     regularPrice: input.regularPrice,
     shortName: optionalText(input.shortName, 'shortName', SHORT_NAME_MAX_LENGTH),
     productBrand: optionalText(input.productBrand, 'productBrand', PRODUCT_BRAND_MAX_LENGTH),
-    keyAttributes: keyAttributes(input.keyAttributes),
+    keyAttributes: textList(
+      input.keyAttributes,
+      'keyAttributes',
+      KEY_ATTRIBUTES_MAX,
+      KEY_ATTRIBUTE_MAX_LENGTH,
+    ),
     unit: optionalText(input.unit, 'unit', UNIT_MAX_LENGTH),
+    benefits: textList(input.benefits, 'benefits', BENEFITS_MAX, BENEFIT_MAX_LENGTH),
+    idealFor: optionalText(input.idealFor, 'idealFor', IDEAL_FOR_MAX_LENGTH),
     imageAssetIds: Object.freeze(normalizedIds),
   };
 }
@@ -154,6 +170,8 @@ export class Product {
       keyAttributes:
         changes.keyAttributes === undefined ? this.keyAttributes : changes.keyAttributes,
       unit: changes.unit === undefined ? this.unit : changes.unit,
+      benefits: changes.benefits === undefined ? this.benefits : changes.benefits,
+      idealFor: changes.idealFor === undefined ? this.idealFor : changes.idealFor,
       imageAssetIds:
         changes.imageAssetIds === undefined ? this.imageAssetIds : changes.imageAssetIds,
     });
@@ -211,6 +229,12 @@ export class Product {
   }
   get unit(): string | null {
     return this.#state.unit;
+  }
+  get benefits(): readonly string[] {
+    return this.#state.benefits;
+  }
+  get idealFor(): string | null {
+    return this.#state.idealFor;
   }
   get imageAssetIds(): readonly EntityId[] {
     return this.#state.imageAssetIds;

@@ -100,6 +100,28 @@ export class CreateProductRequest {
   unit?: string | null;
   @ApiPropertyOptional({
     type: [String],
+    maxItems: 5,
+    description:
+      'Hasta 5 beneficios para el cliente, escritos por el negocio. El copy los usa como hechos.',
+  })
+  @ValidateIf((_object, value: unknown) => value !== undefined)
+  @IsArray()
+  @ArrayMaxSize(5)
+  @IsString({ each: true })
+  @MaxLength(120, { each: true })
+  benefits?: string[];
+  @ApiPropertyOptional({
+    type: String,
+    maxLength: 200,
+    nullable: true,
+    description: 'Quién lo compra y para qué.',
+  })
+  @ValidateIf(nullableText)
+  @IsString()
+  @MaxLength(200)
+  idealFor?: string | null;
+  @ApiPropertyOptional({
+    type: [String],
     maxItems: 1,
     uniqueItems: true,
     description: 'Una imagen del producto/servicio; [] para retirarla.',

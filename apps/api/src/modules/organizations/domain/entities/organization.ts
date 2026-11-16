@@ -4,14 +4,22 @@ import { InvalidOrganizationProfileError } from '../errors/organization.errors.j
 import { brandColors, type BrandColors, type LogoTraits } from '../value-objects/brand-colors.js';
 import { DEFAULT_REGION, region, type Region, type RegionInput } from '../value-objects/region.js';
 import {
+  ADDRESS_FORMS,
+  AUDIENCE_MAX_LENGTH,
+  COPY_EXAMPLE_LIMITS,
+  EMOJI_STYLES,
   FORBIDDEN_WORD_LIMITS,
+  VALUE_PROP_LIMITS,
+  choice,
   LEGAL_TEXT_MAX_LENGTH,
   VISUAL_STYLE_LIMITS,
   contact,
   typography,
   wordList,
+  type AddressForm,
   type Contact,
   type ContactInput,
+  type EmojiStyle,
   type Typography,
 } from '../value-objects/brand-voice.js';
 
@@ -31,6 +39,13 @@ export interface OrganizationProfile {
   defaultLegalText?: string | null;
   // Palabras que el flyer nunca debe usar; se suman a las del sistema.
   forbiddenWords?: readonly string[];
+  // Voz del copy (ADR-0029): cliente típico, diferenciales, emojis, tratamiento y ejemplos propios.
+  audience?: string | null;
+  valueProps?: readonly string[];
+  // Sin valor: FEW y TU.
+  emojiStyle?: EmojiStyle | null;
+  addressForm?: AddressForm | null;
+  copyExamples?: readonly string[];
   logoAssetId?: string | null;
   // Versión clara del logo, para fondos oscuros.
   darkBackgroundLogoAssetId?: string | null;
@@ -53,6 +68,11 @@ interface OrganizationState {
   contact: Contact | null;
   defaultLegalText: string | null;
   forbiddenWords: readonly string[];
+  audience: string | null;
+  valueProps: readonly string[];
+  emojiStyle: EmojiStyle;
+  addressForm: AddressForm;
+  copyExamples: readonly string[];
   logoAssetId: EntityId | null;
   darkBackgroundLogoAssetId: EntityId | null;
   iconAssetId: EntityId | null;
@@ -97,6 +117,11 @@ function profile(input: OrganizationProfile, base: Region = DEFAULT_REGION) {
       LEGAL_TEXT_MAX_LENGTH,
     ),
     forbiddenWords: wordList(input.forbiddenWords, 'forbiddenWords', FORBIDDEN_WORD_LIMITS),
+    audience: optionalText(input.audience, 'audience', AUDIENCE_MAX_LENGTH),
+    valueProps: wordList(input.valueProps, 'valueProps', VALUE_PROP_LIMITS),
+    emojiStyle: choice(input.emojiStyle, EMOJI_STYLES, 'FEW', 'emojiStyle'),
+    addressForm: choice(input.addressForm, ADDRESS_FORMS, 'TU', 'addressForm'),
+    copyExamples: wordList(input.copyExamples, 'copyExamples', COPY_EXAMPLE_LIMITS),
     logoAssetId: input.logoAssetId == null ? null : entityId(input.logoAssetId, 'logoAssetId'),
     darkBackgroundLogoAssetId:
       input.darkBackgroundLogoAssetId == null
@@ -151,6 +176,11 @@ export class Organization {
         contact: keep(changes.contact, this.contact),
         defaultLegalText: keep(changes.defaultLegalText, this.defaultLegalText),
         forbiddenWords: keep(changes.forbiddenWords, this.forbiddenWords),
+        audience: keep(changes.audience, this.audience),
+        valueProps: keep(changes.valueProps, this.valueProps),
+        emojiStyle: keep(changes.emojiStyle, this.emojiStyle),
+        addressForm: keep(changes.addressForm, this.addressForm),
+        copyExamples: keep(changes.copyExamples, this.copyExamples),
         logoAssetId: keep(changes.logoAssetId, this.logoAssetId),
         darkBackgroundLogoAssetId: keep(
           changes.darkBackgroundLogoAssetId,
@@ -209,6 +239,21 @@ export class Organization {
   }
   get forbiddenWords(): readonly string[] {
     return this.#state.forbiddenWords;
+  }
+  get audience(): string | null {
+    return this.#state.audience;
+  }
+  get valueProps(): readonly string[] {
+    return this.#state.valueProps;
+  }
+  get emojiStyle(): EmojiStyle {
+    return this.#state.emojiStyle;
+  }
+  get addressForm(): AddressForm {
+    return this.#state.addressForm;
+  }
+  get copyExamples(): readonly string[] {
+    return this.#state.copyExamples;
   }
   get logoAssetId(): EntityId | null {
     return this.#state.logoAssetId;

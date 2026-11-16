@@ -51,6 +51,37 @@ describe('copyBrief', () => {
       copyBrief({ ...data, organization: { ...data.organization, contact: null } }).contact,
     ).toBeNull();
   });
+  it('sends the sales data and the brand voice in words the model understands', () => {
+    const data = snapshot();
+    const brief = copyBrief({
+      ...data,
+      organization: {
+        ...data.organization,
+        audience: 'Oficinistas de Lima',
+        valueProps: ['Delivery en Lima'],
+        emojiStyle: 'EXPRESSIVE',
+        addressForm: 'USTED',
+        copyExamples: ['Su café de cada mañana ☕'],
+      },
+      product: { ...data.product, benefits: ['Despierta sin acidez'], idealFor: 'Quien madruga' },
+    });
+    expect(brief.business).toMatchObject({
+      audience: 'Oficinistas de Lima',
+      valueProps: ['Delivery en Lima'],
+    });
+    expect(brief.product).toMatchObject({
+      benefits: ['Despierta sin acidez'],
+      idealFor: 'Quien madruga',
+    });
+    expect(brief.style).toEqual({ emojis: 'expressive', addressForm: 'usted' });
+    expect(brief.brandExamples).toEqual(['Su café de cada mañana ☕']);
+  });
+  it('defaults to few emojis and "tú" without brand voice', () => {
+    const brief = copyBrief(snapshot());
+    expect(brief.style).toEqual({ emojis: 'few', addressForm: 'tú' });
+    expect(brief.brandExamples).toEqual([]);
+    expect(brief.product.benefits).toEqual([]);
+  });
   it('adds the discount only when the campaign asks for it', () => {
     expect(copyBrief(snapshot()).discount).toBeNull();
     const data = snapshot();
