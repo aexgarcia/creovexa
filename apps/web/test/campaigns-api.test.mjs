@@ -29,7 +29,8 @@ test('requesting the flyer pins the reviewed copy generation and returns at once
     calls++;
     assert.ok(url.endsWith('/campaigns/campaign%2F1/image'));
     assert.equal(options.method, 'POST');
-    assert.deepEqual(JSON.parse(options.body), { generationId: 'generation-1' });
+    // Calidad estándar por defecto (ADR-0033).
+    assert.deepEqual(JSON.parse(options.body), { generationId: 'generation-1', quality: 'LOW' });
     return Response.json(
       {
         data: {

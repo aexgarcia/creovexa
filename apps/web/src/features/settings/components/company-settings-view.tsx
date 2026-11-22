@@ -9,7 +9,9 @@ import {
   ShieldCheck,
   Globe,
   Megaphone,
+  Gauge,
 } from 'lucide-react';
+import { PlanUsageSummary } from '@/features/plan/components/plan-usage';
 import {
   useEffect,
   useLayoutEffect,
@@ -225,6 +227,7 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
   );
   const sections = [
     { id: 'company', label: 'Empresa', icon: Building2 },
+    { id: 'plan', label: 'Plan y uso', icon: Gauge },
     { id: 'voice', label: 'Voz y estilo', icon: AlignLeft },
     { id: 'copy', label: 'Cómo vendes', icon: Megaphone },
     { id: 'logos', label: 'Logos', icon: ImageIcon },
@@ -341,6 +344,15 @@ function OrganizationForm({ settings }: { settings: OrganizationSettings }) {
                   />
                 </div>
               </div>
+            </FormSection>
+          </div>
+          <div id="settings-plan" className="scroll-mt-[var(--settings-sticky-offset)]">
+            <FormSection
+              title="Plan y uso"
+              description="Lo que incluye tu plan y cuánto llevas usado este mes."
+              icon={Gauge}
+            >
+              <PlanUsageSummary />
             </FormSection>
           </div>
           <div id="settings-voice" className="scroll-mt-[var(--settings-sticky-offset)]">

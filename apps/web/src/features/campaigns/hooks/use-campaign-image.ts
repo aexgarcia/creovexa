@@ -17,11 +17,14 @@ export function useCampaignImage(id: string, enabled: boolean) {
     refetchInterval: (current) => (isInProgress(current.state.data) ? GENERATION_POLL_MS : false),
   });
   const request = useMutation({
-    mutationFn: (generationId: string) => campaignApi.generateImage(id, generationId),
+    mutationFn: ({ generationId, quality }: { generationId: string; quality: 'LOW' | 'MEDIUM' }) =>
+      campaignApi.generateImage(id, generationId, quality),
     retry: false,
     onSuccess: (result) => {
       client.setQueryData(queryKey, result);
     },
+    // Consumió (o intentó consumir) cupo del plan.
+    onSettled: () => client.invalidateQueries({ queryKey: ['plan'] }),
   });
   const ready = status.data?.status === 'READY';
   // El flyer terminado pasa a ser el contenido candidato de la campaña: recarga la campaña una vez.

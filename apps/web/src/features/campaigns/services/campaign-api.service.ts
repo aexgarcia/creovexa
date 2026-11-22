@@ -71,10 +71,15 @@ export const campaignApi = {
     );
   },
   // Solo pide el flyer; la API responde de inmediato y lo compone en segundo plano.
-  async generateImage(id: string, generationId: string): Promise<CampaignImageStatus> {
+  // quality: LOW por defecto; MEDIUM consume 3 flyers del plan (ADR-0033).
+  async generateImage(
+    id: string,
+    generationId: string,
+    quality: 'LOW' | 'MEDIUM' = 'LOW',
+  ): Promise<CampaignImageStatus> {
     const result = await apiRequest<{ data: CampaignImageStatus }>(
       `/campaigns/${encodeURIComponent(id)}/image`,
-      { method: 'POST', body: JSON.stringify({ generationId }) },
+      { method: 'POST', body: JSON.stringify({ generationId, quality }) },
     );
     return resolveImageStatus(result.data);
   },

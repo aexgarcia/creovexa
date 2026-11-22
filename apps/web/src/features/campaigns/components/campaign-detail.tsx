@@ -33,6 +33,14 @@ import { useCampaignImage } from '../hooks/use-campaign-image';
 import { failureMessage, isInProgress } from '../types/generation-job';
 import { CampaignVersions } from './campaign-versions';
 import { useRegenerateStoredCampaign } from '../hooks/use-campaign-versions';
+import { usePlan, useRefreshPlan } from '@/features/plan/hooks/use-plan';
+import {
+  formatReset,
+  imageUnits,
+  nextReset,
+  remaining,
+  type ImageQuality,
+} from '@/features/plan/types/plan.types';
 
 function dateLabel(value: string) {
   return new Date(value).toLocaleDateString('es-PE', {
@@ -65,6 +73,10 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
     message: string;
   } | null>(null);
   const regenerate = useRegenerateStoredCampaign(campaignId);
+  // Cupos del plan (ADR-0033): solo informan; la API aplica los límites.
+  const plan = usePlan();
+  const refreshPlan = useRefreshPlan();
+  const [quality, setQuality] = useState<ImageQuality>('LOW');
   if (isLoading)
     return (
       <div role="status" className="space-y-6">
@@ -104,6 +116,8 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
       !copyBusy &&
       !flyerBusy &&
       (copyJob?.status === 'FAILED' || flyerJob?.status === 'FAILED'));
+  const flyersLeft = plan.data ? remaining(plan.data, 'IMAGE') : null;
+  const copiesLeft = plan.data ? remaining(plan.data, 'COPY') : null;
   const canChangeVersion = ['PENDING_APPROVAL', 'APPROVED', 'FAILED', 'GENERATING'].includes(
     campaign.status,
   );
@@ -124,7 +138,7 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
     if (!copyReady || content || flyerRequesting.current || flyerBusy) return;
     flyerRequesting.current = true;
     try {
-      await flyer.request.mutateAsync(copyReady.generationId);
+      await flyer.request.mutateAsync({ generationId: copyReady.generationId, quality });
     } catch {
       /* El error seguro se muestra debajo. */
     } finally {
@@ -198,7 +212,9 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
               {!content && ['DRAFT', 'GENERATING'].includes(campaign.status) && !copyReady && (
                 <Button
                   disabled={copyBusy || copy.isPending || Boolean(copy.error) || isFetching}
-                  onClick={() => generate.mutate()}
+                  onClick={() =>
+                    generate.mutate(undefined, { onSettled: () => void refreshPlan() })
+                  }
                 >
                   {copyBusy ? (
                     <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
@@ -214,7 +230,12 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
               )}
               {!content && copyReady && campaign.status === 'GENERATING' && (
                 <Button
-                  disabled={flyerBusy || isFetching || Boolean(copy.error)}
+                  disabled={
+                    flyerBusy ||
+                    isFetching ||
+                    Boolean(copy.error) ||
+                    (flyersLeft !== null && flyersLeft < imageUnits(quality))
+                  }
                   onClick={() => void handleGenerateFlyer()}
                 >
                   {flyerBusy ? (
@@ -243,7 +264,9 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
                   variant="outline"
                   disabled={regenerate.isPending || isFetching}
                   aria-describedby="campaign-regenerate-help"
-                  onClick={() => regenerate.mutate()}
+                  onClick={() =>
+                    regenerate.mutate(undefined, { onSettled: () => void refreshPlan() })
+                  }
                 >
                   {regenerate.isPending ? (
                     <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
@@ -257,6 +280,38 @@ export function CampaignDetail({ campaignId }: { campaignId: string }) {
                 <Send className="size-4" /> Publicar
               </Button>
             </div>
+            {plan.data && !content && copyReady && campaign.status === 'GENERATING' && (
+              <div className="space-y-2">
+                {plan.data.plan.imageQualities.includes('MEDIUM') && (
+                  <div className="space-y-1">
+                    <label htmlFor="flyer-quality" className="text-xs font-medium">
+                      Calidad del flyer
+                    </label>
+                    <select
+                      id="flyer-quality"
+                      className="h-9 w-full rounded-[10px] border border-input bg-control px-2 text-sm"
+                      value={quality}
+                      disabled={flyerBusy}
+                      onChange={(event) => setQuality(event.target.value as ImageQuality)}
+                    >
+                      <option value="LOW">Estándar (1 flyer)</option>
+                      <option value="MEDIUM">Media, más detalle (cuenta como 3)</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
+            {plan.data && (
+              <p className="text-xs text-muted-foreground" aria-live="polite">
+                {flyersLeft! > 0
+                  ? `Te quedan ${flyersLeft} flyers hoy`
+                  : `Sin flyers disponibles hasta el ${formatReset(nextReset(plan.data, 'IMAGE'))}`}
+                {' · '}
+                {copiesLeft! > 0
+                  ? `${copiesLeft} textos este mes.`
+                  : `sin textos hasta el ${formatReset(nextReset(plan.data, 'COPY'))}.`}
+              </p>
+            )}
             <p id="campaign-pending-actions" className="text-xs text-muted-foreground">
               Publicar: próximamente.
             </p>
