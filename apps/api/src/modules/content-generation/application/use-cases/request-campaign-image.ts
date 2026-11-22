@@ -12,6 +12,8 @@ import {
   type ImagePreconditionPorts,
 } from '../image-generation-preconditions.js';
 import type { CampaignImageRepository } from '../ports/campaign-image-repository.js';
+import { AiUsageKind, type AiQuota, type ImageQuality } from '#app/modules/plans/contract';
+import { ImageGenerationError } from '../errors/image-generation.error.js';
 
 export interface CampaignImageStatus {
   generationId: string;
@@ -29,9 +31,15 @@ export class RequestCampaignImage {
     private readonly images: CampaignImageRepository,
     private readonly queue: JobQueue,
     private readonly transactions: UnitOfWork,
+    private readonly quota: AiQuota,
   ) {}
 
-  async execute(input: CampaignReference & { generationId: string }): Promise<CampaignImageStatus> {
+  async execute(
+    input: CampaignReference & { generationId: string; quality?: ImageQuality },
+  ): Promise<CampaignImageStatus> {
+    const quality = input.quality ?? 'LOW';
+    if (!this.ports.generator.supportsQuality(quality))
+      throw new ImageGenerationError('UNSUPPORTED_QUALITY');
     // Responde ahora los fallos previsibles, en vez de esperar a que falle el trabajo.
     const ready = await checkImagePreconditions(this.ports, input);
     if (ready.done)
@@ -43,9 +51,18 @@ export class RequestCampaignImage {
       };
     const { selection, campaign, now } = ready;
     await this.transactions.run(async (transaction) => {
-      await this.images.queue(selection, campaign.version, now, transaction);
+      // Solo un intento nuevo consume (ADR-0033).
+      if (await this.images.queue(selection, campaign.version, now, transaction))
+        await this.quota.consume(selection.organizationId, AiUsageKind.IMAGE, {
+          quality,
+          transaction,
+        });
       await this.queue.enqueue(
-        { name: GENERATE_IMAGE_JOB, key: selection.generationId, payload: { ...selection } },
+        {
+          name: GENERATE_IMAGE_JOB,
+          key: selection.generationId,
+          payload: { ...selection, quality },
+        },
         transaction,
       );
     });

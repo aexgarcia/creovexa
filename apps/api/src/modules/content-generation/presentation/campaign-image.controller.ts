@@ -15,9 +15,10 @@ import {
   ApiOperation,
   ApiOkResponse,
   ApiProperty,
+  ApiPropertyOptional,
   ApiTags,
 } from '@nestjs/swagger';
-import { IsUUID } from 'class-validator';
+import { IsIn, IsOptional, IsUUID } from 'class-validator';
 import {
   DevelopmentOrganizationGuard,
   OrganizationId,
@@ -32,6 +33,13 @@ import {
 
 export class GenerateCampaignImageRequest {
   @ApiProperty({ type: String, format: 'uuid' }) @IsUUID() generationId!: string;
+  @ApiPropertyOptional({
+    enum: ['LOW', 'MEDIUM'],
+    description: 'Por defecto LOW. MEDIUM consume 3 flyers y solo en planes que la incluyen.',
+  })
+  @IsOptional()
+  @IsIn(['LOW', 'MEDIUM'])
+  quality?: 'LOW' | 'MEDIUM';
 }
 class CampaignImageResponse {
   @ApiProperty({ type: String, format: 'uuid' }) generationId!: string;
@@ -83,6 +91,7 @@ export class CampaignImageController {
       organizationId,
       campaignId,
       generationId: body.generationId,
+      quality: body.quality,
     });
     return { data: response(campaignId, status) };
   }

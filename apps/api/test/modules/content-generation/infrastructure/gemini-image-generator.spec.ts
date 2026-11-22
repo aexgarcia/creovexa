@@ -19,6 +19,14 @@ import { baseImageContext } from '#app/modules/content-generation/application/ba
 import { buildFlyerBrief } from '#app/modules/content-generation/application/flyer-brief';
 
 describe('GeminiImageGenerator', () => {
+  it('offers only the standard quality (ADR-0033)', () => {
+    const generator = new GeminiImageGenerator(
+      { apiKey: null, model: 'gemini-image', timeoutMs: 100 } as never,
+      {} as never,
+    );
+    expect(generator.supportsQuality('LOW')).toBe(true);
+    expect(generator.supportsQuality('MEDIUM')).toBe(false);
+  });
   let directory: string;
   let artifacts: LocalImageArtifacts;
   let input: GenerateImageInput;

@@ -2,6 +2,7 @@ import type { EntityId } from '#app/domain/entity-id';
 import type { GenerationSnapshotData } from '#app/modules/campaigns/contract';
 import type { FlyerBrief } from '../flyer-brief.js';
 import type { CampaignImageSelection, ImageArtifact } from './image-artifact.js';
+import type { ImageQuality } from '#app/modules/plans/contract';
 
 export const IMAGE_GENERATOR = Symbol('IMAGE_GENERATOR');
 
@@ -17,10 +18,14 @@ export interface GenerateImageInput extends CampaignImageSelection {
   styleImages: ImageArtifact[];
   // Datos congelados para esta generación; COMPOSED envía solo baseImageContext.
   snapshot: GenerationSnapshotData;
+  // Calidad pedida (ADR-0033). Sin ella, la configurada en el despliegue.
+  quality?: ImageQuality;
 }
 
 export interface ImageGenerator {
   assertAvailable(): void;
+  // Si el proveedor puede generar en esa calidad.
+  supportsQuality(quality: ImageQuality): boolean;
   // Usa la IA visual con la foto recibida; conserva la identidad del producto y deja el texto exacto
   // y el logo al compositor. Resuelve solo referencias acotadas, nunca URLs del cliente.
   // Acota las llamadas al proveedor y devuelve los fallos explícitamente; no reutiliza en silencio la foto original.

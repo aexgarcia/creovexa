@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { PlansModule } from '#app/modules/plans/plans.module';
+import { PLAN_LIMITS, type PlanLimits } from '#app/modules/plans/contract';
 import { UpdateTemplateArchive } from './application/use-cases/update-template-archive.js';
 import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
@@ -32,14 +34,21 @@ import {
 } from './application/use-cases/template-style-references.js';
 
 @Module({
-  imports: [DatabaseModule, RuntimeModule, AssetsModule, HttpCommonModule, OrganizationsModule],
+  imports: [
+    DatabaseModule,
+    RuntimeModule,
+    AssetsModule,
+    HttpCommonModule,
+    OrganizationsModule,
+    PlansModule,
+  ],
   controllers: [TemplatesController, TemplateStyleReferencesController],
   providers: [
     {
       provide: UpdateTemplateArchive,
-      inject: [PrismaTemplateRepository, CLOCK],
-      useFactory: (repository: PrismaTemplateRepository, clock: Clock) =>
-        new UpdateTemplateArchive(repository, clock),
+      inject: [PrismaTemplateRepository, CLOCK, PLAN_LIMITS],
+      useFactory: (repository: PrismaTemplateRepository, clock: Clock, limits: PlanLimits) =>
+        new UpdateTemplateArchive(repository, clock, limits),
     },
     {
       provide: PrismaTemplateRepository,
@@ -53,13 +62,20 @@ import {
     })),
     {
       provide: CreateTemplate,
-      inject: [PrismaTemplateRepository, PrismaOrganizationLookup, ID_GENERATOR, CLOCK],
+      inject: [
+        PrismaTemplateRepository,
+        PrismaOrganizationLookup,
+        ID_GENERATOR,
+        CLOCK,
+        PLAN_LIMITS,
+      ],
       useFactory: (
         repository: PrismaTemplateRepository,
         organizations: PrismaOrganizationLookup,
         ids: IdGenerator,
         clock: Clock,
-      ) => new CreateTemplate(repository, organizations, ids, clock),
+        limits: PlanLimits,
+      ) => new CreateTemplate(repository, organizations, ids, clock, limits),
     },
     {
       provide: TEMPLATE_STYLE_REFERENCES,

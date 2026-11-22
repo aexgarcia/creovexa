@@ -112,9 +112,10 @@ class ImageRepositoryFake implements CampaignImageRepository {
     if (this.active) return Promise.resolve({ status: 'RUNNING' });
     return Promise.resolve(this.queued > 0 ? { status: 'QUEUED' } : null);
   }
-  queue(): Promise<void> {
+  queue(): Promise<boolean> {
+    const opens = this.queued === 0 || this.failure !== null;
     this.queued++;
-    return Promise.resolve();
+    return Promise.resolve(opens);
   }
   fail(_selection: unknown, failureCode: string): Promise<void> {
     if (this.results.length === 0) this.failure = failureCode;
@@ -167,20 +168,24 @@ function fixture() {
   };
   const productImages = {
     assertAvailable: vi.fn(),
+    supportsQuality: vi.fn(() => true),
     load: vi.fn<ProductImageSource['load']>().mockResolvedValue(referenceImage),
   };
   const generator = {
     assertAvailable: vi.fn(),
+    supportsQuality: vi.fn(() => true),
     generate: vi.fn<ImageGenerator['generate']>().mockResolvedValue(base),
   };
   const renderer = {
     assertAvailable: vi.fn(),
+    supportsQuality: vi.fn(() => true),
     supports: vi.fn<TemplateRenderer['supports']>().mockReturnValue(true),
     render: vi.fn<TemplateRenderer['render']>().mockResolvedValue(composed(final)),
   };
   let assetNumber = 500;
   const storage = {
     assertAvailable: vi.fn(),
+    supportsQuality: vi.fn(() => true),
     store: vi.fn<StorageProvider['store']>().mockImplementation(async (input) => ({
       id: testId(assetNumber++),
       organizationId: input.organizationId,
@@ -697,10 +702,12 @@ describe('GenerateCampaignImage in AI_FULL', () => {
     }
     const logos = {
       assertAvailable: vi.fn(),
+      supportsQuality: vi.fn(() => true),
       load: vi.fn<FlyerLogoSource['load']>().mockResolvedValue(logoArtifact),
     };
     const reader = {
       assertAvailable: vi.fn(),
+      supportsQuality: vi.fn(() => true),
       read: vi.fn<FlyerReader['read']>().mockResolvedValue(reading()),
       reviewLogoArea: vi.fn<FlyerReader['reviewLogoArea']>().mockResolvedValue({
         hasText: false,

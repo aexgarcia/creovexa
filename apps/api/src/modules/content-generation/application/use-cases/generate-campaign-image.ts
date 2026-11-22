@@ -1,3 +1,4 @@
+import type { ImageQuality } from '#app/modules/plans/contract';
 import { ImageGenerationError } from '#app/modules/content-generation/application/errors/image-generation.error';
 import { entityId } from '#app/domain/entity-id';
 import type { Clock } from '#app/application/ports/clock';
@@ -50,6 +51,8 @@ export interface GenerateCampaignImageOptions {
 export interface GenerateCampaignImageInput extends CampaignReference {
   // Fija la generación del copy revisado; nunca genera en silencio una revisión más nueva.
   generationId: string;
+  // Calidad pedida al encolar el trabajo (ADR-0033).
+  quality?: ImageQuality;
 }
 
 function assertArtifact(artifact: ImageArtifact) {
@@ -174,6 +177,7 @@ export class GenerateCampaignImage {
         brief,
         styleImages,
         snapshot,
+        quality: input.quality,
       });
       assertArtifact(base);
       this.assertLeaseTime(lease);

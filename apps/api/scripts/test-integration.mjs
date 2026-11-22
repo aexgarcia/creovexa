@@ -65,6 +65,19 @@ try {
   created = true;
   run('../node_modules/prisma/build/index.js', ['migrate', 'deploy']);
   run('../node_modules/prisma/build/index.js', ['migrate', 'deploy']);
+  // Solo en el esquema temporal: cada organización que crean las pruebas recibe el plan más
+  // amplio, para que los cupos de ADR-0033 no interfieran. Las pruebas de cupos fijan su plan.
+  await administrator.query(`
+    CREATE FUNCTION "${schema}".assign_test_plan() RETURNS trigger AS $$
+    BEGIN
+      INSERT INTO "${schema}"."organization_plans" ("organization_id", "plan", "period_anchor", "assigned_at")
+      VALUES (NEW."id", 'AGENCIA', current_date, now())
+      ON CONFLICT DO NOTHING;
+      RETURN NEW;
+    END $$ LANGUAGE plpgsql;
+    CREATE TRIGGER assign_test_plan AFTER INSERT ON "${schema}"."organizations"
+      FOR EACH ROW EXECUTE FUNCTION "${schema}".assign_test_plan();
+  `);
   run('../node_modules/vitest/vitest.mjs', [
     'run',
     '--config',

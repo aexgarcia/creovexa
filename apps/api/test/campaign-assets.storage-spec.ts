@@ -224,7 +224,7 @@ describe('Private campaign assets (MinIO + PostgreSQL)', () => {
       new PrismaCampaignCopyRepository(context.database, context.generations),
       context.images,
       { assertAvailable() {}, load: produce },
-      { assertAvailable() {}, generate: produce },
+      { assertAvailable() {}, supportsQuality: () => true, generate: produce },
       renderer,
       storage,
       { next: uuid },
@@ -340,7 +340,7 @@ describe('Private campaign assets (MinIO + PostgreSQL)', () => {
       new PrismaCampaignCopyRepository(context.database, context.generations),
       context.images,
       { assertAvailable() {}, load: produce },
-      { assertAvailable() {}, generate },
+      { assertAvailable() {}, supportsQuality: () => true, generate },
       {
         assertAvailable() {},
         supports: () => true,

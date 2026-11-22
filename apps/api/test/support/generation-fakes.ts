@@ -63,12 +63,16 @@ export class CopyRepositoryFake implements CampaignCopyRepository {
     if (this.queued) return Promise.resolve({ status: 'QUEUED' });
     return Promise.resolve(null);
   }
-  queue() {
+  private readonly opened = new Set<string>();
+  queue(selection: CopySelection) {
+    // Como el repositorio real: una generación sin trabajo, o con uno fallido, abre un intento.
+    const opens = !this.opened.has(selection.generationId) || this.failure !== null;
+    this.opened.add(selection.generationId);
     if (!this.saved && !this.busy) {
       this.queued = true;
       this.failure = null;
     }
-    return Promise.resolve();
+    return Promise.resolve(opens);
   }
   store(_selection: CopySelection, content: CampaignCopy) {
     this.saved = content;

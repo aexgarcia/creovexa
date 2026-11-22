@@ -1,4 +1,6 @@
 import { resolve } from 'node:path';
+import { PlansModule } from '#app/modules/plans/plans.module';
+import { AI_QUOTA, type AiQuota } from '#app/modules/plans/contract';
 import { ConsoleLogger, Module } from '@nestjs/common';
 import type { Clock } from '#app/application/ports/clock';
 import type { IdGenerator } from '#app/application/ports/id-generator';
@@ -95,6 +97,7 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
 
 @Module({
   imports: [
+    PlansModule,
     DatabaseModule,
     RuntimeModule,
     AssetsModule,
@@ -162,6 +165,7 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
         JOB_QUEUE,
         UNIT_OF_WORK,
         CLOCK,
+        AI_QUOTA,
       ],
       useFactory: (
         generations: CampaignGenerations,
@@ -170,7 +174,9 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
         queue: JobQueue,
         transactions: UnitOfWork,
         clock: Clock,
-      ) => new RegenerateCampaign(generations, copies, generator, queue, transactions, clock),
+        quota: AiQuota,
+      ) =>
+        new RegenerateCampaign(generations, copies, generator, queue, transactions, clock, quota),
     },
     {
       provide: RequestCampaignCopy,
@@ -181,6 +187,7 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
         JOB_QUEUE,
         UNIT_OF_WORK,
         CLOCK,
+        AI_QUOTA,
       ],
       useFactory: (
         generations: CampaignGenerations,
@@ -189,7 +196,9 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
         queue: JobQueue,
         transactions: UnitOfWork,
         clock: Clock,
-      ) => new RequestCampaignCopy(generations, copies, generator, queue, transactions, clock),
+        quota: AiQuota,
+      ) =>
+        new RequestCampaignCopy(generations, copies, generator, queue, transactions, clock, quota),
     },
     {
       provide: GenerateCampaignCopy,
@@ -362,13 +371,20 @@ import { CampaignImageController } from './presentation/campaign-image.controlle
     {
       // El caso de uso de imagen ya tiene todos los ports que la petición debe revisar.
       provide: RequestCampaignImage,
-      inject: [GenerateCampaignImage, PrismaCampaignImageRepository, JOB_QUEUE, UNIT_OF_WORK],
+      inject: [
+        GenerateCampaignImage,
+        PrismaCampaignImageRepository,
+        JOB_QUEUE,
+        UNIT_OF_WORK,
+        AI_QUOTA,
+      ],
       useFactory: (
         generate: GenerateCampaignImage,
         images: PrismaCampaignImageRepository,
         queue: JobQueue,
         transactions: UnitOfWork,
-      ) => new RequestCampaignImage(generate, images, queue, transactions),
+        quota: AiQuota,
+      ) => new RequestCampaignImage(generate, images, queue, transactions, quota),
     },
     {
       provide: GetCampaignImage,

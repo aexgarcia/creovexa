@@ -32,7 +32,10 @@ describe('GenerationJobs', () => {
     await f.jobs.copy(payload);
     await f.jobs.image(payload);
     expect(f.copy.execute).toHaveBeenCalledWith(payload);
-    expect(f.image.execute).toHaveBeenCalledWith(payload);
+    // Sin calidad en el trabajo, la estándar (ADR-0033).
+    expect(f.image.execute).toHaveBeenCalledWith({ ...payload, quality: 'LOW' });
+    await f.jobs.image({ ...payload, quality: 'MEDIUM' });
+    expect(f.image.execute).toHaveBeenLastCalledWith({ ...payload, quality: 'MEDIUM' });
   });
 
   it('records the failure code and fails the job', async () => {

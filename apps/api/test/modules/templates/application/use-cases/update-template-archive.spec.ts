@@ -1,3 +1,4 @@
+import { PlanFake } from '../../../../support/plan-fakes.js';
 import { UpdateTemplateArchive } from '#app/modules/templates/application/use-cases/update-template-archive';
 import { ListTemplates } from '#app/modules/templates/application/use-cases/list-templates';
 import { TemplateNotFoundError } from '#app/modules/templates/domain/errors/template.errors';
@@ -14,7 +15,7 @@ describe('Archivado de plantillas', () => {
     const repository = new TemplateRepositoryFake();
     const original = templateFixture();
     await repository.add(ORGANIZATION_ID, original);
-    const useCase = new UpdateTemplateArchive(repository, { now: () => later });
+    const useCase = new UpdateTemplateArchive(repository, { now: () => later }, new PlanFake());
     const input = { organizationId: ORGANIZATION_ID, id: original.id, archived: true };
     const archived = await useCase.execute(input);
     expect(archived.archivedAt).toBe(later.toISOString());
@@ -26,9 +27,13 @@ describe('Archivado de plantillas', () => {
       (await list.execute({ organizationId: ORGANIZATION_ID, status: 'archived' })).total,
     ).toBe(1);
     expect((await list.execute({ organizationId: ORGANIZATION_ID, status: 'all' })).total).toBe(1);
-    const repeated = await new UpdateTemplateArchive(repository, {
-      now: () => new Date(later.getTime() + 1000),
-    }).execute(input);
+    const repeated = await new UpdateTemplateArchive(
+      repository,
+      {
+        now: () => new Date(later.getTime() + 1000),
+      },
+      new PlanFake(),
+    ).execute(input);
     expect(repeated.archivedAt).toBe(archived.archivedAt);
     expect((await useCase.execute({ ...input, archived: false })).archivedAt).toBeNull();
     expect((await list.execute({ organizationId: ORGANIZATION_ID })).total).toBe(1);
@@ -37,7 +42,7 @@ describe('Archivado de plantillas', () => {
     const repository = new TemplateRepositoryFake();
     const original = templateFixture();
     await repository.add(ORGANIZATION_ID, original);
-    const useCase = new UpdateTemplateArchive(repository, { now: () => later });
+    const useCase = new UpdateTemplateArchive(repository, { now: () => later }, new PlanFake());
     await expect(
       useCase.execute({ organizationId: OTHER_ORGANIZATION_ID, id: original.id, archived: true }),
     ).rejects.toBeInstanceOf(TemplateNotFoundError);

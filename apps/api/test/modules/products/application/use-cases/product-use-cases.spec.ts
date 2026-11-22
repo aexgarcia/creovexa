@@ -1,3 +1,4 @@
+import { PlanFake } from '../../../../support/plan-fakes.js';
 import {
   CreateProduct,
   type CreateProductInput,
@@ -45,7 +46,13 @@ function createUseCase(
   repository: ProductRepositoryFake,
   organizations = new OrganizationLookupFake(),
 ) {
-  return new CreateProduct(repository, organizations, { next: () => PRODUCT_ID }, creationClock);
+  return new CreateProduct(
+    repository,
+    organizations,
+    { next: () => PRODUCT_ID },
+    creationClock,
+    new PlanFake(),
+  );
 }
 
 describe('Product use cases', () => {
@@ -75,6 +82,23 @@ describe('Product use cases', () => {
     });
     expect(repository.records.get(PRODUCT_ID)).toBeInstanceOf(Product);
     expect(result).not.toBeInstanceOf(Product);
+  });
+
+  it('does not create a product beyond the plan limit (ADR-0033)', async () => {
+    const repository = new ProductRepositoryFake();
+    const plan = new PlanFake();
+    plan.resourceLimitReached = true;
+    const useCase = new CreateProduct(
+      repository,
+      new OrganizationLookupFake(),
+      { next: () => PRODUCT_ID },
+      creationClock,
+      plan,
+    );
+    await expect(useCase.execute({ ...input(), kind: ProductKind.PRODUCT })).rejects.toMatchObject({
+      name: 'PlanLimitReachedError',
+    });
+    expect(repository.records.size).toBe(0);
   });
 
   it('does not create a product for a missing organization', async () => {

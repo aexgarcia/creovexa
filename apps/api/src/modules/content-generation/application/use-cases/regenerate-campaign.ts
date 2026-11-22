@@ -7,6 +7,7 @@ import { GENERATE_COPY_JOB } from '../generation-job.js';
 import type { CampaignCopyRepository } from '../ports/campaign-copy-repository.js';
 import type { CampaignCopy, CopyGenerator } from '../ports/copy-generator.js';
 import type { CampaignCopyStatus } from './generate-campaign-copy.js';
+import { AiUsageKind, type AiQuota } from '#app/modules/plans/contract';
 
 // Empieza otra versión del flyer con los datos actuales (ADR-0026). Los textos de la versión
 // anterior se reusan si siguen cumpliendo las reglas con el snapshot nuevo, con las correcciones
@@ -19,6 +20,7 @@ export class RegenerateCampaign {
     private readonly queue: JobQueue,
     private readonly transactions: UnitOfWork,
     private readonly clock: Clock,
+    private readonly quota: AiQuota,
   ) {}
 
   async execute(input: CampaignReference): Promise<CampaignCopyStatus> {
@@ -46,7 +48,9 @@ export class RegenerateCampaign {
         await this.copies.store(selection, reused, now, transaction);
         return { generationId: generation.id, status: 'READY', failureCode: null, copy: reused };
       }
-      await this.copies.queue(selection, now, transaction);
+      // Solo consume si hay que escribir textos nuevos (ADR-0033).
+      if (await this.copies.queue(selection, now, transaction))
+        await this.quota.consume(selection.organizationId, AiUsageKind.COPY, { transaction });
       await this.queue.enqueue(
         { name: GENERATE_COPY_JOB, key: selection.generationId, payload: { ...selection } },
         transaction,

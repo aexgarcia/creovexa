@@ -10,6 +10,7 @@ import { GENERATE_COPY_JOB } from '../generation-job.js';
 import type { CampaignCopyRepository } from '../ports/campaign-copy-repository.js';
 import type { CopyGenerator } from '../ports/copy-generator.js';
 import type { CampaignCopyStatus } from './generate-campaign-copy.js';
+import { AiUsageKind, type AiQuota } from '#app/modules/plans/contract';
 
 // Acepta la petición y deja el trabajo a la cola. Pedirlo otra vez mientras un trabajo
 // espera o corre no inicia un segundo.
@@ -21,6 +22,7 @@ export class RequestCampaignCopy {
     private readonly queue: JobQueue,
     private readonly transactions: UnitOfWork,
     private readonly clock: Clock,
+    private readonly quota: AiQuota,
   ) {}
 
   async execute(input: CampaignReference): Promise<CampaignCopyStatus> {
@@ -53,7 +55,10 @@ export class RequestCampaignCopy {
         campaignId: current.campaignId,
         generationId: current.generation!.id,
       };
-      await this.copies.queue(selection, this.clock.now(), transaction);
+      // Solo un intento nuevo consume, junto con el trabajo: si la transacción se revierte,
+      // tampoco cuenta (ADR-0033).
+      if (await this.copies.queue(selection, this.clock.now(), transaction))
+        await this.quota.consume(selection.organizationId, AiUsageKind.COPY, { transaction });
       await this.queue.enqueue(
         { name: GENERATE_COPY_JOB, key: selection.generationId, payload: { ...selection } },
         transaction,

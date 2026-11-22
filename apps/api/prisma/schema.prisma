@@ -77,6 +77,8 @@ model Organization {
   templates                 Template[]
   campaigns                 Campaign[]
   logos                     OrganizationLogoAsset[]
+  plan                      OrganizationPlan?
+  aiUsage                   AiUsage[]
 
   @@index([createdAt])
   @@map("organizations")
@@ -154,6 +156,23 @@ enum CampaignStatus {
   PUBLISHED
   PARTIALLY_PUBLISHED
   FAILED
+}
+
+enum PlanCode {
+  EMPRENDE
+  NEGOCIO
+  AGENCIA
+}
+
+enum AiUsageKind {
+  IMAGE
+  COPY
+  PRODUCT_SUGGESTION
+}
+
+enum AiUsageScope {
+  MONTH
+  DAY
 }
 
 enum CopyChannel {
@@ -476,4 +495,29 @@ model TemplateStyleAsset {
 
   @@index([organizationId, templateId, id])
   @@map("template_style_assets")
+}
+
+// Plan de la organización (ADR-0033). Lo asigna el propietario del despliegue.
+model OrganizationPlan {
+  organizationId String       @id @map("organization_id") @db.Uuid
+  plan           PlanCode
+  // Fecha local en que empezó el plan: fija el día de reinicio mensual.
+  periodAnchor   DateTime     @map("period_anchor") @db.Date
+  assignedAt     DateTime     @map("assigned_at") @db.Timestamptz(3)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@map("organization_plans")
+}
+
+// Unidades de IA usadas por período (ADR-0033).
+model AiUsage {
+  organizationId String       @map("organization_id") @db.Uuid
+  kind           AiUsageKind
+  scope          AiUsageScope
+  periodStart    DateTime     @map("period_start") @db.Date
+  used           Int
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([organizationId, kind, scope, periodStart])
+  @@map("ai_usage")
 }

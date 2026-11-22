@@ -6,6 +6,7 @@ import type { TemplateRepository } from '../../domain/repositories/template.repo
 import { TemplateOrganizationNotFoundError } from '../errors/template-organization-not-found.error.js';
 import type { OrganizationLookup } from '../ports/organization-lookup.js';
 import { templateResult, type TemplateResult } from '../template-result.js';
+import { PlanResource, type PlanLimits } from '#app/modules/plans/contract';
 
 export interface CreateTemplateInput {
   organizationId: string;
@@ -19,6 +20,7 @@ export class CreateTemplate {
     private readonly organizations: OrganizationLookup,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
+    private readonly limits: PlanLimits,
   ) {}
 
   async execute(input: CreateTemplateInput): Promise<TemplateResult> {
@@ -26,6 +28,7 @@ export class CreateTemplate {
     if (!(await this.organizations.exists(organizationId))) {
       throw new TemplateOrganizationNotFoundError();
     }
+    await this.limits.assertCanCreate(organizationId, PlanResource.TEMPLATE);
     const template = Template.create(
       this.ids.next(),
       organizationId,

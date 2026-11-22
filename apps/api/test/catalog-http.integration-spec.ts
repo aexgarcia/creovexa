@@ -1,3 +1,6 @@
+import { AdministerPlans } from '#app/modules/plans/application/use-cases/administer-plans';
+import { PlanPolicy } from '#app/modules/plans/application/plan-policy';
+import { AiQuotaExceededError, AiUsageKind } from '#app/modules/plans/contract';
 import { COPY_GENERATOR } from '#app/modules/content-generation/application/ports/copy-generator';
 import { CAMPAIGN_FINAL_ASSETS } from '#app/modules/campaigns/application/ports/campaign-final-assets';
 import { finalAssetsFake } from './support/final-assets-fake.js';
@@ -1184,5 +1187,93 @@ describe('Catalog HTTP with PostgreSQL', () => {
       const response = await request(app.getHttpServer()).post(path).send(body).expect(404);
       expect(response.body.error.code).toBe('ORGANIZATION_NOT_FOUND');
     }
+  });
+
+  // Planes y cuotas de uso (ADR-0033). Cada organización de prueba empieza en AGENCIA.
+  describe('plans', () => {
+    const plans = () => module.get(AdministerPlans);
+    const policy = () => module.get(PlanPolicy);
+
+    it('reports the plan and its usage', async () => {
+      const response = await request(app.getHttpServer()).get('/plan').expect(200);
+      expect(response.body.data).toMatchObject({
+        plan: { code: 'AGENCIA', monthlyPrice: 199, imageQualities: ['LOW', 'MEDIUM'] },
+        usage: {
+          IMAGE: { month: { used: 0, limit: 600 }, day: { used: 0, limit: 120 } },
+          COPY: { month: { used: 0, limit: 1800 }, day: null },
+        },
+        resources: { PRODUCT: { used: 0, limit: null } },
+      });
+    });
+
+    it('never lets concurrent requests pass the daily cap, and refunds units', async () => {
+      const organizationId = context.organizationId!;
+      await plans().assign(organizationId, 'EMPRENDE');
+      // El período mensual empieza el día 1, para que el día siguiente siga en el mismo mes.
+      await database.organizationPlan.update({
+        where: { organizationId },
+        data: { periodAnchor: new Date(Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth(), 1)) },
+      });
+      const results = await Promise.allSettled(
+        Array.from({ length: 15 }, () => policy().consume(organizationId, AiUsageKind.IMAGE)),
+      );
+      expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(10);
+      const rejected = results.filter((result) => result.status === 'rejected');
+      expect(rejected).toHaveLength(5);
+      expect((rejected[0] as PromiseRejectedResult).reason).toBeInstanceOf(AiQuotaExceededError);
+      const usage = await request(app.getHttpServer()).get('/plan').expect(200);
+      expect(usage.body.data.usage.IMAGE).toMatchObject({
+        month: { used: 10, limit: 60 },
+        day: { used: 10, limit: 10 },
+      });
+      await plans().refund(organizationId, 'IMAGE', 2);
+      const refunded = await request(app.getHttpServer()).get('/plan').expect(200);
+      expect(refunded.body.data.usage.IMAGE.day.used).toBe(8);
+      // Al día siguiente el tope diario vuelve a cero; el mes sigue contando.
+      clock.value = new Date(NOW.getTime() + 24 * 3600 * 1000);
+      await policy().consume(organizationId, AiUsageKind.IMAGE);
+      const nextDay = await request(app.getHttpServer()).get('/plan').expect(200);
+      expect(nextDay.body.data.usage.IMAGE).toMatchObject({
+        month: { used: 9 },
+        day: { used: 1 },
+      });
+    });
+
+    it('rejects a template beyond the plan limit and counts only active ones', async () => {
+      await plans().assign(context.organizationId!, 'EMPRENDE');
+      const ids: string[] = [];
+      for (let i = 0; i < 5; i++)
+        ids.push(
+          (await request(app.getHttpServer()).post('/templates').send(templateBody).expect(201))
+            .body.data.id,
+        );
+      const rejected = await request(app.getHttpServer())
+        .post('/templates')
+        .send(templateBody)
+        .expect(409);
+      expect(rejected.body.error).toMatchObject({
+        code: 'PLAN_LIMIT_REACHED',
+        details: { resource: 'TEMPLATE', limit: 5 },
+      });
+      await request(app.getHttpServer())
+        .patch('/templates/' + ids[0] + '/archive')
+        .send({ archived: true })
+        .expect(200);
+      await request(app.getHttpServer()).post('/templates').send(templateBody).expect(201);
+      // Restaurar la archivada volvería a pasar el límite.
+      await request(app.getHttpServer())
+        .patch('/templates/' + ids[0] + '/archive')
+        .send({ archived: false })
+        .expect(409);
+    });
+
+    it('requires a plan', async () => {
+      await database.organizationPlan.delete({
+        where: { organizationId: context.organizationId! },
+      });
+      const response = await request(app.getHttpServer()).get('/plan').expect(403);
+      expect(response.body.error.code).toBe('PLAN_REQUIRED');
+      await request(app.getHttpServer()).post('/products').send(productBody).expect(403);
+    });
   });
 });

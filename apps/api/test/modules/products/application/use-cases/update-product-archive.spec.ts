@@ -1,3 +1,4 @@
+import { PlanFake } from '../../../../support/plan-fakes.js';
 import { UpdateProductArchive } from '#app/modules/products/application/use-cases/update-product-archive';
 import { ListProducts } from '#app/modules/products/application/use-cases/list-products';
 import { ProductNotFoundError } from '#app/modules/products/domain/errors/product.errors';
@@ -24,7 +25,7 @@ describe('Archivado de productos', () => {
       new Date(CREATED_AT),
     );
     await repository.add(ORGANIZATION_ID, original);
-    const useCase = new UpdateProductArchive(repository, { now: () => later });
+    const useCase = new UpdateProductArchive(repository, { now: () => later }, new PlanFake());
     const input = { organizationId: ORGANIZATION_ID, id: original.id, archived: true };
     const archived = await useCase.execute(input);
     expect(archived.archivedAt).toBe(later.toISOString());
@@ -36,9 +37,13 @@ describe('Archivado de productos', () => {
       (await list.execute({ organizationId: ORGANIZATION_ID, status: 'archived' })).total,
     ).toBe(1);
     expect((await list.execute({ organizationId: ORGANIZATION_ID, status: 'all' })).total).toBe(1);
-    const repeated = await new UpdateProductArchive(repository, {
-      now: () => new Date(later.getTime() + 1000),
-    }).execute(input);
+    const repeated = await new UpdateProductArchive(
+      repository,
+      {
+        now: () => new Date(later.getTime() + 1000),
+      },
+      new PlanFake(),
+    ).execute(input);
     expect(repeated.archivedAt).toBe(archived.archivedAt);
     expect((await useCase.execute({ ...input, archived: false })).archivedAt).toBeNull();
     expect((await list.execute({ organizationId: ORGANIZATION_ID })).total).toBe(1);
@@ -53,7 +58,7 @@ describe('Archivado de productos', () => {
       new Date(CREATED_AT),
     );
     await repository.add(ORGANIZATION_ID, original);
-    const useCase = new UpdateProductArchive(repository, { now: () => later });
+    const useCase = new UpdateProductArchive(repository, { now: () => later }, new PlanFake());
     await expect(
       useCase.execute({ organizationId: OTHER_ORGANIZATION_ID, id: original.id, archived: true }),
     ).rejects.toBeInstanceOf(ProductNotFoundError);

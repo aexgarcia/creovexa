@@ -7,6 +7,12 @@ import { CampaignAssetError } from '#app/modules/campaigns/application/errors/ca
 import { PublicationCampaignNotFoundError } from '#app/modules/publications/application/errors/publication-campaign-not-found.error';
 import { InvalidFlyerDesignError } from '#app/domain/value-objects/flyer-design';
 import { ProductImageError } from '#app/modules/products/application/errors/product-image.error';
+import {
+  AiQuotaExceededError,
+  ImageQualityNotAllowedError,
+  PlanLimitReachedError,
+  PlanRequiredError,
+} from '#app/modules/plans/contract';
 import { ProductSuggestionError } from '#app/modules/products/application/errors/product-suggestion.error';
 import { TemplateStyleReferenceError } from '#app/modules/templates/application/errors/template-style-reference.error';
 import { OrganizationLogoError } from '#app/modules/organizations/application/errors/organization-logo.error';
@@ -82,8 +88,33 @@ export class ApiExceptionFilter implements ExceptionFilter {
     let status = 500;
     let code: string | undefined;
     let message: string | undefined;
-    let details: ValidationDetail[] | undefined;
-    if (error instanceof TemplateStyleReferenceError) {
+    let details: ValidationDetail[] | Record<string, unknown> | undefined;
+    if (error instanceof AiQuotaExceededError) {
+      // Cupo de IA del plan agotado (ADR-0033): nada se llamó ni se encoló.
+      status = 429;
+      code = 'AI_QUOTA_EXCEEDED';
+      message = error.message;
+      details = {
+        kind: error.kind,
+        scope: error.scope,
+        limit: error.limit,
+        used: error.used,
+        resetsAt: error.resetsAt.toISOString(),
+      };
+    } else if (error instanceof PlanLimitReachedError) {
+      status = 409;
+      code = 'PLAN_LIMIT_REACHED';
+      message = error.message;
+      details = { resource: error.resource, limit: error.limit };
+    } else if (error instanceof PlanRequiredError) {
+      status = 403;
+      code = 'PLAN_REQUIRED';
+      message = error.message;
+    } else if (error instanceof ImageQualityNotAllowedError) {
+      status = 400;
+      code = 'IMAGE_QUALITY_NOT_ALLOWED';
+      message = error.message;
+    } else if (error instanceof TemplateStyleReferenceError) {
       status = { INVALID_IMAGE: 400, TOO_LARGE: 413, NOT_FOUND: 404, LIMIT: 409, UNAVAILABLE: 503 }[
         error.code
       ];
@@ -122,7 +153,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
         error.code,
       )
         ? 409
-        : error.code === 'UNSUPPORTED_DIMENSIONS'
+        : ['UNSUPPORTED_DIMENSIONS', 'UNSUPPORTED_QUALITY'].includes(error.code)
           ? 400
           : error.code === 'TIMEOUT'
             ? 504

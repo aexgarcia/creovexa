@@ -1,4 +1,6 @@
 import { ConsoleLogger, Module } from '@nestjs/common';
+import { PlansModule } from '#app/modules/plans/plans.module';
+import { AI_QUOTA, PLAN_LIMITS, type AiQuota, type PlanLimits } from '#app/modules/plans/contract';
 import {
   PRODUCT_SUGGESTIONS_CONFIG,
   productSuggestionsConfigProvider,
@@ -37,7 +39,14 @@ import { PrismaProductRepository } from './infrastructure/persistence/prisma/pri
 import { ProductsController } from './presentation/products.controller.js';
 
 @Module({
-  imports: [DatabaseModule, RuntimeModule, AssetsModule, HttpCommonModule, OrganizationsModule],
+  imports: [
+    DatabaseModule,
+    RuntimeModule,
+    AssetsModule,
+    HttpCommonModule,
+    OrganizationsModule,
+    PlansModule,
+  ],
   controllers: [ProductsController],
   providers: [
     productSuggestionsConfigProvider,
@@ -54,15 +63,18 @@ import { ProductsController } from './presentation/products.controller.js';
     },
     {
       provide: SuggestProductSalesData,
-      inject: [PrismaOrganizationLookup, PRODUCT_SALES_ADVISOR],
-      useFactory: (organizations: PrismaOrganizationLookup, advisor: ProductSalesAdvisor) =>
-        new SuggestProductSalesData(organizations, advisor),
+      inject: [PrismaOrganizationLookup, PRODUCT_SALES_ADVISOR, AI_QUOTA],
+      useFactory: (
+        organizations: PrismaOrganizationLookup,
+        advisor: ProductSalesAdvisor,
+        quota: AiQuota,
+      ) => new SuggestProductSalesData(organizations, advisor, quota),
     },
     {
       provide: UpdateProductArchive,
-      inject: [PrismaProductRepository, CLOCK],
-      useFactory: (repository: PrismaProductRepository, clock: Clock) =>
-        new UpdateProductArchive(repository, clock),
+      inject: [PrismaProductRepository, CLOCK, PLAN_LIMITS],
+      useFactory: (repository: PrismaProductRepository, clock: Clock, limits: PlanLimits) =>
+        new UpdateProductArchive(repository, clock, limits),
     },
     {
       provide: PrismaProductRepository,
@@ -82,13 +94,14 @@ import { ProductsController } from './presentation/products.controller.js';
     })),
     {
       provide: CreateProduct,
-      inject: [PrismaProductRepository, PrismaOrganizationLookup, ID_GENERATOR, CLOCK],
+      inject: [PrismaProductRepository, PrismaOrganizationLookup, ID_GENERATOR, CLOCK, PLAN_LIMITS],
       useFactory: (
         repository: PrismaProductRepository,
         organizations: PrismaOrganizationLookup,
         ids: IdGenerator,
         clock: Clock,
-      ) => new CreateProduct(repository, organizations, ids, clock),
+        limits: PlanLimits,
+      ) => new CreateProduct(repository, organizations, ids, clock, limits),
     },
     {
       provide: UpdateProduct,

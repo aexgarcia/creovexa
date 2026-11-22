@@ -97,6 +97,16 @@ describe('OpenAIImageGenerator', () => {
     expect(await artifacts.read({ ...input, source: result })).toEqual(generated);
     expect(http).toHaveBeenCalledOnce();
   });
+  it('sends the quality the request asked for instead of the configured one (ADR-0033)', async () => {
+    const http = vi.fn(async (_url, options) => {
+      expect((options.body as FormData).get('quality')).toBe('low');
+      return Response.json(envelope(generated));
+    }) as unknown as typeof fetch;
+    const generator = new OpenAIImageGenerator(config, artifacts, http);
+    expect(generator.supportsQuality()).toBe(true);
+    await generator.generate({ ...input, quality: 'LOW' });
+    expect(http).toHaveBeenCalledOnce();
+  });
   it.each([401, 403, 429, 500])(
     'does not retry HTTP %i or log provider secrets',
     async (status) => {

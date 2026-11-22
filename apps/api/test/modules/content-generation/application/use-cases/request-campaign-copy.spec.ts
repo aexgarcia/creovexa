@@ -1,3 +1,4 @@
+import { PlanFake } from '../../../../support/plan-fakes.js';
 import {
   campaignUseCases,
   campaignGenerationsFake,
@@ -30,6 +31,7 @@ async function fixture() {
   const generate = vi.fn(async (input) => validCopy(input));
   const generator: CopyGenerator = { assertAvailable() {}, generate };
   const queue = new JobQueueFake();
+  const plan = new PlanFake();
   const execute = new GenerateCampaignCopy(generations, copies, generator, f.ids, f.clock);
   const jobs = new GenerationJobs(
     execute,
@@ -45,6 +47,7 @@ async function fixture() {
     generate,
     generator,
     queue,
+    plan,
     request: new RequestCampaignCopy(
       generations,
       copies,
@@ -52,6 +55,7 @@ async function fixture() {
       queue,
       immediateUnitOfWork,
       f.clock,
+      plan,
     ),
     get: new GetCampaignCopy(generations, copies, f.clock),
   };
@@ -94,6 +98,25 @@ describe('RequestCampaignCopy', () => {
     expect(second.generationId).toBe(first.generationId);
     expect(f.queue.accepted).toHaveLength(1);
     expect(f.repository.saveCount).toBe(1);
+  });
+
+  it('consumes the copy quota once per new job (ADR-0033)', async () => {
+    const f = await fixture();
+    await f.request.execute(f.selection);
+    await f.request.execute(f.selection);
+    expect(f.plan.consumed).toEqual([
+      expect.objectContaining({ organizationId: f.selection.organizationId, kind: 'COPY' }),
+    ]);
+    expect(f.plan.consumed[0]!.options?.transaction).toBeDefined();
+  });
+
+  it('rejects the request without queuing when the quota is exhausted', async () => {
+    const f = await fixture();
+    f.plan.exhausted = true;
+    await expect(f.request.execute(f.selection)).rejects.toMatchObject({
+      name: 'AiQuotaExceededError',
+    });
+    expect(f.queue.accepted).toHaveLength(0);
   });
 
   it('returns finished copy without queuing anything', async () => {

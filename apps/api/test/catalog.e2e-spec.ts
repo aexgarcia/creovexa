@@ -1,3 +1,5 @@
+import { AI_QUOTA, PLAN_LIMITS } from '#app/modules/plans/contract';
+import { PlanFake } from './support/plan-fakes.js';
 import { Organization } from '#app/modules/organizations/domain/entities/organization';
 import { PrismaOrganizationRepository } from '#app/modules/organizations/infrastructure/persistence/prisma/prisma-organization.repository';
 import { OrganizationRepositoryFake, ASSET_ID, creationClock } from './support/commercial-fakes.js';
@@ -70,6 +72,11 @@ describe('Catalog HTTP with real use cases', () => {
       .useValue(templates)
       .overrideProvider(PrismaOrganizationLookup)
       .useValue(new OrganizationLookupFake())
+      // Sin base de datos: el plan no limita estas pruebas (ADR-0033).
+      .overrideProvider(PLAN_LIMITS)
+      .useValue(new PlanFake())
+      .overrideProvider(AI_QUOTA)
+      .useValue(new PlanFake())
       .overrideProvider(HTTP_LOGGER)
       .useValue(logger)
       .compile();

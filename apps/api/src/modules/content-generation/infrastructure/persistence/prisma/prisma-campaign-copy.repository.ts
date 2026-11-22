@@ -91,7 +91,11 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
       return { status: 'FAILED', failureCode: row.failureCode ?? 'FAILED' };
     return { status: row.status };
   }
-  async queue(selection: CopySelection, at: Date, transaction: TransactionContext) {
+  async queue(
+    selection: CopySelection,
+    at: Date,
+    transaction: TransactionContext,
+  ): Promise<boolean> {
     const tx = prismaTransaction(transaction);
     const existing = await tx.campaignCopy.findUnique({
       where: { generationId: selection.generationId },
@@ -101,7 +105,7 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
       existing &&
       (existing.status === 'READY' || (existing.status === 'RUNNING' && existing.expiresAt > at))
     )
-      return;
+      return false;
     const data = {
       ...selectionOf(selection),
       token: randomUUID(),
@@ -114,6 +118,7 @@ export class PrismaCampaignCopyRepository implements CampaignCopyRepository {
       create: data,
       update: data,
     });
+    return !existing || existing.status === 'FAILED';
   }
   async fail(selection: CopySelection, failureCode: string, at: Date) {
     const data = {

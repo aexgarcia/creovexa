@@ -8,6 +8,7 @@ import type { ProductRepository } from '../../domain/repositories/product.reposi
 import { ProductOrganizationNotFoundError } from '../errors/product-organization-not-found.error.js';
 import type { OrganizationLookup } from '../ports/organization-lookup.js';
 import { productResult, type ProductResult } from '../product-result.js';
+import { PlanResource, type PlanLimits } from '#app/modules/plans/contract';
 
 export interface CreateProductInput {
   organizationId: string;
@@ -30,6 +31,7 @@ export class CreateProduct {
     private readonly organizations: OrganizationLookup,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
+    private readonly limits: PlanLimits,
   ) {}
 
   async execute(input: CreateProductInput): Promise<ProductResult> {
@@ -37,6 +39,7 @@ export class CreateProduct {
     if (!(await this.organizations.exists(organizationId))) {
       throw new ProductOrganizationNotFoundError();
     }
+    await this.limits.assertCanCreate(organizationId, PlanResource.PRODUCT);
 
     const product = Product.create(
       this.ids.next(),

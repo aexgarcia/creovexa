@@ -125,6 +125,10 @@ export class GeminiImageGenerator implements ImageGenerator {
     private readonly logger: ImageLogger = { log() {} },
   ) {}
 
+  // Gemini no expone niveles de calidad: solo se ofrece la estándar (ADR-0033).
+  supportsQuality(quality: string): boolean {
+    return quality === 'LOW';
+  }
   assertAvailable(): void {
     if (!this.config?.apiKey || !this.config.model) throw new ImageGenerationError('UNAVAILABLE');
   }

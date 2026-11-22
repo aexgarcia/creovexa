@@ -42,12 +42,13 @@ export interface CampaignImageRepository {
   // Estado del trabajo para el CMS; una reserva que venció sin terminar cuenta como fallida.
   state(selection: CampaignImageSelection, now: Date): Promise<GenerationJobState | null>;
   // Marca la imagen como pedida, dentro de la transacción que encola su trabajo.
+  // true si abre un intento nuevo (no había trabajo o el anterior falló): solo ese consume cupo.
   queue(
     selection: CampaignImageSelection,
     expectedVersion: number,
     at: Date,
     transaction: TransactionContext,
-  ): Promise<void>;
+  ): Promise<boolean>;
   // Registra por qué falló el trabajo. Nunca sobrescribe trabajo terminado.
   fail(selection: CampaignImageSelection, failureCode: string, at: Date): Promise<void>;
 }

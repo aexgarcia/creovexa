@@ -54,7 +54,7 @@ describe('Final flyer HTTP (real database, storage and composition)', () => {
       contentType: 'image/png' as const,
     };
   });
-  const generator: ImageGenerator = { assertAvailable() {}, generate };
+  const generator: ImageGenerator = { assertAvailable() {}, supportsQuality: () => true, generate };
   beforeAll(async () => {
     const config = readStorageConfig({
       STORAGE_ENDPOINT: process.env.TEST_STORAGE_ENDPOINT,

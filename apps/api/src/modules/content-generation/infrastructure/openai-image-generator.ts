@@ -93,6 +93,9 @@ export class OpenAIImageGenerator implements ImageGenerator {
     // COMPOSED pide una imagen base sin texto; AI_FULL, el flyer completo (ADR-0009).
     private readonly mode: ImageMode = 'COMPOSED',
   ) {}
+  supportsQuality(): boolean {
+    return true;
+  }
   assertAvailable() {
     if (!this.config.apiKey || !this.config.model) throw new ImageGenerationError('UNAVAILABLE');
   }
@@ -136,7 +139,7 @@ export class OpenAIImageGenerator implements ImageGenerator {
       }
       body.append('n', '1');
       body.append('size', size);
-      body.append('quality', this.config.quality);
+      body.append('quality', input.quality ? input.quality.toLowerCase() : this.config.quality);
       body.append('output_format', 'png');
       body.append(
         'prompt',

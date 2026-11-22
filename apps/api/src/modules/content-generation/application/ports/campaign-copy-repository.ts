@@ -24,7 +24,8 @@ export interface CampaignCopyRepository {
   // Estado del trabajo para el CMS; una reserva que venció sin terminar cuenta como fallida.
   state(selection: CopySelection, now: Date): Promise<GenerationJobState | null>;
   // Marca el copy como pedido, dentro de la transacción que encola su trabajo. Conserva el copy READY.
-  queue(selection: CopySelection, at: Date, transaction: TransactionContext): Promise<void>;
+  // true si abre un intento nuevo (no había trabajo o el anterior falló): solo ese consume cupo.
+  queue(selection: CopySelection, at: Date, transaction: TransactionContext): Promise<boolean>;
   // Registra por qué falló el trabajo. Nunca sobrescribe un copy READY.
   fail(selection: CopySelection, failureCode: string, at: Date): Promise<void>;
   // Guarda como READY un copy ya validado, dentro de la transacción que inicia la generación.

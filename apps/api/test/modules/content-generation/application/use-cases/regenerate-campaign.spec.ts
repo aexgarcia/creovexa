@@ -1,3 +1,4 @@
+import { PlanFake } from '../../../../support/plan-fakes.js';
 import {
   campaignUseCases,
   campaignGenerationsFake,
@@ -31,6 +32,7 @@ async function fixture() {
     generate: vi.fn(),
   };
   const queue = new JobQueueFake();
+  const plan = new PlanFake();
   const enqueued: string[] = [];
   vi.spyOn(queue, 'enqueue').mockImplementation(async (job) => {
     enqueued.push(job.name);
@@ -47,7 +49,9 @@ async function fixture() {
       queue,
       immediateUnitOfWork,
       f.clock,
+      plan,
     ),
+    plan,
   };
 }
 
@@ -65,6 +69,8 @@ describe('RegenerateCampaign', () => {
     });
     expect(f.enqueued).toEqual([]);
     expect(f.generator.generate).not.toHaveBeenCalled();
+    // Reusar los textos no llama a la IA: no consume cupo (ADR-0033).
+    expect(f.plan.consumed).toEqual([]);
     // La versión anterior queda en el historial.
     expect(f.repository.contents.get(CONTENT)).toBeDefined();
   });
@@ -76,6 +82,7 @@ describe('RegenerateCampaign', () => {
     const result = await f.useCase.execute(f.selection);
     expect(result).toMatchObject({ status: 'PENDING', copy: null });
     expect(f.enqueued).toEqual([GENERATE_COPY_JOB]);
+    expect(f.plan.consumed).toEqual([expect.objectContaining({ kind: 'COPY' })]);
   });
 
   it('checks the copy provider only when there is nothing to reuse', async () => {
@@ -99,6 +106,7 @@ describe('RegenerateCampaign', () => {
       new JobQueueFake(),
       immediateUnitOfWork,
       f.clock,
+      new PlanFake(),
     );
     await expect(useCase.execute(f.selection)).rejects.toBeInstanceOf(
       InvalidCampaignTransitionError,

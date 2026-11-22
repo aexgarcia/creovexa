@@ -168,7 +168,7 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
     expectedVersion: number,
     at: Date,
     transaction: TransactionContext,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const tx = prismaTransaction(transaction);
     const existing = await tx.campaignImageJob.findUnique({
       where: { generationId: selection.generationId },
@@ -178,7 +178,7 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
       existing &&
       (existing.status === 'READY' || (existing.status === 'RUNNING' && existing.expiresAt > at))
     )
-      return;
+      return false;
     const data = {
       ...selectionOf(selection),
       token: randomUUID(),
@@ -192,6 +192,7 @@ export class PrismaCampaignImageRepository implements CampaignImageRepository {
       create: data,
       update: data,
     });
+    return !existing || existing.status === 'FAILED';
   }
 
   async fail(selection: CampaignImageSelection, failureCode: string, at: Date): Promise<void> {

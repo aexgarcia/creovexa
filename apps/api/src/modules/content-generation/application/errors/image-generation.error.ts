@@ -4,6 +4,8 @@ export type ImageGenerationFailure =
   | 'LOGO_UNAVAILABLE'
   | 'UNAVAILABLE'
   | 'UNSUPPORTED_DIMENSIONS'
+  // El proveedor activo no ofrece la calidad pedida (ADR-0033).
+  | 'UNSUPPORTED_QUALITY'
   | 'INVALID_OUTPUT'
   | 'REFUSED'
   | 'RATE_LIMITED'

@@ -36,6 +36,7 @@
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate deploy",
     "db:seed:dev": "pnpm build && node scripts/seed-development.mjs",
+    "plan": "pnpm build && node scripts/manage-plan.mjs",
     "storage:setup": "node scripts/setup-storage.mjs"
   },
   "dependencies": {

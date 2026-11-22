@@ -1,3 +1,4 @@
+import { PlanFake } from '../../../../support/plan-fakes.js';
 import { FlyerDesign, InvalidFlyerDesignError } from '#app/domain/value-objects/flyer-design';
 import {
   CreateTemplate,
@@ -35,6 +36,7 @@ function setup(organizations = new TemplateOrganizationLookupFake()) {
     organizations,
     new TemplateIdGeneratorFake(),
     creationClock,
+    new PlanFake(),
   );
   return { repository, useCase, organizations };
 }
@@ -118,6 +120,7 @@ describe('CreateTemplate', () => {
       new TemplateOrganizationLookupFake(),
       new TemplateIdGeneratorFake([templateId, revisionId]),
       creationClock,
+      new PlanFake(),
     );
     await expect(useCase.execute(input())).rejects.toThrow(InvalidEntityIdError);
     expect(repository.records.size).toBe(0);
@@ -131,6 +134,7 @@ describe('CreateTemplate', () => {
       new TemplateOrganizationLookupFake(),
       new TemplateIdGeneratorFake(),
       { now: () => new Date(NaN) },
+      new PlanFake(),
     );
     await expect(useCase.execute(input())).rejects.toThrow(InvalidTimestampError);
     expect(repository.records.size).toBe(0);

@@ -8,6 +8,9 @@ import { PrismaOrganizationRepository } from '../dist/modules/organizations/infr
 import { CreateOrganization } from '../dist/modules/organizations/application/use-cases/create-organization.js';
 import { readCatalogHttpConfig } from '../dist/config/catalog-http.config.js';
 import { entityId } from '../dist/domain/entity-id.js';
+import { PlansModule } from '../dist/modules/plans/plans.module.js';
+import { AdministerPlans } from '../dist/modules/plans/application/use-cases/administer-plans.js';
+import { PrismaService } from '../dist/infrastructure/persistence/prisma/prisma.service.js';
 
 const envFile = new URL('../.env', import.meta.url);
 loadEnvFile(envFile);
@@ -25,6 +28,15 @@ try {
     await new CreateOrganization(repository, { next: () => id }, { now: () => new Date() }).execute(
       { name: 'Creovexa local' },
     );
+  }
+  // Sin plan no se puede usar la IA ni crear productos (ADR-0033). Uno ya asignado se respeta.
+  const plans = await NestFactory.createApplicationContext(PlansModule, { logger: false });
+  try {
+    const database = plans.get(PrismaService);
+    if (!(await database.organizationPlan.findUnique({ where: { organizationId: id } })))
+      await plans.get(AdministerPlans).assign(id, 'NEGOCIO');
+  } finally {
+    await plans.close();
   }
   const assignment = 'DEV_ORGANIZATION_ID=' + id;
   const updated = /^DEV_ORGANIZATION_ID=.*$/m.test(original)

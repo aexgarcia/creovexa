@@ -6,6 +6,7 @@ import { ProductSuggestionError } from '../errors/product-suggestion.error.js';
 import type { OrganizationLookup } from '../ports/organization-lookup.js';
 import type { ProductSalesAdvisor } from '../ports/product-sales-advisor.js';
 import { normalizeSuggestion, type SalesSuggestion } from '../sales-suggestion-policy.js';
+import { AiUsageKind, type AiQuota } from '#app/modules/plans/contract';
 
 // Los datos del formulario, guardado o no: la sugerencia no necesita un producto creado.
 export interface SuggestProductSalesDataInput {
@@ -25,6 +26,7 @@ export class SuggestProductSalesData {
   constructor(
     private readonly organizations: OrganizationLookup,
     private readonly advisor: ProductSalesAdvisor,
+    private readonly quota: AiQuota,
   ) {}
 
   available(): boolean {
@@ -39,6 +41,8 @@ export class SuggestProductSalesData {
       entityId(input.organizationId, 'organizationId'),
     );
     if (!context) throw new ProductOrganizationNotFoundError();
+    // Justo antes de llamar al proveedor: cuenta aunque el proveedor falle (ADR-0033).
+    await this.quota.consume(input.organizationId, AiUsageKind.PRODUCT_SUGGESTION);
     const raw = await this.advisor.suggest({
       region: context.region,
       business: {

@@ -41,7 +41,10 @@ export class GenerationJobs {
   async image(payload: Record<string, unknown>): Promise<void> {
     const generation = reference(payload);
     try {
-      await this.generateImage.execute(generation);
+      await this.generateImage.execute({
+        ...generation,
+        quality: payload.quality === 'MEDIUM' ? 'MEDIUM' : 'LOW',
+      });
     } catch (error) {
       if (error instanceof ImageGenerationError && ['BUSY', 'STALE_RESULT'].includes(error.code))
         return;
