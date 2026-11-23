@@ -48,36 +48,37 @@ enum Currency {
 }
 
 model Organization {
-  id                        String                  @id @db.Uuid
+  id                        String                   @id @db.Uuid
   name                      String
   description               String
-  brandTone                 String?                 @map("brand_tone")
+  brandTone                 String?                  @map("brand_tone")
   industry                  String?
-  country                   String                  @default("PE")
-  locale                    String                  @default("es-PE")
-  timeZone                  String                  @default("America/Lima") @map("time_zone")
-  defaultCurrency           Currency                @default(PEN) @map("default_currency")
-  brandColors               Json?                   @map("brand_colors")
+  country                   String                   @default("PE")
+  locale                    String                   @default("es-PE")
+  timeZone                  String                   @default("America/Lima") @map("time_zone")
+  defaultCurrency           Currency                 @default(PEN) @map("default_currency")
+  brandColors               Json?                    @map("brand_colors")
   typography                Typography?
-  visualStyle               String[]                @default([]) @map("visual_style")
+  visualStyle               String[]                 @default([]) @map("visual_style")
   contact                   Json?
-  defaultLegalText          String?                 @map("default_legal_text")
-  forbiddenWords            String[]                @default([]) @map("forbidden_words")
+  defaultLegalText          String?                  @map("default_legal_text")
+  forbiddenWords            String[]                 @default([]) @map("forbidden_words")
   audience                  String?
-  valueProps                String[]                @default([]) @map("value_props")
-  emojiStyle                EmojiStyle              @default(FEW) @map("emoji_style")
-  addressForm               AddressForm             @default(TU) @map("address_form")
-  copyExamples              String[]                @default([]) @map("copy_examples")
-  logoAssetId               String?                 @map("logo_asset_id") @db.Uuid
-  darkBackgroundLogoAssetId String?                 @map("dark_background_logo_asset_id") @db.Uuid
-  iconAssetId               String?                 @map("icon_asset_id") @db.Uuid
-  createdAt                 DateTime                @map("created_at") @db.Timestamptz(3)
-  updatedAt                 DateTime                @map("updated_at") @db.Timestamptz(3)
+  valueProps                String[]                 @default([]) @map("value_props")
+  emojiStyle                EmojiStyle               @default(FEW) @map("emoji_style")
+  addressForm               AddressForm              @default(TU) @map("address_form")
+  copyExamples              String[]                 @default([]) @map("copy_examples")
+  logoAssetId               String?                  @map("logo_asset_id") @db.Uuid
+  darkBackgroundLogoAssetId String?                  @map("dark_background_logo_asset_id") @db.Uuid
+  iconAssetId               String?                  @map("icon_asset_id") @db.Uuid
+  createdAt                 DateTime                 @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime                 @map("updated_at") @db.Timestamptz(3)
   products                  Product[]
   templates                 Template[]
   campaigns                 Campaign[]
   logos                     OrganizationLogoAsset[]
   plan                      OrganizationPlan?
+  memberships               OrganizationMembership[]
   aiUsage                   AiUsage[]
 
   @@index([createdAt])
@@ -156,6 +157,17 @@ enum CampaignStatus {
   PUBLISHED
   PARTIALLY_PUBLISHED
   FAILED
+}
+
+enum MembershipRole {
+  ADMIN
+  EDITOR
+  REVIEWER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  DISABLED
 }
 
 enum PlanCode {
@@ -520,4 +532,86 @@ model AiUsage {
 
   @@id([organizationId, kind, scope, periodStart])
   @@map("ai_usage")
+}
+
+// Identidad (ADR-0012). Las cuatro tablas siguen el esquema de Better Auth; sus campos los
+// escribe Better Auth mediante su adapter de Prisma.
+model User {
+  id            String                   @id @db.Uuid
+  name          String
+  email         String                   @unique
+  emailVerified Boolean                  @default(false) @map("email_verified")
+  image         String?
+  createdAt     DateTime                 @map("created_at") @db.Timestamptz(3)
+  updatedAt     DateTime                 @map("updated_at") @db.Timestamptz(3)
+  sessions      Session[]
+  accounts      Account[]
+  memberships   OrganizationMembership[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @db.Uuid
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  token     String   @unique
+  createdAt DateTime @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @map("updated_at") @db.Timestamptz(3)
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @db.Uuid
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  userId                String    @map("user_id") @db.Uuid
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at") @db.Timestamptz(3)
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz(3)
+  scope                 String?
+  // Hash de la contraseña; lo calcula Better Auth, nunca el código de Creovexa.
+  password              String?
+  createdAt             DateTime  @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @map("updated_at") @db.Timestamptz(3)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt  DateTime @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @map("updated_at") @db.Timestamptz(3)
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+// Pertenencia de un usuario a una organización (ADR-0012). Autenticarse no la crea.
+model OrganizationMembership {
+  id             String           @id @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  role           MembershipRole
+  status         MembershipStatus @default(ACTIVE)
+  createdAt      DateTime         @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime         @map("updated_at") @db.Timestamptz(3)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@map("organization_memberships")
 }

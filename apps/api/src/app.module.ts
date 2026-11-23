@@ -7,6 +7,7 @@ import { ContentGenerationModule } from './modules/content-generation/content-ge
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { OrganizationsModule } from './modules/organizations/organizations.module.js';
 import { PlansModule } from './modules/plans/plans.module.js';
+import { IdentityModule } from './modules/identity/identity.module.js';
 import { ProductsModule } from './modules/products/products.module.js';
 import { PublicationsModule } from './modules/publications/publications.module.js';
 import { TemplatesModule } from './modules/templates/templates.module.js';
@@ -14,6 +15,7 @@ import { TemplatesModule } from './modules/templates/templates.module.js';
 @Module({
   imports: [
     HttpCommonModule,
+    IdentityModule,
     OrganizationsModule,
     PlansModule,
     ProductsModule,
